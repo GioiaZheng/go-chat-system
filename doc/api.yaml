@@ -1,0 +1,1402 @@
+openapi: 3.0.0
+info:
+  title: Chat Application API
+  description: Chat application REST API documentation
+  version: 1.0.0
+  contact:
+    name: Chat App Team
+    email: support@chatapp.com
+    url: https://chatapp.com/support
+servers:
+- url: /api/v1
+  description: API foundation path
+tags:
+- name: auth
+  description: Authentication operations
+- name: users
+  description: User management operations
+- name: friends
+  description: Friend management operations
+- name: groups
+  description: Group management operations
+- name: messages
+  description: Message operations
+- name: conversation
+  description: Conversation operations
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      description: User information model
+      required:
+      - id
+      - username
+      - email
+      - gender
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the user
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+        username:
+          type: string
+          description: User's display name
+          minLength: 1
+          maxLength: 50
+          pattern: ^[a-zA-Z0-9_-]+$
+        name:
+          type: string
+          description: User's full name
+          minLength: 1
+          maxLength: 100
+          pattern: ^[a-zA-Z0-9\s'-]+$
+        email:
+          type: string
+          description: User's email address
+          format: email
+          minLength: 5
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+        avatarUrl:
+          type: string
+          description: URL of user's avatar
+          format: uri
+          maxLength: 255
+          minLength: 1
+          pattern: ^https?://[^\s/$.?#].[^\s]*$
+        photo:
+          type: string
+          format: binary
+          description: User photo file
+          maxLength: 10485760
+          minLength: 1
+        gender:
+          type: string
+          description: User's gender
+          enum:
+          - male
+          - female
+          - unspecified
+          default: unspecified
+    Friend:
+      type: object
+      description: Friend information
+      required:
+      - userId
+      - userName
+      properties:
+        userId:
+          type: string
+          description: Friend's user ID
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+        userName:
+          type: string
+          description: Friend's username
+          minLength: 3
+          maxLength: 50
+          pattern: ^[a-zA-Z0-9_-]+$
+        avatarUrl:
+          type: string
+          description: URL of friend's avatar
+          format: uri
+          maxLength: 255
+          minLength: 1
+          pattern: ^https?://[^\s/$.?#].[^\s]*$
+    Conversation:
+      type: object
+      description: Chat conversation information
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the conversation
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+        name:
+          type: string
+          description: Conversation display name
+          minLength: 1
+          maxLength: 100
+          pattern: ^[a-zA-Z0-9\s'-]+$
+        avatarUrl:
+          type: string
+          description: URL of conversation avatar
+          format: uri
+          minLength: 1
+          maxLength: 255
+          pattern: ^https?://[^\s/$.?#].[^\s]*$
+        lastMessage:
+          type: string
+          description: Last message content
+          minLength: 1
+          maxLength: 1000
+          pattern: ^[a-zA-Z0-9\s.,!?]+$
+    Message:
+      type: object
+      description: Message information model
+      required:
+      - content
+      - senderId
+      - createdAt
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the message
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+        content:
+          type: string
+          description: Message content
+          minLength: 1
+          maxLength: 1000
+          pattern: ^[a-zA-Z0-9\s.,!?]+$
+        senderId:
+          type: string
+          description: ID of the message sender
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+        receiverId:
+          type: string
+          description: ID of the message receiver (for private messages)
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+        groupId:
+          type: string
+          description: ID of the group (for group messages)
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+        createdAt:
+          type: string
+          description: Message creation timestamp
+          format: date-time
+          minLength: 1
+          maxLength: 64
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$
+    Error:
+      type: object
+      description: Standard error response
+      required:
+      - code
+      - message
+      - trace
+      - errors
+      properties:
+        code:
+          type: integer
+          description: Error code
+          minimum: 400
+          maximum: 599
+        message:
+          type: string
+          description: Error message
+          minLength: 1
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9\s.,!?]+$
+        trace:
+          type: string
+          description: Error trace for debugging
+          pattern: ^[a-zA-Z0-9\s.,!?-]+$
+          minLength: 1
+          maxLength: 1000
+        errors:
+          type: array
+          description: Error details
+          items:
+            type: string
+            minLength: 1
+            maxLength: 255
+            pattern: ^[a-zA-Z0-9\s.,!?]+$
+          minItems: 1
+          maxItems: 100
+    SuccessResponse:
+      type: object
+      description: Standard success response
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: integer
+          description: HTTP status code indicating success
+          enum:
+          - 200
+          - 201
+          minimum: 200
+          maximum: 201
+        message:
+          type: string
+          description: Success message describing the operation result
+          minLength: 1
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9\s.,!?]+$
+    
+    SuccessResponseWithData:
+      type: object
+      description: Standard success response with data
+      required:
+      - code
+      - message
+      - data
+      properties:
+        code:
+          type: integer
+          description: HTTP status code indicating success
+          enum:
+          - 200
+          - 201
+          minimum: 200
+          maximum: 201
+        message:
+          type: string
+          description: Success message describing the operation result
+          minLength: 1
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9\s.,!?]+$
+        data:
+          type: array
+          description: Single or multiple data objects
+          items:
+            type: object
+            additionalProperties:
+              type: object
+              description: Flexible object with additional properties
+          minItems: 1
+          maxItems: 100
+
+    SuccessResponseWithDataPrototype:
+      type: object
+      description: Standard success response with prototype data
+      required:
+      - code
+      - message
+      - data
+      properties:
+        code:
+          type: integer
+          description: HTTP status code indicating success
+          enum:
+          - 200
+          - 201
+          minimum: 200
+          maximum: 201
+        message:
+          type: string
+          description: Success message describing the operation result
+          minLength: 1
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9\s.,!?]+$
+        data:
+          type: array
+          description: Response data object
+          items:
+            type: object
+            additionalProperties:
+              type: object
+              description: Flexible object with additional properties
+          minItems: 1
+          maxItems: 100
+
+    SuccessResponseWithDataCollection:
+      type: object
+      description: Standard success response with data collection
+      required:
+      - code
+      - message
+      - data
+      properties:
+        code:
+          type: integer
+          description: HTTP status code indicating success
+          enum:
+          - 200
+          - 201
+          minimum: 200
+          maximum: 201
+        message:
+          type: string
+          description: Success message describing the operation result
+          minLength: 1
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9\s.,!?]+$
+        data:
+          type: array
+          description: Collection of data objects
+          items:
+            $ref: '#/components/schemas/Group'
+          minItems: 1
+          maxItems: 100
+
+    RegisterUserRequest:
+      type: object
+      description: RegisterUserRequest
+      required:
+      - username
+      - email
+      - password
+      properties:
+        username:
+          type: string
+          description: User's desired username
+          minLength: 3
+          maxLength: 50
+          pattern: ^[a-zA-Z0-9_-]+$
+        name:
+          type: string
+          description: User's full name
+          minLength: 1
+          maxLength: 100
+          pattern: ^[a-zA-Z0-9\s'-]+$
+        email:
+          type: string
+          description: User's email address
+          format: email
+          minLength: 5
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+        password:
+          type: string
+          description: User's password
+          minLength: 6
+          maxLength: 100
+          pattern: ^[a-zA-Z0-9!@#$%^&*()_+]+$
+        gender:
+          type: string
+          description: User's gender
+          enum:
+          - male
+          - female
+          - unspecified
+          default: unspecified
+    
+    FriendsListResponse:
+      type: object
+      description: FriendsListResponse
+      required:
+      - friends
+      properties:
+        friends:
+          type: array
+          description: List of user's friends
+          items:
+            $ref: '#/components/schemas/Friend'
+          minItems: 1
+          maxItems: 100
+    
+    AddFriendRequest:
+      type: object
+      description: AddFriendRequest
+      required:
+      - friendId
+      properties:
+        friendId:
+          type: string
+          description: ID of the user to add as friend
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+    
+    Group:
+      type: object
+      description: Group information
+      required:
+      - id
+      - name
+      - members
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the group
+          minLength: 1
+          maxLength: 64
+          pattern: ^[a-zA-Z0-9-]+$
+        name:
+          type: string
+          description: Group name
+          minLength: 1
+          maxLength: 100
+          pattern: ^[a-zA-Z0-9\s'-]+$
+        members:
+          type: array
+          description: List of group members
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            description: Group member information
+            required:
+            - userId
+            - role
+            properties:
+              userId:
+                type: string
+                description: User ID of the member
+                minLength: 1
+                maxLength: 64
+                pattern: ^[a-zA-Z0-9-]+$
+              role:
+                type: string
+                description: Member's role in the group
+                enum:
+                - admin
+                - member
+                minLength: 1
+                maxLength: 50
+
+    AddGroupMembersRequest:
+      type: object
+      description: Add group members request
+      required:
+      - memberIds
+      properties:
+        memberIds:
+          type: array
+          description: List of user IDs to add to the group
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            description: User ID to add to the group
+            pattern: ^[a-zA-Z0-9-]+$
+            minLength: 1
+            maxLength: 64
+    
+    MessageCollection:
+      type: object
+      description: Collection of messages
+      required:
+      - messages
+      properties:
+        messages:
+          type: array
+          description: List of chat messages
+          items:
+            $ref: '#/components/schemas/Message'
+          minItems: 1
+          maxItems: 100
+    UpdateGroupNameRequest:
+      type: object
+      description: Request to update a group's name
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: ^[a-zA-Z0-9\s_-]+$
+          description: New name for the group
+  parameters:
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: ID of the user
+      schema:
+        type: string
+        pattern: ^[a-zA-Z0-9-]+$
+        minLength: 1
+        maxLength: 64
+    id:
+      name: id
+      in: path
+      required: true
+      description: ID of the resource
+      schema:
+        type: string
+        pattern: ^[a-zA-Z0-9-]+$
+        minLength: 1
+        maxLength: 64
+paths:
+  /api:
+    options:
+      operationId: handleCorsPreflight
+      tags:
+      - health
+      summary: CORS preflight for all endpoints
+      description: Handles CORS preflight requests for all API endpoints
+      responses:
+        '200':
+          description: CORS allowed
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                example: '*'
+                pattern: ^\*|https?://[^\s/$.?#].[^\s]*$
+                minLength: 1
+                maxLength: 255
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+                example: GET,POST,PUT,DELETE,OPTIONS
+                pattern: ^[A-Z,]+$
+                minLength: 1
+                maxLength: 255
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+                example: Content-Type, Authorization
+                pattern: ^[a-zA-Z0-9\s,-]+$
+                minLength: 1
+                maxLength: 255
+            Access-Control-Max-Age:
+              schema:
+                type: integer
+                example: 1
+  /start_conversation:
+    post:
+      tags:
+      - conversation
+      operationId: startConversation
+      summary: Start a new conversation
+      description: Start a new group conversation with selected members
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Request to start a new conversation
+              required:
+              - memberIds
+              - name
+              properties:
+                memberIds:
+                  type: array
+                  description: List of member IDs to include in the conversation
+                  items:
+                    type: string
+                    pattern: ^[a-zA-Z0-9-]+$
+                    minLength: 1
+                    maxLength: 64
+                  minItems: 1
+                  maxItems: 100
+                name:
+                  type: string
+                  description: Name for the new conversation
+                  minLength: 1
+                  maxLength: 100
+                  pattern: ^[a-zA-Z0-9\s'-]+$
+      responses:
+        '201':
+          description: Conversation started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+  /conversations:
+    get:
+      tags:
+      - conversation
+      operationId: getMyConversations
+      summary: Get my conversations list
+      description: Retrieve list of user's conversations with last message preview
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Conversations list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                description: List of conversations
+                items:
+                  $ref: '#/components/schemas/Conversation'
+                minItems: 0
+                maxItems: 100
+  /session:
+    post:
+      tags:
+      - auth
+      operationId: doLogin
+      summary: Simplified user login
+      description: Login with just username (creates account if new)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Login request
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                  description: User's display name
+                  minLength: 3
+                  maxLength: 16
+                  pattern: ^[a-zA-Z0-9\s'-]+$
+                  example: Maria
+      responses:
+        '201':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Login response
+                properties:
+                  identifier:
+                    type: string
+                    description: User identifier
+                    pattern: ^[a-zA-Z0-9-]+$
+                    minLength: 1
+                    maxLength: 64
+                    example: usr-123456
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /register:
+    post:
+      tags:
+      - auth
+      operationId: doRegister
+      summary: Register a new user
+      description: Create a new user account with the provided information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponseWithData'
+              example:
+                code: 201
+                message: User registered successfully
+                data:
+                - user:
+                    id: usr-123456
+                    username: john_doe
+                    email: john@example.com
+                    token:
+                      type: string
+                      description: JWT token
+                      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/set_username:
+    put:
+      tags:
+      - users
+      operationId: setMyUserName
+      summary: Change username
+      description: Update the current user's username
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Request to update username
+              properties:
+                username:
+                  type: string
+                  description: New username
+                  minLength: 1
+                  maxLength: 50
+                  pattern: ^[a-zA-Z0-9_-]+$
+      responses:
+        '200':
+          description: Username updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /users/set_photo:
+    put:
+      tags:
+      - users
+      operationId: setMyPhoto
+      summary: Change profile photo
+      description: Update the current user's profile picture
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              description: Request to update profile photo
+              properties:
+                photo:
+                  type: string
+                  format: binary
+                  description: Profile photo file
+                  minLength: 1
+                  maxLength: 10485760
+      responses:
+        '200':
+          description: Profile photo updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /users/info:
+    get:
+      tags:
+      - users
+      operationId: getUserInfo
+      summary: Get user information
+      description: Retrieve current user's profile information
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponseWithData'
+              example:
+                code: 200
+                message: User information retrieved
+                data:
+                - user:
+                    id: usr-123456
+                    username: john_doe
+                    name: John Doe
+                    email: john@example.com
+                    avatarUrl: https://example.com/avatars/john_doe.jpg
+                    gender: male
+        '401':
+          description: Unauthorized access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/search:
+    get:
+      tags:
+      - users
+      summary: Search users by keyword
+      description: Search users by partial name, username or email
+      operationId: searchUsers
+      parameters:
+      - name: q
+        in: query
+        required: true
+        description: Search query
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^[a-zA-Z0-9\s@.-]+$
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Matching users found
+          content:
+            application/json:
+              schema:
+                type: array
+                description: List of matching users
+                items:
+                  $ref: '#/components/schemas/User'
+                minItems: 0
+                maxItems: 100
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/{userId}/profile:
+    get:
+      tags:
+      - users
+      operationId: getUserProfile
+      summary: Get user profile
+      description: Retrieve detailed profile information for a specific user
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponseWithData'
+              example:
+                code: 200
+                message: User information retrieved
+                data:
+                - user:
+                    id: usr-123456
+                    username: john_doe
+                    name: John Doe
+                    email: john@example.com
+                    avatarUrl: https://example.com/avatars/john_doe.jpg
+                    gender: male
+    parameters:
+    - $ref: '#/components/parameters/userId'
+  /friends:
+    get:
+      tags:
+      - friends
+      operationId: getUserFriends
+      summary: Get friends list
+      description: Retrieve list of user's friends
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Friends list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendsListResponse'
+              example:
+                friends:
+                - userId: '2'
+                  userName: jane_doe
+                - userId: '3'
+                  userName: john_doe
+  /users/{userId}/friends:
+    get:
+      tags:
+      - friends
+      operationId: getFriendsList
+      summary: Get user's friends
+      description: Retrieve the list of friends for a specific user
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Friends list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendsListResponse'
+              example:
+                friends:
+                - userId: '2'
+                  userName: jane_doe
+                - userId: '3'
+                  userName: john_doe
+    parameters:
+    - $ref: '#/components/parameters/userId'
+  /friends/add:
+    post:
+      tags:
+      - friends
+      operationId: addFriend
+      summary: Add friend
+      description: Send friend request to another user
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddFriendRequest'
+      responses:
+        '200':
+          description: Friend request sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Friend request sent
+                data:
+                  friend_request:
+                    id: '1'
+                    status: pending
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Already friends
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /groups:
+    post:
+      tags:
+      - groups
+      operationId: createGroup
+      summary: Create group
+      description: Create a new group and add members
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessResponseWithDataPrototype'
+      responses:
+        '201':
+          description: Group created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponseWithData'
+              example:
+                code: 201
+                message: Group created
+                data:
+                - group:
+                    id: '1'
+                    name: Group 1
+                    members:
+                    - userId: '1'
+                      role: admin
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Some members not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+      - groups
+      operationId: getGroupsList
+      summary: Get groups list
+      description: Retrieve list of user's groups
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Groups list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponseWithDataCollection'
+              example:
+                code: 200
+                message: Groups list retrieved
+                data:
+                - id: '1'
+                  name: Group 1
+                  members:
+                  - userId: '1'
+                    role: admin
+  /groups/{id}:
+    get:
+      tags:
+      - groups
+      operationId: getGroupDetail
+      summary: Get group details
+      description: Retrieve details of a specific group
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Group details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponseWithData'
+              example:
+                code: 200
+                message: Group details retrieved
+                data:
+                - group:
+                    id: '1'
+                    name: Group 1
+                    members:
+                    - userId: '1'
+                      role: admin
+    parameters:
+    - $ref: '#/components/parameters/id'
+  /groups/{id}/name:
+    put:
+      tags:
+      - groups
+      operationId: setGroupName
+      summary: Update group name
+      description: Update the name of an existing group
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGroupNameRequest'
+      responses:
+        '200':
+          description: Group name updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    parameters:
+    - $ref: '#/components/parameters/id'
+  /groups/{id}/photo:
+    put:
+      tags:
+      - groups
+      operationId: setGroupPhoto
+      summary: Change group photo
+      description: Update the group's profile picture
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              description: Request to update group photo
+              properties:
+                photo:
+                  type: string
+                  format: binary
+                  description: Group photo file
+                  minLength: 1
+                  maxLength: 10485760
+      responses:
+        '200':
+          description: Group photo updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    parameters:
+    - $ref: '#/components/parameters/id'
+  /groups/{id}/members:
+    post:
+      tags:
+      - groups
+      operationId: addToGroup
+      summary: Add group members
+      description: Add new members to an existing group
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddGroupMembersRequest'
+      responses:
+        '200':
+          description: Members added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Members added
+                data:
+                  group:
+                    id: '1'
+                    name: Group 1
+                    members:
+                    - userId: '1'
+                      role: admin
+                    - userId: '2'
+                      role: member
+    delete:
+      tags:
+      - groups
+      operationId: leaveGroup
+      summary: Leave group
+      description: Current user leaves the specified group
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Successfully left the group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Left the group
+        '404':
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    parameters:
+    - $ref: '#/components/parameters/id'
+  /messages:
+    get:
+      tags:
+      - messages
+      operationId: getConversation
+      summary: Get messages
+      description: Retrieve messages for a chat or group
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: chat_type
+        in: query
+        required: true
+        description: Type of chat (private or group)
+        schema:
+          type: string
+          enum:
+          - private
+          - group
+      - name: target_id
+        in: query
+        required: true
+        description: ID of the target (user ID for private chat, group ID for group chat)
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9-]+$
+          minLength: 1
+          maxLength: 64
+      responses:
+        '200':
+          description: Messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageCollection'
+              example:
+                messages:
+                - id: '1'
+                  content: Hello!
+                  senderId: '1'
+                  createdAt: '2023-10-01T12:00:00Z'
+    post:
+      tags:
+      - messages
+      operationId: sendMessage
+      summary: Send a message
+      description: Send a new message to a user or group
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+      responses:
+        '201':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                id: '123'
+                content: Hello!
+                senderId: '1'
+                createdAt: '2023-10-01T12:00:00Z'
+  /messages/{id}:
+    get:
+      tags:
+      - messages
+      operationId: getMessageById
+      summary: Get a specific message
+      description: Retrieve details of a message by its ID
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Message details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+    delete:
+      tags:
+      - messages
+      operationId: deleteMessage
+      summary: Delete a message
+      description: Permanently delete a message
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Message deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Message deleted successfully
+    parameters:
+    - $ref: '#/components/parameters/id'
+  /messages/{id}/forward:
+    post:
+      tags:
+      - messages
+      operationId: forwardMessage
+      summary: Forward a message
+      description: Forward an existing message to another user or group
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Message forwarded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Message forwarded successfully
+    parameters:
+    - $ref: '#/components/parameters/id'
+  /messages/{id}/comment:
+    post:
+      tags:
+      - messages
+      operationId: commentMessage
+      summary: Comment on a message
+      description: Add a comment to an existing message
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Request to add a comment to a message
+              properties:
+                comment:
+                  type: string
+                  description: Comment text
+                  minLength: 1
+                  maxLength: 1000
+                  pattern: ^[a-zA-Z0-9\s.,!?]+$
+      responses:
+        '201':
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 201
+                message: Comment added successfully
+    parameters:
+    - $ref: '#/components/parameters/id'
+  /messages/{id}/uncomment:
+    post:
+      tags:
+      - messages
+      operationId: uncommentMessage
+      summary: Remove a comment from a message
+      description: Delete a comment from a message
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Comment removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Comment removed successfully
+    parameters:
+    - $ref: '#/components/parameters/id'
+  /liveness:
+    get:
+      tags:
+      - health
+      operationId: liveness
+      summary: Health check
+      description: Check if the service is alive
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Service is alive
