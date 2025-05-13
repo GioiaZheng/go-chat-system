@@ -1,16 +1,112 @@
-/bin/
-/pkg/
-/src/
-.idea/
-*.iml
+# Go binary and object files
 *.exe
-.DS_Store
-.env
-*.wiki.git
-docker-compose.log
-/doc/html
-/doc/json
-/doc/markdown
+*.dll
+*.so
+*.dylib
+*.bin
+*.o
+*.a
+*.lo
+*.la
 
-.vscode/*
-!.vscode/extensions.json
+# Go build and cache directories
+/build/
+/bin/
+/dist/
+/cache/
+/out/
+*.test
+
+# Go modules and dependencies
+/go.sum
+/go.mod
+/vendor/
+*.mod
+*.sum
+
+# Temporary and local configuration files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.swn
+*.log
+*.trace
+*.out
+*.err
+*.pid
+*.lock
+*.backup
+
+# Environment and secrets
+.env
+.env.*
+*.env
+*.secret
+*.local
+*.private
+*.key
+*.crt
+*.pem
+config.yaml
+config.json
+secrets.json
+
+# Database and data files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.ldb
+
+# Web UI build
+/webui/dist/
+/webui/node_modules/
+/webui/.env
+/webui/.env.local
+/webui/.env.production
+/webui/.env.development
+
+# Node.js logs
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# IDE settings
+.vscode/
+/.idea/
+/.history/
+*.code-workspace
+*.iml
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+.AppleDouble
+.LSOverride
+
+# Git specific
+!.gitignore
+
+# Test coverage and profiling files
+*.cover
+*.cov
+*.prof
+*.coverage
+*.pprof
+*.trace
+*.testresult
+
+# Temporary build files
+*.temp
+*.tmp
+*.bak
+*.swp
+*.swo
+*.swn
+
+
+# Windows
+Thumbs.db
+ehthumbs.db
