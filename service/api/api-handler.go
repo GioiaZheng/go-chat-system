@@ -1,51 +1,44 @@
 package api
 
-import (
-	"net/http"
-)
-
-func (rt *_router) Handler() http.Handler {
-	h := rt
-
+// RegisterRoutes sets up all API routes.
+func (rt *_router) RegisterRoutes() {
 	// Authentication
-	h.router.POST("/login", h.doLogin)
-	h.router.POST("/register", h.doRegister)
+	rt.router.POST("/api/v1/session", rt.wrap(rt.doLogin))
+	rt.router.POST("/api/v1/register", rt.wrap(rt.doRegister))
 
 	// User Management
-	h.router.PUT("/users/set-username", h.wrap(h.setMyUserName))
-	h.router.PUT("/user/set-photo", h.wrap(h.setMyPhoto))
-	h.router.GET("/user/info", h.wrap(h.getUserInfo))
-	h.router.GET("/users/search", h.wrap(h.searchUsersHandler))
-	h.router.GET("/users/:userId/profile", h.wrap(h.getUserProfile))
+	rt.router.PUT("/api/v1/users/set_username", rt.wrap(rt.setMyUserName))
+	rt.router.PUT("/api/v1/users/set_photo", rt.wrap(rt.setMyPhoto))
+	rt.router.GET("/api/v1/users/info", rt.wrap(rt.getUserInfo))
+	rt.router.GET("/api/v1/users/search", rt.wrap(rt.searchUsersHandler))
+	rt.router.GET("/api/v1/users/:userId/profile", rt.wrap(rt.getUserProfile))
 
 	// Friends
-	h.router.GET("/friends", h.wrap(h.getUserFriends))
-	h.router.POST("/friends/add", h.wrap(h.addFriend))
-	h.router.GET("/users/:userId/friends", h.wrap(h.getFriendsList))
+	rt.router.GET("/api/v1/friends", rt.wrap(rt.getUserFriends))
+	rt.router.POST("/api/v1/friends/add", rt.wrap(rt.addFriend))
+	rt.router.GET("/api/v1/users/:userId/friends", rt.wrap(rt.getFriendsList))
 
 	// Groups
-	h.router.POST("/groups", h.wrap(h.createGroup))
-	h.router.GET("/groups", h.wrap(h.getGroupsList))
-	h.router.GET("/groups/:groupId", h.wrap(h.getGroupDetail))
-	h.router.PUT("/groups/:groupId/name", h.wrap(h.setGroupName))
-	h.router.PUT("/groups/:groupId/photo", h.wrap(h.setGroupPhoto))
-	h.router.POST("/groups/:groupId/members", h.wrap(h.addToGroup))
-	h.router.DELETE("/groups/:groupId/members", h.wrap(h.leaveGroup))
+	rt.router.POST("/api/v1/groups", rt.wrap(rt.createGroup))
+	rt.router.GET("/api/v1/groups", rt.wrap(rt.getGroupsList))
+	rt.router.GET("/api/v1/groups/:id", rt.wrap(rt.getGroupDetail))
+	rt.router.PUT("/api/v1/groups/:id/name", rt.wrap(rt.setGroupName))
+	rt.router.PUT("/api/v1/groups/:id/photo", rt.wrap(rt.setGroupPhoto))
+	rt.router.POST("/api/v1/groups/:id/members", rt.wrap(rt.addToGroup))
+	rt.router.DELETE("/api/v1/groups/:id/members", rt.wrap(rt.leaveGroup))
 
 	// Messages
-	h.router.GET("/messages", h.wrap(h.getConversation))
-	h.router.POST("/messages", h.wrap(h.sendMessage))
-	h.router.GET("/messages/:messageId", h.wrap(h.getMessageById))
-	h.router.DELETE("/messages/:messageId", h.wrap(h.deleteMessage))
-	h.router.POST("/messages/:messageId/forward", h.wrap(h.forwardMessage))
-	h.router.POST("/messages/:messageId/comment", h.wrap(h.commentMessage))
-	h.router.POST("/messages/:messageId/uncomment", h.wrap(h.uncommentMessage))
+	rt.router.GET("/api/v1/messages", rt.wrap(rt.getConversation))
+	rt.router.POST("/api/v1/messages", rt.wrap(rt.sendMessage))
+	rt.router.GET("/api/v1/messages/:id", rt.wrap(rt.getMessageById))
+	rt.router.DELETE("/api/v1/messages/:id", rt.wrap(rt.deleteMessage))
+	rt.router.POST("/api/v1/messages/:id/forward", rt.wrap(rt.forwardMessage))
+	rt.router.POST("/api/v1/messages/:id/comment", rt.wrap(rt.commentMessage))
+	rt.router.POST("/api/v1/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
 
 	// Conversation
-	h.router.POST("/start-conversation", h.wrap(h.startConversation))
+	rt.router.POST("/api/v1/start_conversation", rt.wrap(rt.startConversation))
 
 	// Health Check
-	h.router.GET("/liveness", h.liveness)
-
-	return h.router
+	rt.router.GET("/api/v1/liveness", rt.wrap(rt.liveness))
 }

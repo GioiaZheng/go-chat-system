@@ -1,24 +1,18 @@
 package models
 
 // User structure
-// Matches the OpenAPI definition for User
-// Required fields: id, username, email, gender
-
 type User struct {
 	ID        string `json:"id"`
 	Username  string `json:"username"`
-	Name      string `json:"name"`
+	Name      string `json:"name,omitempty"`
 	Email     string `json:"email"`
+	Password  string `json:"password,omitempty"`
 	AvatarUrl string `json:"avatarUrl"`
-	Photo     string `json:"photo"`
+	Photo     string `json:"photo,omitempty"`
 	Gender    string `json:"gender"`
-	Password  string `json:"-"`
 }
 
 // Friend structure
-// Matches the OpenAPI definition for Friend
-// Required fields: userId, userName
-
 type Friend struct {
 	UserID    string `json:"userId"`
 	UserName  string `json:"userName"`
@@ -26,28 +20,23 @@ type Friend struct {
 }
 
 // Group structure
-// Matches the OpenAPI definition for Group
-// Required fields: id, name, members
-
 type Group struct {
-	ID      string        `json:"id"`
-	Name    string        `json:"name"`
-	Members []GroupMember `json:"members"`
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
+	AvatarUrl string        `json:"avatarUrl,omitempty"`
+	CreatedAt string        `json:"createdAt"`
+	Members   []GroupMember `json:"members"`
 }
 
 // GroupMember structure
-// Matches the OpenAPI definition for GroupMember
-// Required fields: userId, role
-
 type GroupMember struct {
-	UserID string `json:"userId"`
-	Role   string `json:"role"`
+	UserID    string `json:"userId"`
+	UserName  string `json:"userName"`
+	Role      string `json:"role"`
+	AvatarUrl string `json:"avatarUrl"`
 }
 
 // Message structure
-// Matches the OpenAPI definition for Message
-// Required fields: content, senderId, createdAt
-
 type Message struct {
 	ID         string `json:"id"`
 	Content    string `json:"content"`
@@ -58,9 +47,6 @@ type Message struct {
 }
 
 // Conversation structure
-// Matches the OpenAPI definition for Conversation
-// Required fields: id, name
-
 type Conversation struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`

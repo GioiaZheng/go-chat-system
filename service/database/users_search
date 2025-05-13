@@ -1,13 +1,7 @@
 package database
 
-import (
-	"context"
-
-	"github.com/GioiaZheng/Wasa_proj/service/models"
-)
-
 // SearchUsers searches for users based on a query and user ID
-func (db *appdbimpl) SearchUsers(ctx context.Context, userID string, query string) ([]models.User, error) {
+func (db *appdbimpl) SearchUsers(ctx context.Context, userID, query string) ([]models.User, error) {
 	var users []models.User
 
 	// 排除自己，防止自己出现在搜索结果中

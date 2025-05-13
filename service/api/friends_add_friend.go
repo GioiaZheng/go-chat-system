@@ -4,56 +4,50 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
 // AddFriendRequest 是添加好友请求体
 type AddFriendRequest struct {
-	UserID string `json:"userId"` // 要添加的好友的用户ID
+	UserID string `json:"userId"`
 }
 
-// addFriend handles POST /friends/add
-func (rt *_router) addFriend(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	currentUserID := GetUserIDFromContext(r.Context()) // 从 token/context 中获取当前登录用户ID
-	if currentUserID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// addFriend 处理 POST /friends/add
+func (rt *_router) addFriend(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+	userID := ctx.UserID
+	if userID == "" {
+		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
+	// 解析请求体
 	var req AddFriendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to decode add friend request")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
-	if req.UserID == "" {
-		rt.baseLogger.Error("missing userId in add friend request")
-		http.Error(w, "UserId is required", http.StatusBadRequest)
+	if req.UserID == "" || req.UserID == userID {
+		http.Error(w, `{"code": 400, "message": "Invalid user ID"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 不能加自己为好友
-	if currentUserID == req.UserID {
-		http.Error(w, "Cannot add yourself as friend", http.StatusBadRequest)
-		return
-	}
-
-	// 调用数据库添加好友关系
-	err := rt.db.AddFriend(currentUserID, req.UserID)
+	// 尝试添加好友
+	err := rt.db.AddFriend(userID, req.UserID)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to add friend")
-		http.Error(w, "Failed to add friend", http.StatusInternalServerError)
+		http.Error(w, `{"code": 500, "message": "Failed to add friend"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// 成功返回
-	resp := map[string]any{
+	// 返回成功响应
+	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Friend added successfully",
-		"data": map[string]string{
-			"friendId": req.UserID,
-		},
 	}
-	writeJSON(w, http.StatusOK, resp)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
+	}
 }

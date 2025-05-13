@@ -1,29 +1,33 @@
 package database
 
 import (
-	"fmt"
-
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthenticateUser authenticates a user by email and password
-func (db *appdbimpl) AuthenticateUser(email string, password string) (models.User, string, error) {
+// AuthenticateUser checks if the provided credentials are valid
+func (db *appdbimpl) AuthenticateUser(email, password string) (models.User, error) {
 	var user models.User
 	var hashedPassword string
 
 	err := db.c.QueryRow(`
-		SELECT id, username, email, password FROM users WHERE email = ?
-	`, email).Scan(&user.ID, &user.Username, &user.Email, &hashedPassword)
+		SELECT id, username, name, email, avatar_url, gender, password
+		FROM users
+		WHERE email = ?
+	`, email).Scan(&user.ID, &user.Username, &user.Name, &user.Email, &user.AvatarUrl, &user.Gender, &hashedPassword)
 	if err != nil {
-		return models.User{}, "", err
+		return models.User{}, err
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	if err != nil {
-		return models.User{}, "", fmt.Errorf("invalid credentials")
+	// 验证密码
+	if err := VerifyPassword(hashedPassword, password); err != nil {
+		return models.User{}, err
 	}
 
-	token := fmt.Sprintf("token-for-%s", user.ID)
-	return user, token, nil
+	return user, nil
+}
+
+// VerifyPassword checks if the provided password matches the stored hash
+func VerifyPassword(hashedPassword, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }

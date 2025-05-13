@@ -4,58 +4,69 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/GioiaZheng/Wasa_proj/service/models"
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-// doLogin handles POST /session: 用户登录
-func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+type LoginRequest struct {
+	Name     string `json:"name"`
+	Password string `json:"password"`
+}
 
+type LoginResponse struct {
+	Identifier string `json:"identifier"`
+}
+
+// doLogin 处理 POST /session: 用户登录或自动注册
+func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to decode login request")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
-	if req.Email == "" || req.Password == "" {
-		rt.baseLogger.Error("email or password missing in login request")
-		http.Error(w, "Email and password are required", http.StatusBadRequest)
+	// 校验请求参数
+	if req.Name == "" || req.Password == "" {
+		http.Error(w, `{"code": 400, "message": "Name and Password are required"}`, http.StatusBadRequest)
 		return
 	}
 
-	user, token, err := rt.db.AuthenticateUser(req.Email, req.Password)
+	// 检查用户是否存在
+	exists, err := rt.db.CheckUserExists(req.Name)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("authentication failed")
-		http.Error(w, "Authentication failed", http.StatusUnauthorized)
+		rt.baseLogger.WithError(err).Error("database error checking user existence")
+		http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
-	response := struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-		Data    struct {
-			Token string      `json:"token"`
-			User  models.User `json:"user"`
-		} `json:"data"`
-	}{
-		Code:    200,
-		Message: "Login successful",
-		Data: struct {
-			Token string      `json:"token"`
-			User  models.User `json:"user"`
-		}{
-			Token: token,
-			User:  user,
-		},
+	var identifier string
+	if exists {
+		// 用户存在，尝试登录
+		identifier, err = rt.db.GetUserByCredentials(req.Name, req.Password)
+		if err != nil {
+			rt.baseLogger.WithError(err).Error("error getting user credentials")
+			http.Error(w, `{"code": 401, "message": "Invalid credentials"}`, http.StatusUnauthorized)
+			return
+		}
+	} else {
+		// 用户不存在，尝试注册
+		identifier, err = rt.db.CreateUser(req.Name, req.Password)
+		if err != nil {
+			rt.baseLogger.WithError(err).Error("error creating user")
+			http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
+			return
+		}
 	}
 
+	// 返回成功响应
+	resp := LoginResponse{
+		Identifier: identifier,
+	}
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode login response")
-		w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response")
+		http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
+		return
 	}
 }

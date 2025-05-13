@@ -1,13 +1,17 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
+	"github.com/GioiaZheng/Wasa_proj/service/models"
+	"github.com/julienschmidt/httprouter"
 )
 
 type searchUserRequest struct {
-	Query string `form:"q" binding:"required,min=1"`
+	Query string `json:"q"`
 }
 
 type searchedUser struct {
@@ -18,25 +22,30 @@ type searchedUser struct {
 	Avatar   string `json:"avatar_url,omitempty"`
 }
 
-func (rt *_router) searchUsersHandler(c *gin.Context) {
-	var req searchUserRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Invalid query parameter"})
+func (rt *_router) searchUsersHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+	// 获取查询参数
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		http.Error(w, `{"code": 400, "message": "Invalid query parameter"}`, http.StatusBadRequest)
 		return
 	}
 
-	userID, exists := getUserIDFromContext(c)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "Unauthorized"})
+	// 验证用户身份
+	userID := ctx.UserID
+	if userID == "" {
+		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
-	results, err := rt.db.SearchUsers(userID, req.Query)
+	// 执行用户搜索
+	results, err := rt.db.SearchUsers(r.Context(), query)
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to search users"})
+		http.Error(w, `{"code": 500, "message": "Failed to search users"}`, http.StatusInternalServerError)
 		return
 	}
 
+	// 构建响应
 	var response []searchedUser
 	for _, u := range results {
 		response = append(response, searchedUser{
@@ -44,13 +53,44 @@ func (rt *_router) searchUsersHandler(c *gin.Context) {
 			Username: u.Username,
 			Name:     u.Name,
 			Email:    u.Email,
-			Avatar:   u.AvatarURL,
+			Avatar:   u.AvatarUrl,
 		})
 	}
 
-	c.JSON(http.StatusOK, response)
+	resp := map[string]interface{}{
+		"code":    200,
+		"message": "Users retrieved successfully",
+		"data":    response,
+	}
+
+	// 返回 JSON 响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
-func registerUserSearchRoutes(r *_router, rg *gin.RouterGroup) {
-	rg.GET("/users/search", r.searchUsersHandler)
+// SearchUsers searches for users based on a query and user ID
+func (db *appdbimpl) SearchUsers(ctx context.Context, userID, query string) ([]models.User, error) {
+	var users []models.User
+
+	// 排除自己，防止自己出现在搜索结果中
+	rows, err := db.c.QueryContext(ctx, `
+		SELECT id, username, name, email, avatar_url, gender
+		FROM users
+		WHERE (username LIKE ? OR name LIKE ? OR email LIKE ?)
+		AND id != ?
+	`, "%"+query+"%", "%"+query+"%", "%"+query+"%", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var user models.User
+		if err := rows.Scan(&user.ID, &user.Username, &user.Name, &user.Email, &user.AvatarUrl, &user.Gender); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
 }

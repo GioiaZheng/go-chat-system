@@ -4,53 +4,53 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/julienschmidt/httprouter"
 )
 
-// doRegister handles POST /users: 用户注册
-func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// doRegister handles POST /register: 用户注册
+func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	var req struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 
+	// 解析请求体
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to decode registration request")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
+	// 校验请求参数
 	if req.Username == "" || req.Email == "" || req.Password == "" {
-		rt.baseLogger.Error("missing required fields in registration")
-		http.Error(w, "Username, email and password are required", http.StatusBadRequest)
+		http.Error(w, `{"code": 400, "message": "Username, Email, and Password are required"}`, http.StatusBadRequest)
 		return
 	}
 
-	user, err := rt.db.CreateUser(models.User{
+	// 创建用户
+	newUser := models.User{
 		Username: req.Username,
 		Email:    req.Email,
-	})
+	}
+
+	// 调用 CreateUser
+	createdUser, err := rt.db.CreateUser(newUser, req.Password)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to create user")
-		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		http.Error(w, `{"code": 500, "message": "Failed to register user"}`, http.StatusInternalServerError)
 		return
 	}
 
-	response := struct {
-		Code    int         `json:"code"`
-		Message string      `json:"message"`
-		Data    models.User `json:"data"`
-	}{
-		Code:    201,
-		Message: "User registered successfully",
-		Data:    user,
+	// 返回成功响应
+	resp := map[string]interface{}{
+		"code":    201,
+		"message": "User registered successfully",
+		"data":    createdUser,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode registration response")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
 	}
 }

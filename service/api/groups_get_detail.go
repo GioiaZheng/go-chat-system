@@ -1,46 +1,69 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) getGroupDetail(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// getGroupDetail 处理 GET /groups/:id
+func (rt *_router) getGroupDetail(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	groupID := ps.ByName("id")
-
-	group, err := rt.db.GetGroup(groupID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get group details")
+	if groupID == "" {
+		http.Error(w, `{"code": 400, "message": "Group ID is required"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 只挑出需要的字段
-	type SimpleUser struct {
-		UserID    string `json:"userId"`
-		UserName  string `json:"userName"`
-		AvatarURL string `json:"avatarUrl"`
+	userID := ctx.UserID
+	if userID == "" {
+		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+		return
 	}
 
-	var members []SimpleUser
+	// 检查用户是否是群组成员
+	isMember, err := rt.db.IsGroupMember(userID, groupID)
+	if err != nil {
+		http.Error(w, `{"code": 500, "message": "Failed to check group membership"}`, http.StatusInternalServerError)
+		return
+	}
+
+	if !isMember {
+		http.Error(w, `{"code": 403, "message": "You are not a member of this group"}`, http.StatusForbidden)
+		return
+	}
+
+	// 获取群组详情
+	group, err := rt.db.GetGroup(groupID)
+	if err != nil {
+		http.Error(w, `{"code": 500, "message": "Failed to get group details"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// 构建成员信息
+	members := make([]map[string]interface{}, 0)
 	for _, member := range group.Members {
-		members = append(members, SimpleUser{
-			UserID:    member.ID,
-			UserName:  member.Username,
-			AvatarURL: member.AvatarURL,
+		members = append(members, map[string]interface{}{
+			"userId":    member.UserID,
+			"userName":  member.UserName,
+			"avatarUrl": member.AvatarUrl,
 		})
 	}
 
-	// 构建简化版返回
-	response := map[string]any{
+	// 返回群组详情
+	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Group detail fetched successfully",
-		"data": map[string]any{
+		"data": map[string]interface{}{
 			"id":      group.ID,
 			"name":    group.Name,
 			"members": members,
 		},
 	}
 
-	writeJSON(w, http.StatusOK, response)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
+	}
 }

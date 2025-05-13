@@ -20,7 +20,7 @@ func (db *appdbimpl) GetFriendsList(userID string) ([]models.Friend, error) {
 	var friends []models.Friend
 	for rows.Next() {
 		var friend models.Friend
-		if err := rows.Scan(&friend.UserID, &friend.UserName, &friend.AvatarURL); err != nil {
+		if err := rows.Scan(&friend.UserID, &friend.UserName, &friend.AvatarUrl); err != nil {
 			return nil, err
 		}
 		friends = append(friends, friend)

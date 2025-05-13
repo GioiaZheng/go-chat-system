@@ -10,31 +10,38 @@ func (db *appdbimpl) CreateGroup(group models.Group) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback()
+			panic(p)
+		} else if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
 
 	// Insert group
 	res, err := tx.Exec(`INSERT INTO groups (name) VALUES (?)`, group.Name)
 	if err != nil {
-		tx.Rollback()
 		return err
 	}
 
 	groupID, err := res.LastInsertId()
 	if err != nil {
-		tx.Rollback()
 		return err
 	}
 
 	// Insert group members
 	for _, member := range group.Members {
-		_, err := tx.Exec(`
+		_, err = tx.Exec(`
 			INSERT INTO group_members (group_id, user_id, role)
-			VALUES (?, ?, 'member')
-		`, groupID, member.ID)
+			VALUES (?, ?, ?)
+		`, groupID, member.UserID, member.Role)
 		if err != nil {
-			tx.Rollback()
 			return err
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }

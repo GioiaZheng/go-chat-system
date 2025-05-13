@@ -44,7 +44,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "error: ", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -58,10 +58,10 @@ func run() error {
 		if errors.Is(err, conf.ErrHelpWanted) {
 			return nil
 		}
-		return err
+		return fmt.Errorf("loading configuration: %w", err)
 	}
 
-	// Init Logger
+	// Initialize Logger
 	logger := logrus.New()
 	logger.SetOutput(os.Stdout)
 	if cfg.Debug {
@@ -84,6 +84,12 @@ func run() error {
 		_ = dbconn.Close()
 	}()
 
+	// Test database connection
+	if err := dbconn.Ping(); err != nil {
+		logger.WithError(err).Error("error pinging SQLite DB")
+		return fmt.Errorf("pinging SQLite: %w", err)
+	}
+
 	db, err := database.New(dbconn)
 	if err != nil {
 		logger.WithError(err).Error("error creating database handler")
@@ -100,16 +106,15 @@ func run() error {
 		logger.WithError(err).Error("error creating the API server instance")
 		return fmt.Errorf("creating the API server instance: %w", err)
 	}
-	router := apirouter.Handler()
 
-	// Register Web UI and Apply CORS
-	routerWithWebUI, err := registerWebUI(router)
+	// Setup API router with Web UI and CORS
+	router, err := registerWebUI(apirouter.Handler())
 	if err != nil {
 		logger.WithError(err).Error("error registering web UI handler")
 		return fmt.Errorf("registering web UI handler: %w", err)
 	}
 
-	routerWithCORS := applyCORSHandler(routerWithWebUI)
+	routerWithCORS := applyCORSHandler(router)
 
 	// Server Configuration
 	port := os.Getenv("PORT")
@@ -141,8 +146,9 @@ func run() error {
 		return fmt.Errorf("server error: %w", err)
 
 	case sig := <-shutdown:
-		logger.Infof("signal %v received, start shutdown", sig)
+		logger.Infof("signal %v received, starting shutdown", sig)
 
+		// Attempt graceful shutdown
 		err := apirouter.Close()
 		if err != nil {
 			logger.WithError(err).Warning("graceful shutdown of apirouter error")
@@ -157,6 +163,7 @@ func run() error {
 			err = apiserver.Close()
 		}
 
+		// Determine if the shutdown was expected
 		switch {
 		case sig == syscall.SIGTERM || sig == os.Interrupt:
 			return errors.New("received shutdown signal")

@@ -1,32 +1,39 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) getFriendsList(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	userID := GetUserIDFromContext(r.Context()) // ⭐️ 从Context里拿，不从URL拿！
-
+// getFriendsList 处理 GET /friends/list
+func (rt *_router) getFriendsList(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+	userID := ctx.UserID
 	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
+	// 获取好友列表
 	friends, err := rt.db.GetFriendsList(userID)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to get friends list")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, `{"code": 500, "message": "Failed to get friends list"}`, http.StatusInternalServerError)
 		return
 	}
 
-	resp := map[string]any{
+	// 返回成功响应
+	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Friends list fetched successfully",
-		"data": map[string]any{
+		"data": map[string]interface{}{
 			"friends": friends,
 		},
 	}
-	writeJSON(w, http.StatusOK, resp)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
+	}
 }

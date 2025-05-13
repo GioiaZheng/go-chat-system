@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 
-	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -24,6 +23,11 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
+	if len(req.Name) > 50 {
+		writeError(w, http.StatusBadRequest, "Name too long (max 50 characters)")
+		return
+	}
+
 	userID := getUserIDFromContext(r)
 	if userID == "" {
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
@@ -37,10 +41,10 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	// 返回 JSON 格式的 conversation
-	writeJSON(w, http.StatusCreated, models.Conversation{
-		ID:        conversation.ID,
-		Name:      conversation.Name,
-		AvatarURL: conversation.AvatarURL,
-		LastMsg:   conversation.LastMsg,
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"code":    201,
+		"message": "Conversation started successfully",
+		"data":    conversation,
 	})
+
 }

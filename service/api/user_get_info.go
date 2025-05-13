@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	userID := GetUserIDFromContext(r.Context())
+func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+	userID := ctx.UserID
 	if userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -20,15 +21,17 @@ func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	resp := map[string]any{
+	resp := map[string]interface{}{
 		"code":    200,
 		"message": "User info retrieved",
-		"data": map[string]any{
-			"userId":   user.ID,
-			"username": user.Username,
-			"name":     user.Name,
-			"gender":   user.Gender,
-			"photo":    user.Photo,
+		"data": map[string]interface{}{
+			"userId":    user.ID,
+			"username":  user.Username,
+			"name":      user.Name,
+			"gender":    user.Gender,
+			"photo":     user.Photo,
+			"avatarUrl": user.AvatarUrl,
+			"email":     user.Email,
 		},
 	}
 

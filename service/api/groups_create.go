@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/julienschmidt/httprouter"
 )
@@ -14,75 +15,81 @@ type CreateGroupRequest struct {
 	Members []string `json:"members"`
 }
 
-// createGroup handles POST /groups/create
-func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 从Context中提取当前用户ID
-	userID := GetUserIDFromContext(r.Context())
+// createGroup 处理 POST /groups
+func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+	userID := ctx.UserID
 	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
 	// 解析请求体
 	var req CreateGroupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to decode create group request")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 确保自己也在成员列表中
-	found := false
-	for _, id := range req.Members {
-		if id == userID {
-			found = true
-			break
+	// 如果没有提供群组成员，自动添加当前用户
+	if len(req.Members) == 0 {
+		req.Members = []string{userID}
+	} else {
+		// 确保当前用户在成员列表中
+		found := false
+		for _, id := range req.Members {
+			if id == userID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			req.Members = append(req.Members, userID)
 		}
 	}
-	if !found {
-		req.Members = append(req.Members, userID)
-	}
 
-	// 群组名字，如果没提供，用默认
+	// 设置默认群组名称
 	groupName := req.Name
 	if groupName == "" {
-		groupName = "Group with " + userID
+		groupName = "Group created by " + userID
 	}
 
-	// Step1: 创建群组（插入groups表）
+	// 创建群组
 	group := models.Group{
 		Name: groupName,
 	}
 	err := rt.db.CreateGroup(group)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to create group")
-		http.Error(w, "Failed to create group", http.StatusInternalServerError)
+		http.Error(w, `{"code": 500, "message": "Failed to create group"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// Step2: 由于CreateGroup时group.ID没有被回写，需要重新查询
+	// 获取刚创建的群组
 	createdGroup, err := rt.db.GetGroupByName(groupName)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to retrieve created group")
-		http.Error(w, "Failed to retrieve created group", http.StatusInternalServerError)
+		http.Error(w, `{"code": 500, "message": "Failed to retrieve created group"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// Step3: 将所有成员加入到group_members表
+	// 添加成员到群组
 	err = rt.db.AddGroupMembers(createdGroup.ID, req.Members)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to add group members")
-		http.Error(w, "Failed to add members", http.StatusInternalServerError)
+		http.Error(w, `{"code": 500, "message": "Failed to add members to group"}`, http.StatusInternalServerError)
 		return
 	}
 
 	// 返回成功响应
-	resp := map[string]any{
+	resp := map[string]interface{}{
 		"code":    201,
 		"message": "Group created successfully",
-		"data": map[string]string{
-			"groupName": groupName,
+		"data": map[string]interface{}{
+			"groupId":   createdGroup.ID,
+			"groupName": createdGroup.Name,
+			"members":   req.Members,
 		},
 	}
-	writeJSON(w, http.StatusCreated, resp)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
