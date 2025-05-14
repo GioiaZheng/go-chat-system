@@ -43,19 +43,19 @@ func New(cfg Config) (*_router, error) {
 	router.RedirectTrailingSlash = true
 	router.RedirectFixedPath = true
 
-	// Register API routes
-	registerUserRoutes(router, cfg)
-	registerFriendRoutes(router, cfg)
-	registerGroupRoutes(router, cfg)
-	registerMessageRoutes(router, cfg)
-
-	cfg.Logger.Info("API router initialized successfully")
-
-	return &_router{
+	// Create router instance
+	r := &_router{
 		router:     router,
 		baseLogger: cfg.Logger,
 		db:         cfg.Database,
-	}, nil
+	}
+
+	// Register API routes
+	r.RegisterRoutes()
+
+	cfg.Logger.Info("API router initialized successfully")
+
+	return r, nil
 }
 
 // Handler returns the HTTP handler for the router.

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
@@ -9,6 +10,14 @@ import (
 
 // httpRouterHandler 定义
 type httpRouterHandler func(http.ResponseWriter, *http.Request, httprouter.Params, reqcontext.RequestContext)
+
+// GetUserIDFromContext extracts user ID from context
+func GetUserIDFromContext(ctx context.Context) string {
+	if userID, ok := ctx.Value("userID").(string); ok {
+		return userID
+	}
+	return ""
+}
 
 // wrap 包装函数，使 handler 可以使用 RequestContext
 func (rt *_router) wrap(fn httpRouterHandler) func(http.ResponseWriter, *http.Request, httprouter.Params) {

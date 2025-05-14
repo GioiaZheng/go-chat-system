@@ -18,6 +18,7 @@ type LoginResponse struct {
 }
 
 // doLogin 处理 POST /session: 用户登录或自动注册
+// auth_do_login.go
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -25,13 +26,13 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		return
 	}
 
-	// 校验请求参数
+	// Validate request
 	if req.Name == "" || req.Password == "" {
 		http.Error(w, `{"code": 400, "message": "Name and Password are required"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 检查用户是否存在
+	// Check user existence
 	exists, err := rt.db.CheckUserExists(req.Name)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("database error checking user existence")
@@ -41,7 +42,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 
 	var identifier string
 	if exists {
-		// 用户存在，尝试登录
+		// User exists - try login
 		identifier, err = rt.db.GetUserByCredentials(req.Name, req.Password)
 		if err != nil {
 			rt.baseLogger.WithError(err).Error("error getting user credentials")
@@ -49,7 +50,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 			return
 		}
 	} else {
-		// 用户不存在，尝试注册
+		// User doesn't exist - create new user
 		identifier, err = rt.db.CreateUser(req.Name, req.Password)
 		if err != nil {
 			rt.baseLogger.WithError(err).Error("error creating user")
@@ -58,7 +59,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		}
 	}
 
-	// 返回成功响应
+	// Return success response
 	resp := LoginResponse{
 		Identifier: identifier,
 	}
