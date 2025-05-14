@@ -62,3 +62,17 @@ func New(cfg Config) (*_router, error) {
 func (r *_router) Handler() http.Handler {
 	return r.router
 }
+
+// validateToken 验证用户的 JWT 并返回用户 ID
+func (rt *_router) validateToken(token string) (string, error) {
+	// 假设从 token 中提取 userID，这里只是占位实现
+	if token == "" {
+		return "", errors.New("invalid token")
+	}
+	userID, err := rt.db.GetUserIDFromIdentifier(token)
+	if err != nil {
+		rt.baseLogger.WithError(err).Error("failed to validate token")
+		return "", err
+	}
+	return userID, nil
+}

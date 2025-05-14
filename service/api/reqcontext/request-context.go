@@ -1,27 +1,31 @@
-/*
-Package reqcontext contains the request context. Each request will have its own instance of RequestContext filled by the
-middleware code in the api-context-wrapper.go (parent package).
-
-Each value here should be assumed valid only per request only, with some exceptions like the logger.
-*/
 package reqcontext
 
 import (
+	"context"
+
 	"github.com/gofrs/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// RequestContext is the context of the request, for request-dependent parameters
+// RequestContext 是每个请求的上下文
 type RequestContext struct {
-	// ReqUUID is the request unique ID
+	// ReqUUID 是请求唯一 ID
 	ReqUUID uuid.UUID
 
-	// Logger is a custom field logger for the request
+	// Logger 是请求的定制日志记录器
 	Logger logrus.FieldLogger
 
-	// UserID is the ID of the user making the request
+	// UserID 是发起请求的用户 ID
 	UserID string
 
-	// Identifier is the authentication token used by the user
+	// Identifier 是用户使用的认证令牌
 	Identifier string
+}
+
+// GetUserIDFromContext extracts the user ID from the context.
+func GetUserIDFromContext(ctx context.Context) string {
+	if userID, ok := ctx.Value("userID").(string); ok {
+		return userID
+	}
+	return ""
 }

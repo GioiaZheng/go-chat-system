@@ -19,14 +19,15 @@ type LoginResponse struct {
 }
 
 // doLogin 处理 POST /session: 用户登录或自动注册
-func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+	// Decode the login request
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
-	// Validate request
+	// Validate request fields
 	if req.Name == "" || req.Password == "" {
 		http.Error(w, `{"code": 400, "message": "Name and Password are required"}`, http.StatusBadRequest)
 		return
@@ -35,7 +36,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 	// Check if the user exists
 	exists, err := rt.db.CheckUserExists(req.Name)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("database error checking user existence")
+		ctx.Logger.WithError(err).Error("database error checking user existence")
 		http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
@@ -45,13 +46,13 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		// User exists, try to login
 		userID, err := rt.db.GetUserByCredentials(req.Name, req.Password)
 		if err != nil {
-			rt.baseLogger.WithError(err).Error("error getting user credentials")
+			ctx.Logger.WithError(err).Error("error getting user credentials")
 			http.Error(w, `{"code": 401, "message": "Invalid credentials"}`, http.StatusUnauthorized)
 			return
 		}
 		user, err = rt.db.GetUserByID(userID)
 		if err != nil {
-			rt.baseLogger.WithError(err).Error("error retrieving user details")
+			ctx.Logger.WithError(err).Error("error retrieving user details")
 			http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
 			return
 		}
@@ -64,7 +65,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 
 		user, err = rt.db.CreateUser(user, req.Password)
 		if err != nil {
-			rt.baseLogger.WithError(err).Error("error creating user")
+			ctx.Logger.WithError(err).Error("error creating user")
 			http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
 			return
 		}
@@ -77,8 +78,11 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode response")
+		ctx.Logger.WithError(err).Error("failed to encode response")
 		http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
+
+	// Log successful login
+	ctx.Logger.Infof("User %s logged in successfully", user.ID)
 }

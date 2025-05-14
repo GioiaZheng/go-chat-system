@@ -1,44 +1,48 @@
 package api
 
-// RegisterRoutes sets up all API routes.
 func (rt *_router) RegisterRoutes() {
-	// Authentication
-	rt.router.POST("/api/v1/session", rt.wrap(rt.doLogin))
-	rt.router.POST("/api/v1/register", rt.wrap(rt.doRegister))
+	// 1. 首先注册所有完全静态的路由
+	rt.router.POST("/session", rt.wrap(rt.doLogin))
+	rt.router.POST("/register", rt.wrap(rt.doRegister))
+	rt.router.GET("/liveness", rt.wrap(rt.liveness))
+	rt.router.POST("/start_conversation", rt.wrap(rt.startConversation))
+	rt.router.GET("/conversations", rt.wrap(rt.getMyConversations))
 
-	// User Management
-	rt.router.PUT("/api/v1/users/set_username", rt.wrap(rt.setMyUserName))
-	rt.router.PUT("/api/v1/users/set_photo", rt.wrap(rt.setMyPhoto))
-	rt.router.GET("/api/v1/users/info", rt.wrap(rt.getUserInfo))
-	rt.router.GET("/api/v1/users/search", rt.wrap(rt.searchUsersHandler))
-	rt.router.GET("/api/v1/users/:userId/profile", rt.wrap(rt.getUserProfile))
+	// Users 相关静态路由
+	rt.router.PUT("/users/set_username", rt.wrap(rt.setMyUserName))
+	rt.router.PUT("/users/set_photo", rt.wrap(rt.setMyPhoto))
+	rt.router.GET("/users/info", rt.wrap(rt.getUserInfo))
+	rt.router.GET("/users/search", rt.wrap(rt.searchUsers))
 
-	// Friends
-	rt.router.GET("/api/v1/friends", rt.wrap(rt.getUserFriends))
-	rt.router.POST("/api/v1/friends/add", rt.wrap(rt.addFriend))
-	rt.router.GET("/api/v1/users/:userId/friends", rt.wrap(rt.getFriendsList))
+	// Friends 相关静态路由
+	rt.router.GET("/friends", rt.wrap(rt.getUserFriends))
+	rt.router.POST("/friends/add", rt.wrap(rt.addFriend))
 
-	// Groups
-	rt.router.POST("/api/v1/groups", rt.wrap(rt.createGroup))
-	rt.router.GET("/api/v1/groups", rt.wrap(rt.getGroupsList))
-	rt.router.GET("/api/v1/groups/:id", rt.wrap(rt.getGroupDetail))
-	rt.router.PUT("/api/v1/groups/:id/name", rt.wrap(rt.setGroupName))
-	rt.router.PUT("/api/v1/groups/:id/photo", rt.wrap(rt.setGroupPhoto))
-	rt.router.POST("/api/v1/groups/:id/members", rt.wrap(rt.addToGroup))
-	rt.router.DELETE("/api/v1/groups/:id/members", rt.wrap(rt.leaveGroup))
+	// Groups 相关静态路由
+	rt.router.POST("/groups", rt.wrap(rt.createGroup))
+	rt.router.GET("/groups", rt.wrap(rt.getGroupsList))
 
-	// Messages
-	rt.router.GET("/api/v1/messages", rt.wrap(rt.getConversation))
-	rt.router.POST("/api/v1/messages", rt.wrap(rt.sendMessage))
-	rt.router.GET("/api/v1/messages/:id", rt.wrap(rt.getMessageById))
-	rt.router.DELETE("/api/v1/messages/:id", rt.wrap(rt.deleteMessage))
-	rt.router.POST("/api/v1/messages/:id/forward", rt.wrap(rt.forwardMessage))
-	rt.router.POST("/api/v1/messages/:id/comment", rt.wrap(rt.commentMessage))
-	rt.router.POST("/api/v1/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
+	// Messages 相关静态路由
+	rt.router.GET("/messages", rt.wrap(rt.getConversation))
+	rt.router.POST("/messages", rt.wrap(rt.sendMessage))
 
-	// Conversation
-	rt.router.POST("/api/v1/start_conversation", rt.wrap(rt.startConversation))
+	// Users 参数路由
+	rt.router.GET("/users/profile/:userId", rt.wrap(rt.getUserProfile)) // 修改了路径结构
 
-	// Health Check
-	rt.router.GET("/api/v1/liveness", rt.wrap(rt.liveness))
+	// Friends 参数路由
+	rt.router.GET("/friends/list/:userId", rt.wrap(rt.getFriendsList)) // 修改了路径结构
+
+	// Groups 参数路由
+	rt.router.GET("/groups/:groupId", rt.wrap(rt.getGroupDetail))
+	rt.router.PUT("/groups/:groupId/name", rt.wrap(rt.setGroupName))
+	rt.router.PUT("/groups/:groupId/photo", rt.wrap(rt.setGroupPhoto))
+	rt.router.POST("/groups/:groupId/members", rt.wrap(rt.addToGroup))
+	rt.router.DELETE("/groups/:groupId/members", rt.wrap(rt.leaveGroup))
+
+	// Messages 参数路由
+	rt.router.GET("/messages/:messageId", rt.wrap(rt.getMessageById))
+	rt.router.DELETE("/messages/:messageId", rt.wrap(rt.deleteMessage))
+	rt.router.POST("/messages/:messageId/forward", rt.wrap(rt.forwardMessage))
+	rt.router.POST("/messages/:messageId/comment", rt.wrap(rt.commentMessage))
+	rt.router.POST("/messages/:messageId/uncomment", rt.wrap(rt.uncommentMessage))
 }

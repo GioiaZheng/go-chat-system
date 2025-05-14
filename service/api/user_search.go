@@ -23,7 +23,7 @@ type UserSearchResponse struct {
 }
 
 // searchUsersHandler 处理 GET /users/search
-func (rt *_router) searchUsersHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	// 解析请求体
 	var req UserSearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
