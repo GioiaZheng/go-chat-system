@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
+	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -18,7 +19,6 @@ type LoginResponse struct {
 }
 
 // doLogin 处理 POST /session: 用户登录或自动注册
-// auth_do_login.go
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -32,7 +32,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		return
 	}
 
-	// Check user existence
+	// Check if the user exists
 	exists, err := rt.db.CheckUserExists(req.Name)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("database error checking user existence")
@@ -40,18 +40,29 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		return
 	}
 
-	var identifier string
+	var user models.User
 	if exists {
-		// User exists - try login
-		identifier, err = rt.db.GetUserByCredentials(req.Name, req.Password)
+		// User exists, try to login
+		userID, err := rt.db.GetUserByCredentials(req.Name, req.Password)
 		if err != nil {
 			rt.baseLogger.WithError(err).Error("error getting user credentials")
 			http.Error(w, `{"code": 401, "message": "Invalid credentials"}`, http.StatusUnauthorized)
 			return
 		}
+		user, err = rt.db.GetUserByID(userID)
+		if err != nil {
+			rt.baseLogger.WithError(err).Error("error retrieving user details")
+			http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
+			return
+		}
 	} else {
-		// User doesn't exist - create new user
-		identifier, err = rt.db.CreateUser(req.Name, req.Password)
+		// User doesn't exist, create a new user
+		user = models.User{
+			Username: req.Name,
+			Name:     req.Name, // 默认使用用户名作为昵称
+		}
+
+		user, err = rt.db.CreateUser(user, req.Password)
 		if err != nil {
 			rt.baseLogger.WithError(err).Error("error creating user")
 			http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
@@ -61,7 +72,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 
 	// Return success response
 	resp := LoginResponse{
-		Identifier: identifier,
+		Identifier: user.ID,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

@@ -1,26 +1,3 @@
-/*
-Webapi is the executable for the main web server.
-It builds a web server around APIs from `service/api`.
-Webapi connects to external resources needed (database) and starts two web servers: the API web server, and the debug.
-Everything is served via the API web server, except debug variables (/debug/vars) and profiler infos (pprof).
-
-Usage:
-
-	webapi [flags]
-
-Flags and configurations are handled automatically by the code in `load-configuration.go`.
-
-Return values (exit codes):
-
-	0
-		The program ended successfully (no errors, stopped by signal)
-
-	> 0
-		The program ended due to an error
-
-Note that this program will update the schema of the database to the latest version available (embedded in the
-executable during the build).
-*/
 package main
 
 import (
@@ -42,6 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// main is the program entry point. It sets the exit code if there is any error.
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -49,6 +27,12 @@ func main() {
 	}
 }
 
+// run executes the program logic, including:
+// - loading configuration
+// - initializing logger
+// - connecting to the database
+// - creating the API server
+// - handling shutdown signals
 func run() error {
 	rand.Seed(globaltime.Now().UnixNano())
 
@@ -69,107 +53,88 @@ func run() error {
 	} else {
 		logger.SetLevel(logrus.InfoLevel)
 	}
-
-	logger.Infof("WaSA Text application initializing")
+	logger.Info("application initializing")
 
 	// Initialize Database
-	logger.Println("initializing database support")
 	dbconn, err := sql.Open("sqlite3", cfg.DB.Filename)
 	if err != nil {
 		logger.WithError(err).Error("error opening SQLite DB")
-		return fmt.Errorf("opening SQLite: %w", err)
+		return fmt.Errorf("opening SQLite DB: %w", err)
 	}
 	defer func() {
 		logger.Debug("database stopping")
 		_ = dbconn.Close()
 	}()
 
-	// Test database connection
-	if err := dbconn.Ping(); err != nil {
-		logger.WithError(err).Error("error pinging SQLite DB")
-		return fmt.Errorf("pinging SQLite: %w", err)
-	}
-
 	db, err := database.New(dbconn)
 	if err != nil {
-		logger.WithError(err).Error("error creating database handler")
-		return fmt.Errorf("creating database handler: %w", err)
+		logger.WithError(err).Error("error creating AppDatabase")
+		return fmt.Errorf("creating AppDatabase: %w", err)
 	}
 
-	// Setup API
-	logger.Info("initializing API server")
+	// Create API Server
 	apirouter, err := api.New(api.Config{
 		Logger:   logger,
 		Database: db,
 	})
 	if err != nil {
-		logger.WithError(err).Error("error creating the API server instance")
-		return fmt.Errorf("creating the API server instance: %w", err)
+		logger.WithError(err).Error("error creating API server instance")
+		return fmt.Errorf("creating API server instance: %w", err)
 	}
 
-	// Setup API router with Web UI and CORS
-	router, err := registerWebUI(apirouter.Handler())
+	// Register Web UI (if needed)
+	router := apirouter.Handler()
+	router, err = registerWebUI(router)
 	if err != nil {
 		logger.WithError(err).Error("error registering web UI handler")
 		return fmt.Errorf("registering web UI handler: %w", err)
 	}
 
-	routerWithCORS := applyCORSHandler(router)
+	// Apply CORS
+	router = applyCORSHandler(router)
 
-	// Server Configuration
+	// Start API Server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
 	}
 
-	apiserver := http.Server{
-		Addr:              "0.0.0.0:" + port,
-		Handler:           routerWithCORS,
+	apiserver := &http.Server{
+		Addr:              fmt.Sprintf("0.0.0.0:%s", port),
+		Handler:           router,
 		ReadTimeout:       cfg.Web.ReadTimeout,
 		ReadHeaderTimeout: cfg.Web.ReadTimeout,
 		WriteTimeout:      cfg.Web.WriteTimeout,
 	}
 
-	// Graceful Shutdown
+	// Run API Server in a separate goroutine
+	serverErrors := make(chan error, 1)
+	go func() {
+		logger.Infof("API server listening on %s", apiserver.Addr)
+		serverErrors <- apiserver.ListenAndServe()
+	}()
+
+	// Handle graceful shutdown
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
-	serverErrors := make(chan error, 1)
-
-	go func() {
-		logger.Infof("API listening on %s", apiserver.Addr)
-		serverErrors <- apiserver.ListenAndServe()
-		logger.Infof("stopping API server")
-	}()
 
 	select {
 	case err := <-serverErrors:
 		return fmt.Errorf("server error: %w", err)
 
 	case sig := <-shutdown:
-		logger.Infof("signal %v received, starting shutdown", sig)
+		logger.Infof("signal %v received, shutting down", sig)
 
-		// Attempt graceful shutdown
-		err := apirouter.Close()
-		if err != nil {
-			logger.WithError(err).Warning("graceful shutdown of apirouter error")
-		}
-
+		// Create context with timeout for graceful shutdown
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.Web.ShutdownTimeout)
 		defer cancel()
 
-		err = apiserver.Shutdown(ctx)
-		if err != nil {
-			logger.WithError(err).Warning("error during graceful shutdown of HTTP server")
-			err = apiserver.Close()
+		if err := apiserver.Shutdown(ctx); err != nil {
+			logger.WithError(err).Error("error during graceful shutdown")
+			return fmt.Errorf("shutdown error: %w", err)
 		}
 
-		// Determine if the shutdown was expected
-		switch {
-		case sig == syscall.SIGTERM || sig == os.Interrupt:
-			return errors.New("received shutdown signal")
-		case err != nil:
-			return fmt.Errorf("could not stop server gracefully: %w", err)
-		}
+		logger.Info("server stopped gracefully")
 	}
 
 	return nil

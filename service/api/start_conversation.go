@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -11,7 +12,7 @@ type StartConversationRequest struct {
 	Name      string   `json:"name"`
 }
 
-func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	var req StartConversationRequest
 	if err := readJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON body")
@@ -28,7 +29,7 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	userID := getUserIDFromContext(r)
+	userID := ctx.UserID
 	if userID == "" {
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
@@ -46,5 +47,4 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, _ h
 		"message": "Conversation started successfully",
 		"data":    conversation,
 	})
-
 }

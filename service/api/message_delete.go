@@ -3,12 +3,13 @@ package api
 import (
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	messageID := ps.ByName("messageId")
-	userID := getUserIDFromContext(r)
+	userID := ctx.UserID
 
 	err := rt.db.DeleteMessage(userID, messageID)
 	if err != nil {
