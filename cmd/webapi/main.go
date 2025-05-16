@@ -86,6 +86,7 @@ func run() error {
 		logger.WithError(err).Error("error creating database handler")
 		return fmt.Errorf("creating database handler: %w", err)
 	}
+
 	logger.Info("initializing API server")
 
 	shutdown := make(chan os.Signal, 1)
@@ -101,9 +102,9 @@ func run() error {
 		logger.WithError(err).Error("error creating the API server instance")
 		return fmt.Errorf("creating the API server instance: %w", err)
 	}
-	router := apirouter.Handler()
 
-	routerWithWebUI, err := registerWebUI(http.Handler(router))
+	// 使用已有的路由处理器
+	routerWithWebUI, err := registerWebUI(http.Handler(apirouter.Handler()))
 	if err != nil {
 		logger.WithError(err).Error("error registering web UI handler")
 		return fmt.Errorf("registering web UI handler: %w", err)

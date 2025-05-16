@@ -3,81 +3,61 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
 
-	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
+	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-// UserSearchRequest 表示搜索用户时的请求体
-type UserSearchRequest struct {
-	Query string `json:"query"` // 搜索查询
-}
-
-// UserSearchResponse 表示搜索结果的响应体
-type UserSearchResponse struct {
-	Users []struct {
-		ID        string `json:"id"`
-		Username  string `json:"username"`
-		AvatarUrl string `json:"avatarUrl"`
-	} `json:"users"`
-}
-
-// searchUsersHandler 处理 GET /users/search
+// searchUsers 处理 GET /users/search
 func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
-	// 解析请求体
-	var req UserSearchRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
-		return
-	}
-
-	// 校验查询内容
-	if req.Query == "" {
-		http.Error(w, `{"code": 400, "message": "Query parameter is required"}`, http.StatusBadRequest)
-		return
-	}
-
-	// 从上下文获取 userID
 	userID := ctx.UserID
 	if userID == "" {
 		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
-	// 搜索用户
-	users, err := rt.db.SearchUsers(r.Context(), userID, req.Query) // 注意传递 context 和 userID
+	// 从查询参数获取搜索关键词
+	queryParams, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to search users")
+		http.Error(w, `{"code": 400, "message": "Invalid query parameters"}`, http.StatusBadRequest)
+		return
+	}
+
+	query := strings.TrimSpace(queryParams.Get("q"))
+	if query == "" {
+		http.Error(w, `{"code": 400, "message": "Query parameter 'q' is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// 校验搜索关键词
+	queryPattern := regexp.MustCompile(`^[a-zA-Z0-9_\-@.]+$`)
+	if !queryPattern.MatchString(query) || len(query) > 255 {
+		http.Error(w, `{"code": 400, "message": "Invalid query: must be 1-255 characters long and contain only letters, numbers, underscores, hyphens, @, or dots"}`, http.StatusBadRequest)
+		return
+	}
+
+	// 执行用户搜索
+	users, err := rt.db.SearchUsers(r.Context(), userID, query)
+	if err != nil {
+		rt.baseLogger.WithError(err).Error("Failed to search users")
 		http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
 	// 构建响应
-	resp := UserSearchResponse{
-		Users: make([]struct {
-			ID        string `json:"id"`
-			Username  string `json:"username"`
-			AvatarUrl string `json:"avatarUrl"`
-		}, len(users)),
-	}
-
-	for i, user := range users {
-		resp.Users[i] = struct {
-			ID        string `json:"id"`
-			Username  string `json:"username"`
-			AvatarUrl string `json:"avatarUrl"`
-		}{
-			ID:        user.ID,
-			Username:  user.Username,
-			AvatarUrl: user.AvatarUrl,
-		}
+	var response []map[string]interface{}
+	for _, user := range users {
+		response = append(response, map[string]interface{}{
+			"id":        user.ID,
+			"username":  user.Username,
+			"avatarUrl": user.AvatarUrl,
+		})
 	}
 
 	// 返回 JSON 响应
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode response")
-		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
-		return
-	}
+	json.NewEncoder(w).Encode(response)
 }

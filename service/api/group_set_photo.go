@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
+	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 

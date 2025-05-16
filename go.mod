@@ -11,14 +11,11 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.15
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/crypto v0.13.0
-	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )

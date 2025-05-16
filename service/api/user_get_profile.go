@@ -1,23 +1,25 @@
+// user_get_profile.go
+
 package api
 
 import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
+	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) getUserProfile(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
-	userID := ctx.UserID
+func (rt *_router) getUserProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+	userID := ps.ByName("userId")
 	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, `{"code": 400, "message": "User ID is required"}`, http.StatusBadRequest)
 		return
 	}
 
 	profile, err := rt.db.GetUserByID(userID)
 	if err != nil {
-		http.Error(w, "Failed to get user profile", http.StatusInternalServerError)
+		http.Error(w, `{"code": 500, "message": "Failed to get user profile"}`, http.StatusInternalServerError)
 		return
 	}
 

@@ -3,44 +3,52 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 
-	"github.com/GioiaZheng/Wasa_proj/service/api/reqcontext"
+	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
+// SetUserNameRequest 更新用户名请求体
 type SetUserNameRequest struct {
-	Name string `json:"name"`
+	Username string `json:"username"`
 }
 
+// setMyUserName 处理 PUT /users/set_username
 func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
+	// 解析请求体
 	var req SetUserNameRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
-	if req.Name == "" {
-		http.Error(w, "Username is required", http.StatusBadRequest)
+	// 校验用户名
+	usernamePattern := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	if req.Username == "" || !usernamePattern.MatchString(req.Username) || len(req.Username) > 50 {
+		http.Error(w, `{"code": 400, "message": "Invalid username: must be 1-50 characters long and contain only letters, numbers, underscores, or hyphens"}`, http.StatusBadRequest)
 		return
 	}
 
-	err := rt.db.UpdateUserName(userID, req.Name)
-	if err != nil {
-		http.Error(w, "Failed to update username", http.StatusInternalServerError)
+	// 更新用户名
+	if err := rt.db.UpdateUserName(userID, req.Username); err != nil {
+		rt.baseLogger.WithError(err).Error("Failed to update username")
+		http.Error(w, `{"code": 500, "message": "Failed to update username"}`, http.StatusInternalServerError)
 		return
 	}
 
+	// 返回成功响应
 	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Username updated successfully",
 		"data": map[string]string{
-			"name": req.Name,
+			"username": req.Username,
 		},
 	}
 
