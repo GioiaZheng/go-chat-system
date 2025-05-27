@@ -3,9 +3,9 @@ package api
 func (rt *_router) RegisterRoutes() {
 	basePath := "/api/v1"
 	// 1. 首先注册所有完全静态的路由
-	rt.router.POST(basePath+"/session", rt.wrap(rt.doLogin))
-	rt.router.POST(basePath+"/register", rt.wrap(rt.doRegister))
-	// 直接注册 liveness，不需要 wrap
+	// 不需要 wrap
+	rt.router.POST(basePath+"/session", rt.doLogin)
+	rt.router.POST(basePath+"/register", rt.doRegister)
 	rt.router.GET(basePath+"/liveness", rt.liveness)
 	rt.router.POST(basePath+"/start_conversation", rt.wrap(rt.startConversation))
 	rt.router.GET(basePath+"/conversations", rt.wrap(rt.getMyConversations))

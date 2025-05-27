@@ -5,12 +5,11 @@ import (
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
-	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
 // doRegister handles POST /register: 用户注册
-func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 解析请求体
 	var req struct {
 		Username string `json:"username"`
@@ -19,14 +18,14 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		ctx.Logger.WithError(err).Error("failed to decode register request body")
+		rt.baseLogger.WithError(err).Error("failed to decode register request body")
 		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
 	// 校验请求参数
 	if req.Username == "" || req.Email == "" || req.Password == "" {
-		ctx.Logger.Error("missing required fields")
+		rt.baseLogger.Error("missing required fields")
 		http.Error(w, `{"code": 400, "message": "Username, Email, and Password are required"}`, http.StatusBadRequest)
 		return
 	}
@@ -40,7 +39,7 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, ps httprou
 	// 调用 CreateUser
 	createdUser, err := rt.db.CreateUser(newUser, req.Password)
 	if err != nil {
-		ctx.Logger.WithError(err).Error("failed to create user")
+		rt.baseLogger.WithError(err).Error("failed to create user")
 		http.Error(w, `{"code": 500, "message": "Failed to register user"}`, http.StatusInternalServerError)
 		return
 	}
@@ -54,11 +53,11 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, ps httprou
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		ctx.Logger.WithError(err).Error("failed to encode response")
+		rt.baseLogger.WithError(err).Error("failed to encode response")
 		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
 		return
 	}
 
 	// 记录成功注册日志
-	ctx.Logger.Infof("User %s registered successfully", createdUser.ID)
+	rt.baseLogger.Infof("User %s registered successfully", createdUser.ID)
 }
