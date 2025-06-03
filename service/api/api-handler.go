@@ -2,49 +2,53 @@ package api
 
 func (rt *_router) RegisterRoutes() {
 	basePath := "/api/v1"
-	// 1. 首先注册所有完全静态的路由
-	// 不需要 wrap
+	// 1. First register all completely static routes
+	// These don't need the wrap middleware
 	rt.router.POST(basePath+"/session", rt.doLogin)
 	rt.router.POST(basePath+"/register", rt.doRegister)
 	rt.router.GET(basePath+"/liveness", rt.liveness)
+	rt.router.OPTIONS(basePath+"/api", rt.handleCorsPreflight) // Added to match OpenAPI spec
+	
+	// Routes that need authentication (use wrap middleware)
 	rt.router.POST(basePath+"/start_conversation", rt.wrap(rt.startConversation))
 	rt.router.GET(basePath+"/conversations", rt.wrap(rt.getMyConversations))
 
-	// Users 相关静态路由
+	// Users related static routes
 	rt.router.PUT(basePath+"/users/set_username", rt.wrap(rt.setMyUserName))
 	rt.router.PUT(basePath+"/users/set_photo", rt.wrap(rt.setMyPhoto))
 	rt.router.GET(basePath+"/users/info", rt.wrap(rt.getUserInfo))
 	rt.router.GET(basePath+"/users/search", rt.wrap(rt.searchUsers))
 
-	// Friends 相关静态路由
+	// Friends related static routes
 	rt.router.GET(basePath+"/friends", rt.wrap(rt.getUserFriends))
 	rt.router.POST(basePath+"/friends/add", rt.wrap(rt.addFriend))
 
-	// Groups 相关静态路由
+	// Groups related static routes
 	rt.router.POST(basePath+"/groups", rt.wrap(rt.createGroup))
 	rt.router.GET(basePath+"/groups", rt.wrap(rt.getGroupsList))
 
-	// Messages 相关静态路由
+	// Messages related static routes
 	rt.router.GET(basePath+"/messages", rt.wrap(rt.getConversation))
 	rt.router.POST(basePath+"/messages", rt.wrap(rt.sendMessage))
 
-	// Users 参数路由
-	rt.router.GET(basePath+"/users/profile/:userId", rt.wrap(rt.getUserProfile)) // 修改了路径结构
+	// Parameterized routes (using {param} syntax to match OpenAPI spec)
+	// Users parameter routes
+	rt.router.GET(basePath+"/users/profile/{userId}", rt.wrap(rt.getUserProfile))
 
-	// Friends 参数路由
-	rt.router.GET(basePath+"/friends/list/:userId", rt.wrap(rt.getFriendsList)) // 修改了路径结构
+	// Friends parameter routes
+	rt.router.GET(basePath+"/friends/list/{userId}", rt.wrap(rt.getFriendsList))
 
-	// Groups 参数路由
-	rt.router.GET(basePath+"/groups/:groupId", rt.wrap(rt.getGroupDetail))
-	rt.router.PUT(basePath+"/groups/:groupId/name", rt.wrap(rt.setGroupName))
-	rt.router.PUT(basePath+"/groups/:groupId/photo", rt.wrap(rt.setGroupPhoto))
-	rt.router.POST(basePath+"/groups/:groupId/members", rt.wrap(rt.addToGroup))
-	rt.router.DELETE(basePath+"/groups/:groupId/members", rt.wrap(rt.leaveGroup))
+	// Groups parameter routes
+	rt.router.GET(basePath+"/groups/{id}", rt.wrap(rt.getGroupDetail))
+	rt.router.PUT(basePath+"/groups/{id}/name", rt.wrap(rt.setGroupName))
+	rt.router.PUT(basePath+"/groups/{id}/photo", rt.wrap(rt.setGroupPhoto))
+	rt.router.POST(basePath+"/groups/{id}/members", rt.wrap(rt.addToGroup))
+	rt.router.DELETE(basePath+"/groups/{id}/members", rt.wrap(rt.leaveGroup))
 
-	// Messages 参数路由
-	rt.router.GET(basePath+"/messages/:messageId", rt.wrap(rt.getMessageById))
-	rt.router.DELETE(basePath+"/messages/:messageId", rt.wrap(rt.deleteMessage))
-	rt.router.POST(basePath+"/messages/:messageId/forward", rt.wrap(rt.forwardMessage))
-	rt.router.POST(basePath+"/messages/:messageId/comment", rt.wrap(rt.commentMessage))
-	rt.router.POST(basePath+"/messages/:messageId/uncomment", rt.wrap(rt.uncommentMessage))
+	// Messages parameter routes
+	rt.router.GET(basePath+"/messages/{id}", rt.wrap(rt.getMessageById))
+	rt.router.DELETE(basePath+"/messages/{id}", rt.wrap(rt.deleteMessage))
+	rt.router.POST(basePath+"/messages/{id}/forward", rt.wrap(rt.forwardMessage))
+	rt.router.POST(basePath+"/messages/{id}/comment", rt.wrap(rt.commentMessage))
+	rt.router.POST(basePath+"/messages/{id}/uncomment", rt.wrap(rt.uncommentMessage))
 }
