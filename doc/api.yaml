@@ -857,7 +857,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
   
-  /users/profile/:userId:
+  /users/profile/{userId}:
     get:
       tags:
       - users
@@ -866,6 +866,8 @@ paths:
       description: Retrieve detailed profile information for a specific user
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/userId'
       responses:
         '200':
           description: Profile retrieved successfully
@@ -884,8 +886,6 @@ paths:
                     email: john@example.com
                     avatarUrl: https://example.com/avatars/john_doe.jpg
                     gender: male
-    parameters:
-    - $ref: '#/components/parameters/userId'
   /friends:
     get:
       tags:
@@ -922,7 +922,7 @@ paths:
                   userName: jane_doe
                 - userId: '3'
                   userName: john_doe
-  /friends/list/:userId:
+  /friends/list/{userId}:
     get:
       tags:
       - friends
@@ -931,6 +931,8 @@ paths:
       description: Retrieve the list of friends for a specific user
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/userId'
       responses:
         '200':
           description: Friends list retrieved successfully
@@ -944,8 +946,6 @@ paths:
                   userName: jane_doe
                 - userId: '3'
                   userName: john_doe
-    parameters:
-    - $ref: '#/components/parameters/userId'
   /friends/add:
     post:
       tags:
@@ -1061,7 +1061,7 @@ paths:
                   members:
                   - userId: '1'
                     role: admin
-  /groups/:groupId:
+  /groups/{id}:
     get:
       tags:
       - groups
@@ -1070,6 +1070,8 @@ paths:
       description: Retrieve details of a specific group
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Group details retrieved successfully
@@ -1087,9 +1089,7 @@ paths:
                     members:
                     - userId: '1'
                       role: admin
-    parameters:
-    - $ref: '#/components/parameters/id'
-  /groups/:groupId/name:
+  /groups/{id}/name:
     put:
       tags:
       - groups
@@ -1098,6 +1098,8 @@ paths:
       description: Update the name of an existing group
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       requestBody:
         required: true
         content:
@@ -1111,9 +1113,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
-    parameters:
-    - $ref: '#/components/parameters/id'
-  /groups/:groupId/photo:
+  /groups/{id}/photo:
     put:
       tags:
       - groups
@@ -1122,6 +1122,8 @@ paths:
       description: Update the group's profile picture
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       requestBody:
         required: true
         content:
@@ -1143,9 +1145,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
-    parameters:
-    - $ref: '#/components/parameters/id'
-  /groups/:groupId/members:
+  /groups/{id}/members:
     post:
       tags:
       - groups
@@ -1154,6 +1154,8 @@ paths:
       description: Add new members to an existing group
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       requestBody:
         required: true
         content:
@@ -1187,6 +1189,8 @@ paths:
       description: Current user leaves the specified group
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Successfully left the group
@@ -1203,8 +1207,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    parameters:
-    - $ref: '#/components/parameters/id'
   /messages:
     get:
       tags:
@@ -1272,7 +1274,7 @@ paths:
                 content: Hello!
                 senderId: '1'
                 createdAt: '2023-10-01T12:00:00Z'
-  /messages/:messageId:
+  /messages/{id}:
     get:
       tags:
       - messages
@@ -1281,6 +1283,8 @@ paths:
       description: Retrieve details of a message by its ID
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Message details retrieved successfully
@@ -1296,6 +1300,8 @@ paths:
       description: Permanently delete a message
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Message deleted successfully
@@ -1306,9 +1312,7 @@ paths:
               example:
                 code: 200
                 message: Message deleted successfully
-    parameters:
-    - $ref: '#/components/parameters/id'
-  /messages/:messageId/forward:
+  /messages/{id}/forward:
     post:
       tags:
       - messages
@@ -1317,6 +1321,8 @@ paths:
       description: Forward an existing message to another user or group
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Message forwarded successfully
@@ -1327,9 +1333,7 @@ paths:
               example:
                 code: 200
                 message: Message forwarded successfully
-    parameters:
-    - $ref: '#/components/parameters/id'
-  /messages/:messageId/comment:
+  /messages/{id}/comment:
     post:
       tags:
       - messages
@@ -1338,6 +1342,8 @@ paths:
       description: Add a comment to an existing message
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       requestBody:
         required: true
         content:
@@ -1362,9 +1368,7 @@ paths:
               example:
                 code: 201
                 message: Comment added successfully
-    parameters:
-    - $ref: '#/components/parameters/id'
-  /messages/:messageId/uncomment:
+  /messages/{id}/uncomment:
     post:
       tags:
       - messages
@@ -1373,6 +1377,8 @@ paths:
       description: Delete a comment from a message
       security:
       - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Comment removed successfully
@@ -1383,8 +1389,6 @@ paths:
               example:
                 code: 200
                 message: Comment removed successfully
-    parameters:
-    - $ref: '#/components/parameters/id'
   /liveness:
     get:
       tags:
