@@ -276,7 +276,7 @@ components:
             type: object
             additionalProperties:
               type: object
-              description: Flexible object with additional properties
+              description: Arbitrary key-value object for flexible structure
           minItems: 1
           maxItems: 100
 
@@ -309,7 +309,7 @@ components:
             type: object
             additionalProperties:
               type: object
-              description: Flexible object with additional properties
+              description: Arbitrary key-value object for flexible structure
           minItems: 1
           maxItems: 100
 
@@ -439,7 +439,7 @@ components:
           maxItems: 100
           items:
             type: object
-            description: Group member information model
+            description: Single group member information
             required:
             - userId
             - role
@@ -858,6 +858,8 @@ paths:
                 $ref: '#/components/schemas/Error'
   
   /users/profile/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/userId'
     get:
       tags:
       - users
@@ -866,8 +868,6 @@ paths:
       description: Retrieve detailed profile information for a specific user
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/userId'
       responses:
         '200':
           description: Profile retrieved successfully
@@ -923,6 +923,8 @@ paths:
                 - userId: '3'
                   userName: john_doe
   /friends/list/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/userId'
     get:
       tags:
       - friends
@@ -931,8 +933,6 @@ paths:
       description: Retrieve the list of friends for a specific user
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/userId'
       responses:
         '200':
           description: Friends list retrieved successfully
@@ -1062,6 +1062,8 @@ paths:
                   - userId: '1'
                     role: admin
   /groups/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
     get:
       tags:
       - groups
@@ -1070,8 +1072,6 @@ paths:
       description: Retrieve details of a specific group
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Group details retrieved successfully
@@ -1090,6 +1090,8 @@ paths:
                     - userId: '1'
                       role: admin
   /groups/{id}/name:
+    parameters:
+      - $ref: '#/components/parameters/id'
     put:
       tags:
       - groups
@@ -1098,8 +1100,6 @@ paths:
       description: Update the name of an existing group
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       requestBody:
         required: true
         content:
@@ -1114,6 +1114,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
   /groups/{id}/photo:
+    parameters:
+      - $ref: '#/components/parameters/id'
     put:
       tags:
       - groups
@@ -1122,8 +1124,6 @@ paths:
       description: Update the group's profile picture
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       requestBody:
         required: true
         content:
@@ -1146,6 +1146,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
   /groups/{id}/members:
+    parameters:
+      - $ref: '#/components/parameters/id'
     post:
       tags:
       - groups
@@ -1154,8 +1156,6 @@ paths:
       description: Add new members to an existing group
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       requestBody:
         required: true
         content:
@@ -1189,8 +1189,6 @@ paths:
       description: Current user leaves the specified group
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Successfully left the group
@@ -1275,6 +1273,8 @@ paths:
                 senderId: '1'
                 createdAt: '2023-10-01T12:00:00Z'
   /messages/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
     get:
       tags:
       - messages
@@ -1283,8 +1283,6 @@ paths:
       description: Retrieve details of a message by its ID
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Message details retrieved successfully
@@ -1300,8 +1298,6 @@ paths:
       description: Permanently delete a message
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Message deleted successfully
@@ -1313,6 +1309,8 @@ paths:
                 code: 200
                 message: Message deleted successfully
   /messages/{id}/forward:
+    parameters:
+      - $ref: '#/components/parameters/id'
     post:
       tags:
       - messages
@@ -1321,8 +1319,6 @@ paths:
       description: Forward an existing message to another user or group
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       responses:
         '200':
           description: Message forwarded successfully
@@ -1334,6 +1330,8 @@ paths:
                 code: 200
                 message: Message forwarded successfully
   /messages/{id}/comment:
+    parameters:
+      - $ref: '#/components/parameters/id'
     post:
       tags:
       - messages
@@ -1342,8 +1340,6 @@ paths:
       description: Add a comment to an existing message
       security:
       - BearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/id'
       requestBody:
         required: true
         content:
