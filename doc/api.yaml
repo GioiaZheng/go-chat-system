@@ -33,7 +33,7 @@ components:
   schemas:
     User:
       type: object
-      description: User information model
+      description: User information model containing all user-related data
       required:
       - id
       - username
@@ -88,7 +88,7 @@ components:
           default: unspecified
     Friend:
       type: object
-      description: Friend information model
+      description: Friend information model representing a user's friend relationship
       required:
       - userId
       - userName
@@ -114,7 +114,7 @@ components:
           pattern: ^https?://[^\s/$.?#].[^\s]*$
     Conversation:
       type: object
-      description: Chat conversation information model
+      description: Chat conversation information model for group or private chats
       required:
       - id
       - name
@@ -140,13 +140,13 @@ components:
           pattern: ^https?://[^\s/$.?#].[^\s]*$
         lastMessage:
           type: string
-          description: Last message content
+          description: Last message content in the conversation
           minLength: 1
           maxLength: 1000
           pattern: ^[a-zA-Z0-9\s.,!?]+$
     Message:
       type: object
-      description: Message information model
+      description: Message information model for chat messages
       required:
       - content
       - senderId
@@ -184,14 +184,14 @@ components:
           maxLength: 64
         createdAt:
           type: string
-          description: Message creation timestamp
+          description: Message creation timestamp in ISO 8601 format
           format: date-time
           minLength: 1
           maxLength: 64
           pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$
     Error:
       type: object
-      description: Standard error response model
+      description: Standard error response model for API error conditions
       required:
       - code
       - message
@@ -200,24 +200,24 @@ components:
       properties:
         code:
           type: integer
-          description: Error code
+          description: HTTP error code
           minimum: 400
           maximum: 599
         message:
           type: string
-          description: Error message
+          description: Human-readable error message
           minLength: 1
           maxLength: 255
           pattern: ^[a-zA-Z0-9\s.,!?]+$
         trace:
           type: string
-          description: Error trace for debugging
+          description: Error trace ID for debugging purposes
           pattern: ^[a-zA-Z0-9\s.,!?-]+$
           minLength: 1
           maxLength: 1000
         errors:
           type: array
-          description: Error details collection
+          description: Collection of detailed error messages
           items:
             type: string
             minLength: 1
@@ -227,7 +227,7 @@ components:
           maxItems: 100
     SuccessResponse:
       type: object
-      description: Standard success response model
+      description: Standard success response model for successful operations without data payload
       required:
       - code
       - message
@@ -249,7 +249,7 @@ components:
     
     SuccessResponseWithData:
       type: object
-      description: Standard success response model with data payload
+      description: Standard success response model with flexible data payload
       required:
       - code
       - message
@@ -271,18 +271,18 @@ components:
           pattern: ^[a-zA-Z0-9\s.,!?]+$
         data:
           type: array
-          description: Single or multiple data objects
+          description: Array containing one or more data objects
           items:
             type: object
             additionalProperties:
               type: object
-              description: Arbitrary key-value object for flexible structure
+              description: Flexible key-value object structure
           minItems: 1
           maxItems: 100
 
     SuccessResponseWithDataPrototype:
       type: object
-      description: Standard success response model with prototype data structure
+      description: Standard success response model with prototype data structure for group creation
       required:
       - code
       - message
@@ -304,18 +304,18 @@ components:
           pattern: ^[a-zA-Z0-9\s.,!?]+$
         data:
           type: array
-          description: Response data object collection
+          description: Collection of response data objects
           items:
             type: object
             additionalProperties:
               type: object
-              description: Arbitrary key-value object for flexible structure
+              description: Flexible key-value object structure
           minItems: 1
           maxItems: 100
 
     SuccessResponseWithDataCollection:
       type: object
-      description: Standard success response model with data collection
+      description: Standard success response model with collection of group data objects
       required:
       - code
       - message
@@ -337,7 +337,7 @@ components:
           pattern: ^[a-zA-Z0-9\s.,!?]+$
         data:
           type: array
-          description: Collection of data objects
+          description: Collection of group data objects
           items:
             $ref: '#/components/schemas/Group'
           minItems: 1
@@ -345,7 +345,7 @@ components:
 
     RegisterUserRequest:
       type: object
-      description: User registration request model
+      description: User registration request model for creating new user accounts
       required:
       - username
       - email
@@ -387,13 +387,13 @@ components:
     
     FriendsListResponse:
       type: object
-      description: Friends list response model
+      description: Response model containing a list of user's friends
       required:
       - friends
       properties:
         friends:
           type: array
-          description: List of user's friends
+          description: Array of friend objects
           items:
             $ref: '#/components/schemas/Friend'
           minItems: 1
@@ -401,7 +401,7 @@ components:
     
     AddFriendRequest:
       type: object
-      description: Add friend request model
+      description: Request model for adding a new friend
       required:
       - friendId
       properties:
@@ -414,7 +414,7 @@ components:
     
     Group:
       type: object
-      description: Group information model
+      description: Group information model containing group details and members
       required:
       - id
       - name
@@ -428,18 +428,18 @@ components:
           pattern: ^[a-zA-Z0-9-]+$
         name:
           type: string
-          description: Group name
+          description: Group display name
           minLength: 1
           maxLength: 100
           pattern: ^[a-zA-Z0-9\s'-]+$
         members:
           type: array
-          description: List of group members
+          description: Array of group member objects
           minItems: 1
           maxItems: 100
           items:
             type: object
-            description: Single group member information
+            description: Group member information
             required:
             - userId
             - role
@@ -461,13 +461,13 @@ components:
 
     AddGroupMembersRequest:
       type: object
-      description: Add group members request model
+      description: Request model for adding members to an existing group
       required:
       - memberIds
       properties:
         memberIds:
           type: array
-          description: List of user IDs to add to the group
+          description: Array of user IDs to add to the group
           minItems: 1
           maxItems: 100
           items:
@@ -479,20 +479,20 @@ components:
     
     MessageCollection:
       type: object
-      description: Message collection response model
+      description: Response model containing a collection of chat messages
       required:
       - messages
       properties:
         messages:
           type: array
-          description: List of chat messages
+          description: Array of message objects
           items:
             $ref: '#/components/schemas/Message'
           minItems: 1
           maxItems: 100
     UpdateGroupNameRequest:
       type: object
-      description: Update group name request model
+      description: Request model for updating a group's name
       required:
       - name
       properties:
