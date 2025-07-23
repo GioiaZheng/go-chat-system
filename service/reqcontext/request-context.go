@@ -1,8 +1,6 @@
 package reqcontext
 
 import (
-	"context"
-
 	"github.com/gofrs/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -20,12 +18,4 @@ type RequestContext struct {
 
 	// Identifier 是用户使用的认证令牌
 	Identifier string
-}
-
-// GetUserIDFromContext extracts the user ID from the context.
-func GetUserIDFromContext(ctx context.Context) string {
-	if userID, ok := ctx.Value("userID").(string); ok {
-		return userID
-	}
-	return ""
 }

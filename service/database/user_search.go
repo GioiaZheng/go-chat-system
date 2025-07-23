@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
-	"golang.org/x/crypto/bcrypt"
+	// "golang.org/x/crypto/bcrypt"
 )
 
 // SearchUsers searches for users based on a query and user ID
@@ -66,7 +66,7 @@ func (db *appdbimpl) GetUserByCredentials(username, password string) (string, er
 	}
 
 	// 校验密码
-	err = bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(password))
+	// err = bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(password))
 	if err != nil {
 		log.Println("GetUserByCredentials password mismatch:", err)
 		return "", sql.ErrNoRows

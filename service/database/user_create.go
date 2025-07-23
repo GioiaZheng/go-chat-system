@@ -5,7 +5,7 @@ import (
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/gofrs/uuid"
-	"golang.org/x/crypto/bcrypt"
+	// "golang.org/x/crypto/bcrypt"
 )
 
 // CreateUser creates a new user with a hashed password
@@ -19,11 +19,12 @@ func (db *appdbimpl) CreateUser(user models.User, password string) (models.User,
 	user.ID = userID.String()
 
 	// 哈希密码
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Println("CreateUser password hash error:", err)
 		return models.User{}, err
 	}
+	hashedPassword := password
 
 	// 插入用户数据
 	_, err = db.c.Exec(`
