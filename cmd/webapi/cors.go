@@ -20,9 +20,6 @@ func applyCORSHandler(h http.Handler) http.Handler {
 		// Do not modify the CORS origin and max age, they are used in the evaluation.
 		handlers.AllowedOrigins([]string{
 			"http://localhost:3000",
-			"https://wasa-text.vercel.app",
-			"https://wasa-text-git-main-lingfengs-projects-dd7a133a.vercel.app",
-			"https://wasa-text-befk2zdy4-lingfengs-projects-dd7a133a.vercel.app",
 			"*",
 		}),
 

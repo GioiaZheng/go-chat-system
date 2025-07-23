@@ -7,8 +7,8 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.POST(basePath+"/session", rt.doLogin)
 	rt.router.POST(basePath+"/register", rt.doRegister)
 	rt.router.GET(basePath+"/liveness", rt.liveness)
-	rt.router.OPTIONS(basePath+"/api", rt.handleCorsPreflight)
-	
+	// rt.router.OPTIONS(basePath+"/api", rt.handleCorsPreflight)
+
 	// Routes that need authentication (use wrap middleware)
 	rt.router.POST(basePath+"/start_conversation", rt.wrap(rt.startConversation))
 	rt.router.GET(basePath+"/conversations", rt.wrap(rt.getMyConversations))
