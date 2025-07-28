@@ -11,13 +11,13 @@ import (
 func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
-	user, err := rt.db.GetUserByID(userID)
+	user, err := rt.db.GetUser(userID)
 	if err != nil {
-		http.Error(w, "Failed to get user info", http.StatusInternalServerError)
+		http.Error(w, `{"code":500,"message":"Failed to get user info"}`, http.StatusInternalServerError)
 		return
 	}
 
@@ -29,8 +29,7 @@ func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprou
 			"username":  user.Username,
 			"name":      user.Name,
 			"gender":    user.Gender,
-			"photo":     user.Photo,
-			"avatarUrl": user.AvatarUrl,
+			"photo":     user.AvatarUrl, // 用 AvatarUrl 作为 photo
 			"email":     user.Email,
 		},
 	}

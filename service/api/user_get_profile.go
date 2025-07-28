@@ -1,5 +1,3 @@
-// user_get_profile.go
-
 package api
 
 import (
@@ -27,12 +25,12 @@ func (rt *_router) getUserProfile(w http.ResponseWriter, r *http.Request, ps htt
 		"code":    200,
 		"message": "User profile retrieved successfully",
 		"data": map[string]interface{}{
-			"userId":   profile.ID,
-			"name":     profile.Name,
-			"username": profile.Username,
-			"avatar":   profile.AvatarUrl,
-			"gender":   profile.Gender,
-			"email":    profile.Email,
+			"userId":    profile.ID,
+			"username":  profile.Username,
+			"name":      profile.Name,
+			"email":     profile.Email,
+			"gender":    profile.Gender,
+			"avatarUrl": profile.AvatarUrl, // 注意字段名统一
 		},
 	}
 

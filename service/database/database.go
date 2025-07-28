@@ -23,11 +23,7 @@ type AppDatabase interface {
 	UpdateUserName(userID, name string) error
 	UpdateUserPhoto(userID, photoPath string) error
 	GetUserByID(userID string) (models.User, error)
-
-	// Friends
-	AddFriend(userID, friendID string) error
-	GetFriendsList(userID string) ([]models.Friend, error)
-	AreFriends(userID1, userID2 string) (bool, error)
+	GetUser(userID string) (models.User, error)
 
 	// Groups
 	CreateGroup(group models.Group) error

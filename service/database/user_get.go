@@ -8,13 +8,20 @@ import (
 func (db *appdbimpl) GetUser(userID string) (models.User, error) {
 	var user models.User
 	err := db.c.QueryRow(`
-		SELECT id, username, name, email, avatar_url, gender
+		SELECT id, username, name, email, avatar_url, gender, photo
 		FROM users WHERE id = ?
-	`, userID).Scan(&user.ID, &user.Username, &user.Name, &user.Email, &user.AvatarUrl, &user.Gender)
+	`, userID).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Name,
+		&user.Email,
+		&user.AvatarUrl,
+		&user.Gender,
+		&user.Photo,
+	)
 	if err != nil {
 		return models.User{}, err
 	}
-
 	return user, nil
 }
 

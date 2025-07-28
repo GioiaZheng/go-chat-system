@@ -16,14 +16,9 @@ func (rt *_router) RegisterRoutes() {
 	// Users related routes
 	rt.router.PUT(basePath+"/users/set_username", rt.wrap(rt.setMyUserName))
 	rt.router.PUT(basePath+"/users/set_photo", rt.wrap(rt.setMyPhoto))
-	rt.router.GET(basePath+"/users/info", rt.wrap(rt.getUserInfo))
+	rt.router.GET(basePath+"/users/me", rt.wrap(rt.getUserInfo))
 	rt.router.GET(basePath+"/users/search", rt.wrap(rt.searchUsers))
-	rt.router.GET(basePath+"/users/profile/{userId}", rt.wrap(rt.getUserProfile))
-
-	// Friends related routes
-	rt.router.GET(basePath+"/friends", rt.wrap(rt.getUserFriends))
-	rt.router.GET(basePath+"/friends/list/{userId}", rt.wrap(rt.getFriendsList))
-	rt.router.POST(basePath+"/friends/add", rt.wrap(rt.addFriend))
+	rt.router.GET(basePath+"/users/profile/:userId", rt.wrap(rt.getUserProfile))
 
 	// Groups related routes
 	rt.router.POST(basePath+"/groups", rt.wrap(rt.createGroup))

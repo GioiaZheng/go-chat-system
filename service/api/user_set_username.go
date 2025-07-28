@@ -9,12 +9,11 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// SetUserNameRequest 更新用户名请求体
 type SetUserNameRequest struct {
 	Username string `json:"username"`
 }
 
-// setMyUserName 处理 PUT /users/set_username
+// PUT /users/set_username
 func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
@@ -22,28 +21,26 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	// 解析请求体
 	var req SetUserNameRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 校验用户名
+	// 校验用户名合法性
 	usernamePattern := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if req.Username == "" || !usernamePattern.MatchString(req.Username) || len(req.Username) > 50 {
 		http.Error(w, `{"code": 400, "message": "Invalid username: must be 1-50 characters long and contain only letters, numbers, underscores, or hyphens"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 更新用户名
+	// 数据库更新
 	if err := rt.db.UpdateUserName(userID, req.Username); err != nil {
 		rt.baseLogger.WithError(err).Error("Failed to update username")
 		http.Error(w, `{"code": 500, "message": "Failed to update username"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// 返回成功响应
 	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Username updated successfully",

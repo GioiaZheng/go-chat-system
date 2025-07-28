@@ -15,8 +15,6 @@ tags:
   description: Authentication operations
 - name: users
   description: User management operations
-- name: friends
-  description: Friend management operations
 - name: groups
   description: Group management operations
 - name: messages
@@ -86,32 +84,6 @@ components:
           - female
           - unspecified
           default: unspecified
-    Friend:
-      type: object
-      description: Friend information model representing a user's friend relationship
-      required:
-      - userId
-      - userName
-      properties:
-        userId:
-          type: string
-          description: Friend's user ID
-          pattern: ^[a-zA-Z0-9-]+$
-          minLength: 1
-          maxLength: 64
-        userName:
-          type: string
-          description: Friend's username
-          minLength: 3
-          maxLength: 50
-          pattern: ^[a-zA-Z0-9_-]+$
-        avatarUrl:
-          type: string
-          description: URL of friend's avatar
-          format: uri
-          maxLength: 255
-          minLength: 1
-          pattern: ^https?://[^\s/$.?#].[^\s]*$
     Conversation:
       type: object
       description: Chat conversation information model for group or private chats
@@ -384,33 +356,6 @@ components:
           - female
           - unspecified
           default: unspecified
-    
-    FriendsListResponse:
-      type: object
-      description: Response model containing a list of user's friends
-      required:
-      - friends
-      properties:
-        friends:
-          type: array
-          description: Array of friend objects
-          items:
-            $ref: '#/components/schemas/Friend'
-          minItems: 1
-          maxItems: 100
-    
-    AddFriendRequest:
-      type: object
-      description: Request model for adding a new friend
-      required:
-      - friendId
-      properties:
-        friendId:
-          type: string
-          description: ID of the user to add as friend
-          pattern: ^[a-zA-Z0-9-]+$
-          minLength: 1
-          maxLength: 64
     
     Group:
       type: object
@@ -780,18 +725,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
-  /users/info:
+  /users/me:
     get:
       tags:
       - users
       operationId: getUserInfo
-      summary: Get user information
+      summary: Get current user info
       description: Retrieve current user's profile information
       security:
       - BearerAuth: []
       responses:
         '200':
-          description: Successfully retrieved user information
+          description: Successful response
           content:
             application/json:
               schema:
@@ -886,113 +831,6 @@ paths:
                     email: john@example.com
                     avatarUrl: https://example.com/avatars/john_doe.jpg
                     gender: male
-  /friends:
-    get:
-      tags:
-      - friends
-      operationId: getUserFriends
-      summary: Get friends list
-      description: Retrieve list of user's friends
-      security:
-      - BearerAuth: []
-      parameters:
-      - name: page
-        in: query
-        schema:
-          type: integer
-          minimum: 1
-          default: 1
-      - name: pageSize
-        in: query
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 100
-          default: 20
-      responses:
-        '200':
-          description: Friends list retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FriendsListResponse'
-              example:
-                friends:
-                - userId: '2'
-                  userName: jane_doe
-                - userId: '3'
-                  userName: john_doe
-  /friends/list/{userId}:
-    parameters:
-      - $ref: '#/components/parameters/userId'
-    get:
-      tags:
-      - friends
-      operationId: getFriendsList
-      summary: Get user's friends
-      description: Retrieve the list of friends for a specific user
-      security:
-      - BearerAuth: []
-      responses:
-        '200':
-          description: Friends list retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FriendsListResponse'
-              example:
-                friends:
-                - userId: '2'
-                  userName: jane_doe
-                - userId: '3'
-                  userName: john_doe
-  /friends/add:
-    post:
-      tags:
-      - friends
-      operationId: addFriend
-      summary: Add friend
-      description: Send friend request to another user
-      security:
-      - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddFriendRequest'
-      responses:
-        '200':
-          description: Friend request sent successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-              example:
-                code: 200
-                message: Friend request sent
-                data:
-                  friend_request:
-                    id: '1'
-                    status: pending
-        '400':
-          description: Invalid request parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Already friends
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /groups:
     post:
       tags:
