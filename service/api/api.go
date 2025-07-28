@@ -63,16 +63,18 @@ func (r *_router) Handler() http.Handler {
 	return r.router
 }
 
-// validateToken 验证用户的 JWT 并返回用户 ID
+/// validateToken 验证用户的 token（此处 token = user.ID）
 func (rt *_router) validateToken(token string) (string, error) {
-	// 假设从 token 中提取 userID，这里只是占位实现
 	if token == "" {
 		return "", errors.New("invalid token")
 	}
-	userID, err := rt.db.GetUserIDFromIdentifier(token)
+
+	// Authorization header 是 "Bearer <token>"，直接当作 userID
+	user, err := rt.db.GetUserByID(token)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("failed to validate token")
-		return "", err
+		return "", errors.New("invalid token")
 	}
-	return userID, nil
+
+	return user.ID, nil
 }

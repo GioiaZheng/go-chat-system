@@ -8,56 +8,95 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// doRegister handles POST /register: 用户注册
-func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 解析请求体
-	var req struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+// RegisterRequest matches the OpenAPI schema
+type RegisterRequest struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name,omitempty"`
+	Gender   string `json:"gender,omitempty"`
+}
 
+// RegisterResponse matches the OpenAPI schema
+type RegisterResponse struct {
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Data    []RegisterUserData `json:"data"`
+}
+
+type RegisterUserData struct {
+	User  models.User `json:"user"`
+	Token string      `json:"token,omitempty"` // 实际就是 user.ID
+}
+
+func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	// Parse request
+	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to decode register request body")
-		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
+		rt.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	// 校验请求参数
+	// Validate required fields
 	if req.Username == "" || req.Email == "" || req.Password == "" {
-		rt.baseLogger.Error("missing required fields")
-		http.Error(w, `{"code": 400, "message": "Username, Email, and Password are required"}`, http.StatusBadRequest)
+		rt.writeErrorResponse(w, http.StatusBadRequest, "Username, email and password are required")
 		return
 	}
 
-	// 创建用户
+	// Create user model
 	newUser := models.User{
 		Username: req.Username,
 		Email:    req.Email,
+		Name:     req.Name,
+		Gender:   req.Gender,
 	}
 
-	// 调用 CreateUser
+	// Call database
 	createdUser, err := rt.db.CreateUser(newUser, req.Password)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to create user")
-		http.Error(w, `{"code": 500, "message": "Failed to register user"}`, http.StatusInternalServerError)
+		if isDuplicateError(err) {
+			rt.writeErrorResponse(w, http.StatusConflict, "User already exists")
+		} else {
+			rt.writeErrorResponse(w, http.StatusInternalServerError, "Failed to register user")
+		}
 		return
 	}
 
-	// 返回成功响应
-	resp := map[string]interface{}{
-		"code":    201,
-		"message": "User registered successfully",
-		"data":    createdUser,
+	// Token 就是 user.ID
+	token := createdUser.ID
+
+	// Prepare response
+	response := RegisterResponse{
+		Code:    http.StatusCreated,
+		Message: "User registered successfully",
+		Data: []RegisterUserData{
+			{
+				User:  createdUser,
+				Token: token,
+			},
+		},
 	}
 
+	rt.writeJSONResponse(w, http.StatusCreated, response)
+}
+
+// Helper functions
+func (rt *_router) writeErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode response")
-		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
-		return
-	}
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"code":    statusCode,
+		"message": message,
+	})
+}
 
-	// 记录成功注册日志
-	rt.baseLogger.Infof("User %s registered successfully", createdUser.ID)
+func (rt *_router) writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(data)
+}
+
+func isDuplicateError(err error) bool {
+	// You can implement proper SQLite error detection here
+	return false
 }

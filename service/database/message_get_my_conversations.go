@@ -38,7 +38,7 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 
 	// Retrieve group conversations
 	groupRows, err := db.c.Query(`
-		SELECT g.id, g.name, g.photo, m.content
+		SELECT g.id, g.name, g.avatar_url, m.content
 		FROM messages m
 		JOIN groups g ON m.group_id = g.id
 		JOIN group_members gm ON gm.group_id = g.id

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/gofrs/uuid"
@@ -38,15 +39,23 @@ func SetUserIDInContext(r *http.Request, userID string) *http.Request {
 // wrap is a middleware that adds context information to each request.
 func (rt *_router) wrap(next func(http.ResponseWriter, *http.Request, httprouter.Params, reqcontext.RequestContext)) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		// 1. JWT Authentication
-		token := r.Header.Get("Authorization")
-		if token == "" {
-			rt.baseLogger.Error("missing authorization token")
+		// 1. Authorization Header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			rt.baseLogger.Error("missing or malformed authorization header")
 			http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
 
-		// 2. Validate token and extract userID
+		// 2. Extract token
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if token == "" {
+			rt.baseLogger.Error("empty bearer token")
+			http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// 3. Validate token
 		userID, err := rt.validateToken(token)
 		if err != nil {
 			rt.baseLogger.WithError(err).Error("invalid token")
@@ -54,7 +63,7 @@ func (rt *_router) wrap(next func(http.ResponseWriter, *http.Request, httprouter
 			return
 		}
 
-		// 3. Generate Request UUID
+		// 4. Generate Request UUID
 		reqUUID, err := uuid.NewV4()
 		if err != nil {
 			rt.baseLogger.WithError(err).Error("can't generate a request UUID")
@@ -62,7 +71,7 @@ func (rt *_router) wrap(next func(http.ResponseWriter, *http.Request, httprouter
 			return
 		}
 
-		// 4. Build Context with UserID, RequestID, and Logger
+		// 5. Build context
 		ctx := context.WithValue(r.Context(), requestIDKey, reqUUID.String())
 		ctx = context.WithValue(ctx, userIDKey, userID)
 
@@ -73,7 +82,7 @@ func (rt *_router) wrap(next func(http.ResponseWriter, *http.Request, httprouter
 		})
 		ctx = context.WithValue(ctx, loggerKey, logger)
 
-		// 5. Call the original handler with the enriched context
+		// 6. Pass to next handler
 		next(w, r.WithContext(ctx), ps, reqcontext.RequestContext{
 			UserID:  userID,
 			ReqUUID: reqUUID,

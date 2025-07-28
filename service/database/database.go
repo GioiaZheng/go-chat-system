@@ -17,7 +17,7 @@ type AppDatabase interface {
 	AuthenticateUser(email, password string) (models.User, error)
 	GetUserIDFromIdentifier(identifier string) (string, error)
 	CheckUserExists(name string) (bool, error)
-	GetUserByCredentials(name, password string) (string, error)
+	GetUserByCredentials(name, password string) (models.User, error)
 
 	// Users
 	UpdateUserName(userID, name string) error

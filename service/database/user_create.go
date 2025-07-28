@@ -5,12 +5,9 @@ import (
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/gofrs/uuid"
-	// "golang.org/x/crypto/bcrypt"
 )
-
-// CreateUser creates a new user with a hashed password
 func (db *appdbimpl) CreateUser(user models.User, password string) (models.User, error) {
-	// 生成 UUID 作为用户 ID
+	// 生成 UUID
 	userID, err := uuid.NewV4()
 	if err != nil {
 		log.Println("CreateUser UUID error:", err)
@@ -18,24 +15,35 @@ func (db *appdbimpl) CreateUser(user models.User, password string) (models.User,
 	}
 	user.ID = userID.String()
 
-	// 哈希密码
-	// hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Println("CreateUser password hash error:", err)
-		return models.User{}, err
+	// 设置默认字段，防止为 NULL
+	if user.Name == "" {
+		user.Name = user.Username
 	}
-	hashedPassword := password
+	if user.Email == "" {
+		user.Email = user.Username + "@example.com"
+	}
+	if user.AvatarUrl == "" {
+		user.AvatarUrl = "https://example.com/default-avatar.png"
+	}
+	if user.Photo == "" {
+		user.Photo = ""
+	}
+	if user.Gender == "" {
+		user.Gender = "unspecified"
+	}
 
-	// 插入用户数据
+	// 插入全部字段
 	_, err = db.c.Exec(`
-		INSERT INTO users (id, username, name, email, avatar_url, gender, password)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		user.ID, user.Username, user.Name, user.Email, user.AvatarUrl, user.Gender, hashedPassword,
+		INSERT INTO users (id, username, email, password, name, avatar_url, photo, gender)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		user.ID, user.Username, user.Email, password,
+		user.Name, user.AvatarUrl, user.Photo, user.Gender,
 	)
 	if err != nil {
-		log.Println("CreateUser insert error:", err)
+		log.Println("CreateUser insert error:", err.Error())
 		return models.User{}, err
 	}
 
+	log.Println("Created user with ID:", user.ID)
 	return user, nil
 }

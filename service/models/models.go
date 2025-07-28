@@ -8,7 +8,7 @@ type User struct {
 	Email     string `json:"email"`
 	Password  string `json:"password,omitempty"`
 	AvatarUrl string `json:"avatarUrl"`
-	Photo     string `json:"photo,omitempty"`
+	Photo     string `json:"photo"`
 	Gender    string `json:"gender"`
 }
 

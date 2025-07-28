@@ -1,0 +1,15 @@
+// CREATION OF USERS
+
+curl -X POST http://localhost:3000/api/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newuser123",
+    "email": "newuser123@example.com",
+    "password": "123456",
+    "name": "Licia",
+    "gender": "female"
+  }'
+
+curl -X POST http://localhost:3000/api/v1/session \
+  -H "Content-Type: application/json" \
+  -d '{"name":"testuser", "password":"123456"}'

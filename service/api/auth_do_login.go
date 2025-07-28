@@ -1,4 +1,3 @@
-// auth_do_login.go
 package api
 
 import (
@@ -15,68 +14,63 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Identifier string `json:"identifier"`
+	Code    int            `json:"code"`
+	Message string         `json:"message"`
+	Data    []UserResponse `json:"data"`
+}
+
+type UserResponse struct {
+	User  models.User `json:"user"`
+	Token string      `json:"token,omitempty"` // user.ID
 }
 
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 解析请求体
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to decode login request")
-		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
+		rt.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	// 校验参数
 	if req.Name == "" || req.Password == "" {
-		rt.baseLogger.Error("missing name or password")
-		http.Error(w, `{"code": 400, "message": "Name and Password are required"}`, http.StatusBadRequest)
-		return
-	}
-
-	// 检查用户是否存在
-	exists, err := rt.db.CheckUserExists(req.Name)
-	if err != nil {
-		rt.baseLogger.WithError(err).Error("database error checking user existence")
-		http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
+		rt.writeErrorResponse(w, http.StatusBadRequest, "Name and password are required")
 		return
 	}
 
 	var user models.User
+	exists, err := rt.db.CheckUserExists(req.Name)
+	if err != nil {
+		rt.writeErrorResponse(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+
 	if exists {
-		// 用户存在，验证密码
-		userID, err := rt.db.GetUserByCredentials(req.Name, req.Password)
+		user, err = rt.db.GetUserByCredentials(req.Name, req.Password)
 		if err != nil {
-			rt.baseLogger.WithError(err).Error("invalid credentials")
-			http.Error(w, `{"code": 401, "message": "Invalid credentials"}`, http.StatusUnauthorized)
-			return
-		}
-		user, err = rt.db.GetUserByID(userID)
-		if err != nil {
-			rt.baseLogger.WithError(err).Error("failed to get user details")
-			http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
+			rt.writeErrorResponse(w, http.StatusUnauthorized, "Invalid credentials")
 			return
 		}
 	} else {
-		// 用户不存在，自动注册
 		user = models.User{
 			Username: req.Name,
 			Name:     req.Name,
 		}
 		user, err = rt.db.CreateUser(user, req.Password)
 		if err != nil {
-			rt.baseLogger.WithError(err).Error("failed to create user")
-			http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
+			rt.writeErrorResponse(w, http.StatusInternalServerError, "Failed to create user")
 			return
 		}
 	}
 
-	// 返回成功响应
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(LoginResponse{
-		Identifier: user.ID,
-	})
+	resp := LoginResponse{
+		Code:    http.StatusOK,
+		Message: "Login successful",
+		Data: []UserResponse{
+			{
+				User:  user,
+				Token: user.ID, // curl 可以放入 Authorization 头中
+			},
+		},
+	}
 
-	rt.baseLogger.Infof("User %s logged in", user.ID)
+	rt.writeJSONResponse(w, http.StatusOK, resp)
 }

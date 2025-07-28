@@ -4,73 +4,83 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"fmt" 
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
-	// "golang.org/x/crypto/bcrypt"
 )
 
 // SearchUsers searches for users based on a query and user ID
 func (db *appdbimpl) SearchUsers(ctx context.Context, userID string, query string) ([]models.User, error) {
 	var users []models.User
 
-	// 排除自己，防止自己出现在搜索结果中
 	rows, err := db.c.QueryContext(ctx, `
-		SELECT id, username, name, email, avatar_url, gender
+		SELECT id, username, name, email, avatar_url, photo, gender
 		FROM users
 		WHERE (username LIKE ? OR name LIKE ? OR email LIKE ?)
 		AND id != ?
 	`, "%"+query+"%", "%"+query+"%", "%"+query+"%", userID)
 	if err != nil {
+		log.Println("SearchUsers error:", err)
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var user models.User
-		if err := rows.Scan(&user.ID, &user.Username, &user.Name, &user.Email, &user.AvatarUrl, &user.Gender); err != nil {
+		var name, email, avatarUrl, photo, gender sql.NullString
+
+		err := rows.Scan(&user.ID, &user.Username, &name, &email, &avatarUrl, &photo, &gender)
+		if err != nil {
+			log.Println("SearchUsers row scan error:", err)
 			return nil, err
 		}
+
+		user.Name = name.String
+		user.Email = email.String
+		user.AvatarUrl = avatarUrl.String
+		user.Photo = photo.String
+		user.Gender = gender.String
+
 		users = append(users, user)
 	}
 
 	return users, nil
 }
 
-// CheckUserExists 检查用户是否存在
-func (db *appdbimpl) CheckUserExists(username string) (bool, error) {
-	var exists bool
-	err := db.c.QueryRow(`
-		SELECT EXISTS (SELECT 1 FROM users WHERE username = ?)
-	`, username).Scan(&exists)
-	if err != nil && err != sql.ErrNoRows {
-		log.Println("CheckUserExists error:", err)
-		return false, err
-	}
-	return exists, nil
-}
-
-// GetUserByCredentials 根据用户名和密码获取用户 ID
-func (db *appdbimpl) GetUserByCredentials(username, password string) (string, error) {
+func (db *appdbimpl) GetUserByCredentials(username string, password string) (models.User, error) {
+	var user models.User
 	var storedPassword string
-	var userID string
+	var name, email, avatarUrl, photo, gender sql.NullString
 
 	err := db.c.QueryRow(`
-		SELECT id, password FROM users WHERE username = ?
-	`, username).Scan(&userID, &storedPassword)
+		SELECT id, username, name, email, password, avatar_url, photo, gender
+		FROM users WHERE username = ?
+	`, username).Scan(
+		&user.ID,
+		&user.Username,
+		&name,
+		&email,
+		&storedPassword,
+		&avatarUrl,
+		&photo,
+		&gender,
+	)
+
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", sql.ErrNoRows
-		}
-		log.Println("GetUserByCredentials error:", err)
-		return "", err
+		log.Println("GetUserByCredentials query error:", err)
+		return models.User{}, err
 	}
 
-	// 校验密码
-	// err = bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(password))
-	if err != nil {
-		log.Println("GetUserByCredentials password mismatch:", err)
-		return "", sql.ErrNoRows
+	if password != storedPassword {
+		log.Println("GetUserByCredentials password mismatch")
+		return models.User{}, fmt.Errorf("invalid credentials")
 	}
 
-	return userID, nil
+	user.Name = name.String
+	user.Email = email.String
+	user.AvatarUrl = avatarUrl.String
+	user.Photo = photo.String
+	user.Gender = gender.String
+
+	return user, nil
 }
