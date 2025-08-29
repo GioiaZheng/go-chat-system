@@ -56,15 +56,18 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 		response = append(response, map[string]interface{}{
 			"id":        user.ID,
 			"username":  user.Username,
+			"email":     user.Email,
+			"gender":    user.Gender,
 			"avatarUrl": user.AvatarUrl,
 		})
 	}
 
-	// 包装为标准格式输出
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(DataResponse{
-		Code:    200,
-		Message: "Search successful",
-		Data:    response,
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"code":    200,
+		"message": "Search successful",
+		"items":   response,
 	})
+
 }

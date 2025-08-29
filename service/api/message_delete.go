@@ -8,7 +8,7 @@ import (
 )
 
 func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	messageID := ps.ByName("messageId")
+	messageID := ps.ByName("id")
 	userID := ctx.UserID
 
 	err := rt.db.DeleteMessage(userID, messageID)
@@ -16,6 +16,9 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps http
 		writeError(w, http.StatusForbidden, "Delete failed: "+err.Error())
 		return
 	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"code":    200,
+		"message": "Message deleted",
+	})
 
-	w.WriteHeader(http.StatusNoContent)
 }

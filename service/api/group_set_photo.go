@@ -12,7 +12,7 @@ import (
 )
 
 func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	groupID := ps.ByName("groupId")
+	groupID := ps.ByName("id")
 
 	err := r.ParseMultipartForm(10 << 20) // 10MB
 	if err != nil {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -18,6 +19,12 @@ const (
 	requestIDKey contextKey = "requestID"
 	loggerKey    contextKey = "logger"
 )
+
+type errorPayload struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Details interface{} `json:"details,omitempty"`
+}
 
 // GetUserIDFromContext extracts the user ID from the context.
 func GetUserIDFromContext(ctx context.Context) string {
@@ -89,4 +96,24 @@ func (rt *_router) wrap(next func(http.ResponseWriter, *http.Request, httprouter
 			Logger:  logger,
 		})
 	}
+}
+func (rt *_router) sendError(w http.ResponseWriter, status int, msg string, details ...interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	var det interface{}
+	switch len(details) {
+	case 0:
+		det = nil
+	case 1:
+		det = details[0]
+	default:
+		det = details
+	}
+
+	_ = json.NewEncoder(w).Encode(errorPayload{
+		Code:    status,
+		Message: msg,
+		Details: det,
+	})
 }

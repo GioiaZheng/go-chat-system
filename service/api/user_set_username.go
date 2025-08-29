@@ -44,11 +44,8 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Username updated successfully",
-		"data": map[string]string{
-			"username": req.Username,
-		},
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+
 }

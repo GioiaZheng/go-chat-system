@@ -9,7 +9,7 @@ import (
 )
 
 func (rt *_router) getUserProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	userID := ps.ByName("userId")
+	userID := ps.ByName("user_id")
 	if userID == "" {
 		http.Error(w, `{"code": 400, "message": "User ID is required"}`, http.StatusBadRequest)
 		return
@@ -25,12 +25,14 @@ func (rt *_router) getUserProfile(w http.ResponseWriter, r *http.Request, ps htt
 		"code":    200,
 		"message": "User profile retrieved successfully",
 		"data": map[string]interface{}{
-			"userId":    profile.ID,
-			"username":  profile.Username,
-			"name":      profile.Name,
-			"email":     profile.Email,
-			"gender":    profile.Gender,
-			"avatarUrl": profile.AvatarUrl, // 注意字段名统一
+			"user": map[string]interface{}{
+				"id":        profile.ID,
+				"username":  profile.Username,
+				"name":      profile.Name,
+				"email":     profile.Email,
+				"gender":    profile.Gender,
+				"avatarUrl": profile.AvatarUrl,
+			},
 		},
 	}
 

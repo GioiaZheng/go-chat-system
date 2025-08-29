@@ -33,7 +33,9 @@ func (rt *_router) getMessageById(w http.ResponseWriter, r *http.Request, ps htt
 	response := map[string]interface{}{
 		"code":    200,
 		"message": "Message fetched successfully",
-		"data":    message,
+		"data": map[string]interface{}{
+			"message": message,
+		},
 	}
 
 	// 返回 JSON 响应

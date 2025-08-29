@@ -1,0 +1,71 @@
+curl -X GET http://localhost:3000/api/v1/liveness
+
+curl -X POST http://localhost:3000/api/v1/session \
+-H "Content-Type: application/json" \
+-d '{"name":"testuser"}'
+
+curl -X POST http://localhost:3000/api/v1/register \
+-H "Content-Type: application/json" \
+-d '{"username":"newuser", "email":"new@example.com", "password":"password123"}'
+
+curl -X GET http://localhost:3000/api/v1/users/info \
+-H "Authorization: Bearer valid_token"
+
+curl -X PUT http://localhost:3000/api/v1/users/set_username \
+-H "Authorization: Bearer valid_token" \
+-H "Content-Type: application/json" \
+-d '{"username":"newname"}'
+
+curl -X GET http://localhost:3000/api/v1/friends \
+-H "Authorization: Bearer valid_token"
+
+curl -X POST http://localhost:3000/api/v1/friends/add \
+-H "Authorization: Bearer valid_token" \
+-H "Content-Type: application/json" \
+-d '{"friendId":"friend123"}'
+
+curl -X POST http://localhost:3000/api/v1/groups \
+-H "Authorization: Bearer valid_token" \
+-H "Content-Type: application/json" \
+-d '{"name":"newgroup", "members":[{"userId":"member1", "role":"member"}]}'
+
+curl -X GET http://localhost:3000/api/v1/groups \
+-H "Authorization: Bearer valid_token"
+
+curl -X POST http://localhost:3000/api/v1/messages \
+-H "Authorization: Bearer valid_token" \
+-H "Content-Type: application/json" \
+-d '{"content":"Hello!", "senderId":"user123", "receiverId":"user456"}'
+
+curl -X GET "http://localhost:3000/api/v1/messages?chat_type=private&target_id=user456" \
+-H "Authorization: Bearer valid_token"
+
+# 成功登录
+curl -X POST http://localhost:3000/api/v1/session \
+-H "Content-Type: application/json" \
+-d '{"name":"existinguser"}'
+
+# 用户不存在
+curl -X POST http://localhost:3000/api/v1/session \
+-H "Content-Type: application/json" \
+-d '{"name":"nonexistent"}'
+
+# 缺少name字段
+curl -X POST http://localhost:3000/api/v1/session \
+-H "Content-Type: application/json" \
+-d '{}'
+
+# 测试成功案例
+curl -X GET "http://localhost:3000/api/v1/users/search?q=john" \
+-H "Authorization: Bearer valid_token"
+
+# 测试中文搜索
+curl -X GET "http://localhost:3000/api/v1/users/search?q=张三" \
+-H "Authorization: Bearer valid_token"
+
+# 测试错误案例 - 未授权
+curl -X GET "http://localhost:3000/api/v1/users/search?q=test"
+
+# 测试错误案例 - 无效查询
+curl -X GET "http://localhost:3000/api/v1/users/search?q=!@#$" \
+-H "Authorization: Bearer valid_token"

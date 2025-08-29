@@ -18,81 +18,66 @@ import (
 func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
-		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
-
-	// 解析 multipart/form-data
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		http.Error(w, `{"code": 400, "message": "Failed to parse form data"}`, http.StatusBadRequest)
+		http.Error(w, `{"code":400,"message":"Failed to parse form data"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 获取文件
-	file, handler, err := r.FormFile("photo")
+	// 规范字段名：upload
+	file, handler, err := r.FormFile("upload")
 	if err != nil {
-		http.Error(w, `{"code": 400, "message": "Photo is required"}`, http.StatusBadRequest)
+		http.Error(w, `{"code":400,"message":"Field 'upload' is required"}`, http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
-	// 校验文件类型和大小
-	allowedExtensions := map[string]bool{
-		".jpg":  true,
-		".jpeg": true,
-		".png":  true,
-		".gif":  true,
+	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true}
+	ext := strings.ToLower(filepath.Ext(handler.Filename))
+	if !allowed[ext] {
+		http.Error(w, `{"code":400,"message":"Unsupported file type. Allowed: jpg,jpeg,png,gif"}`, http.StatusBadRequest)
+		return
 	}
-	fileExt := strings.ToLower(filepath.Ext(handler.Filename))
-	if !allowedExtensions[fileExt] {
-		http.Error(w, `{"code": 400, "message": "Unsupported file type. Allowed types: jpg, jpeg, png, gif"}`, http.StatusBadRequest)
+	if handler.Size > 10*1024*1024 {
+		http.Error(w, `{"code":400,"message":"Photo size exceeds 10MB"}`, http.StatusBadRequest)
 		return
 	}
 
-	if handler.Size > 10485760 {
-		http.Error(w, `{"code": 400, "message": "Photo size exceeds 10MB"}`, http.StatusBadRequest)
+	filename := fmt.Sprintf("%s_%d%s", userID, time.Now().UnixNano(), ext)
+	path := filepath.Join("uploads", "photos", filename)
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		http.Error(w, `{"code":500,"message":"Failed to create directory"}`, http.StatusInternalServerError)
 		return
 	}
-
-	// 生成唯一文件名
-	timestamp := time.Now().UnixNano()
-	filename := fmt.Sprintf("%s_%d%s", userID, timestamp, fileExt)
-	filePath := filepath.Join("uploads", "photos", filename)
-
-	// 创建目录
-	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
-		http.Error(w, `{"code": 500, "message": "Failed to create directory"}`, http.StatusInternalServerError)
-		return
-	}
-
-	// 保存文件
-	outFile, err := os.Create(filePath)
+	out, err := os.Create(path)
 	if err != nil {
-		http.Error(w, `{"code": 500, "message": "Failed to save photo"}`, http.StatusInternalServerError)
+		http.Error(w, `{"code":500,"message":"Failed to save photo"}`, http.StatusInternalServerError)
 		return
 	}
-	defer outFile.Close()
-
-	if _, err := io.Copy(outFile, file); err != nil {
-		http.Error(w, `{"code": 500, "message": "Failed to save photo"}`, http.StatusInternalServerError)
-		return
-	}
-
-	// 更新用户头像路径
-	if err := rt.db.UpdateUserPhoto(userID, "/"+filePath); err != nil {
-		http.Error(w, `{"code": 500, "message": "Failed to update photo in database"}`, http.StatusInternalServerError)
+	defer out.Close()
+	if _, err := io.Copy(out, file); err != nil {
+		http.Error(w, `{"code":500,"message":"Failed to save photo"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// 返回成功响应
-	resp := map[string]interface{}{
-		"code":    200,
-		"message": "Photo updated successfully",
-		"data": map[string]string{
-			"photoUrl": "/" + filePath,
-		},
+	url := "/" + path // 统一用 URL 存储
+	if err := rt.db.UpdateUserPhoto(userID, url); err != nil {
+		http.Error(w, `{"code":500,"message":"Failed to update photo in database"}`, http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"code":    200,
+		"message": "Photo updated successfully",
+		"data": map[string]interface{}{
+			"file": map[string]interface{}{
+				"filename": handler.Filename,
+				"size":     handler.Size,
+				"url":      url,
+			},
+		},
+	})
 }

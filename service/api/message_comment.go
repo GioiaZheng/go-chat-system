@@ -16,7 +16,7 @@ type CommentMessageRequest struct {
 
 // commentMessage 处理 POST /messages/:messageId/comment
 func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	messageID := ps.ByName("messageId")
+	messageID := ps.ByName("id")
 	userID := ctx.UserID
 
 	// 校验 messageId
@@ -58,5 +58,6 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(resp)
 }

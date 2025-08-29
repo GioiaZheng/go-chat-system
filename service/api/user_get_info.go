@@ -25,12 +25,14 @@ func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprou
 		"code":    200,
 		"message": "User info retrieved",
 		"data": map[string]interface{}{
-			"userId":    user.ID,
-			"username":  user.Username,
-			"name":      user.Name,
-			"gender":    user.Gender,
-			"photo":     user.AvatarUrl, // 用 AvatarUrl 作为 photo
-			"email":     user.Email,
+			"user": map[string]interface{}{
+				"id":        user.ID,
+				"username":  user.Username,
+				"name":      user.Name,
+				"email":     user.Email,
+				"gender":    user.Gender,
+				"avatarUrl": user.AvatarUrl,
+			},
 		},
 	}
 
