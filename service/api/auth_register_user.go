@@ -26,7 +26,7 @@ type RegisterResponse struct {
 
 type RegisterUserData struct {
 	User  models.User `json:"user"`
-	Token string      `json:"token,omitempty"` // 实际就是 user.ID
+	Token string      `json:"token,omitempty"` 
 }
 
 func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -50,6 +50,20 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 		Name:     req.Name,
 		Gender:   req.Gender,
 	}
+
+	exists, err := rt.db.CheckUserExists(req.Username)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "check user exists failed")
+		return
+	}
+	if exists {
+		writeJSON(w, http.StatusConflict, map[string]interface{}{
+			"code":    409,
+			"message": "User already exists",
+		})
+		return
+	}
+
 
 	// Call database
 	createdUser, err := rt.db.CreateUser(newUser, req.Password)

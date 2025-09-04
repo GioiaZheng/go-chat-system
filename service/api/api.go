@@ -43,6 +43,16 @@ func New(cfg Config) (*_router, error) {
 	router.RedirectTrailingSlash = true
 	router.RedirectFixedPath = true
 
+	// （可留可去）全局 OPTIONS 兜底
+	router.HandleOPTIONS = false
+	router.GlobalOPTIONS = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Max-Age", "1")
+		w.WriteHeader(http.StatusOK)
+	})
+
 	// Create router instance
 	r := &_router{
 		router:     router,
@@ -59,22 +69,40 @@ func New(cfg Config) (*_router, error) {
 }
 
 // Handler returns the HTTP handler for the router.
+// 关键：用 CORS 中间件包住整个路由
 func (r *_router) Handler() http.Handler {
-	return r.router
+	return withCORS(r.router)
 }
 
-/// validateToken 验证用户的 token（此处 token = user.ID）
+// validateToken 验证用户的 token（此处 token = user.ID）
 func (rt *_router) validateToken(token string) (string, error) {
 	if token == "" {
 		return "", errors.New("invalid token")
 	}
-
-	// Authorization header 是 "Bearer <token>"，直接当作 userID
 	user, err := rt.db.GetUserByID(token)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("failed to validate token")
 		return "", errors.New("invalid token")
 	}
-
 	return user.ID, nil
+}
+
+// ---- CORS middleware ----
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 通用 CORS 头
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Max-Age", "1")
+
+		// 预检请求直接返回
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// 其余交给下游
+		next.ServeHTTP(w, r)
+	})
 }

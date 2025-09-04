@@ -43,3 +43,23 @@ func (db *appdbimpl) StartConversation(ctx context.Context, userID string, membe
 		Name: name,
 	}, nil
 }
+func (db *appdbimpl) GetConversationMembers(conversationID string) ([]string, error) {
+	rows, err := db.c.Query(`
+		SELECT user_id FROM conversation_members WHERE conversation_id = ?`,
+		conversationID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []string
+	for rows.Next() {
+		var uid string
+		if err := rows.Scan(&uid); err != nil {
+			return nil, err
+		}
+		members = append(members, uid)
+	}
+	return members, nil
+}

@@ -1,55 +1,50 @@
 package models
 
-// User structure
+// --- User ---
 type User struct {
 	ID        string `json:"id"`
 	Username  string `json:"username"`
 	Name      string `json:"name,omitempty"`
 	Email     string `json:"email"`
-	Password  string `json:"password,omitempty"`
-	AvatarUrl string `json:"avatarUrl"`
-	Photo     string `json:"photo"`
-	Gender    string `json:"gender"`
+	Password  string `json:"-"`                
+	AvatarUrl string `json:"avatarUrl,omitempty"`
+	Photo     string `json:"-"`
+	Gender    string `json:"gender,omitempty"`
 }
 
-// Friend structure
-type Friend struct {
-	UserID    string `json:"userId"`
-	UserName  string `json:"userName"`
-	AvatarUrl string `json:"avatarUrl"`
-}
-
-// Group structure
+// --- Group ---
 type Group struct {
-	ID        string        `json:"id"`
-	Name      string        `json:"name"`
-	AvatarUrl string        `json:"avatarUrl,omitempty"`
-	CreatedAt string        `json:"createdAt"`
-	Members   []GroupMember `json:"members"`
+	ID            string        `json:"id"`
+	Name          string        `json:"name"`
+	AvatarUrl     string        `json:"avatarUrl,omitempty"`
+	CreatedAt     string        `json:"createdAt,omitempty"`
+	Members       []GroupMember `json:"members,omitempty"`
+	ConversationID string       `json:"conversationId,omitempty"`
 }
 
-// GroupMember structure
+// --- GroupMember ---
 type GroupMember struct {
 	UserID    string `json:"userId"`
-	UserName  string `json:"userName"`
-	Role      string `json:"role"`
-	AvatarUrl string `json:"avatarUrl"`
+	UserName  string `json:"username"`  
+	Role      string `json:"role,omitempty"`
+	AvatarUrl string `json:"avatarUrl,omitempty"`
 }
 
-// Message structure
+// --- Message ---
 type Message struct {
-	ID         string `json:"id"`
-	Content    string `json:"content"`
-	SenderID   string `json:"senderId"`
-	ReceiverID string `json:"receiverId,omitempty"`
-	GroupID    string `json:"groupId,omitempty"`
-	CreatedAt  string `json:"createdAt"`
+	ID             string `json:"id"`
+	Content        string `json:"content"`
+	SenderID       string `json:"senderId"`
+	ReceiverID     string `json:"receiverId,omitempty"`
+	GroupID        string `json:"groupId,omitempty"`
+	ConversationID string `json:"conversationId,omitempty"`
+	CreatedAt      string `json:"createdAt"`
 }
 
-// Conversation structure
+// --- Conversation ---
 type Conversation struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
-	AvatarUrl   string `json:"avatarUrl"`
-	LastMessage string `json:"lastMessage"`
+	AvatarUrl   string `json:"avatarUrl,omitempty"`
+	LastMessage string `json:"lastMessage,omitempty"`
 }

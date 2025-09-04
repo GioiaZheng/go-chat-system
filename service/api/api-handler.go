@@ -2,31 +2,30 @@ package api
 
 import (
 	"net/http"
-
 	"github.com/julienschmidt/httprouter"
 )
 
 func (rt *_router) RegisterRoutes() {
 	basePath := "/api/v1"
 
-	// These don't need the wrap middleware
+	// Public (no auth)
 	rt.router.POST(basePath+"/session", rt.doLogin)
 	rt.router.POST(basePath+"/register", rt.doRegister)
 	rt.router.GET(basePath+"/liveness", rt.liveness)
 	rt.router.OPTIONS(basePath+"/cors", rt.handleCorsPreflight)
 
-	// Routes that need authentication (use wrap middleware)
-	rt.router.POST(basePath+"/conversations", rt.wrap(rt.startConversation))
+	// Auth-required
+	rt.router.POST(basePath+"/conversations", rt.wrap(rt.startConversation)) // ← 用复数
 	rt.router.GET(basePath+"/conversations", rt.wrap(rt.getMyConversations))
 
-	// Users related routes
+	// Users
 	rt.router.PUT(basePath+"/users/set_username", rt.wrap(rt.setMyUserName))
 	rt.router.PUT(basePath+"/users/set_photo", rt.wrap(rt.setMyPhoto))
 	rt.router.GET(basePath+"/users/me", rt.wrap(rt.getUserInfo))
 	rt.router.GET(basePath+"/users/search", rt.wrap(rt.searchUsers))
 	rt.router.GET(basePath+"/users/profile/:user_id", rt.wrap(rt.getUserProfile))
 
-	// Groups related routes
+	// Groups
 	rt.router.POST(basePath+"/groups", rt.wrap(rt.createGroup))
 	rt.router.GET(basePath+"/groups", rt.wrap(rt.getGroupsList))
 	rt.router.GET(basePath+"/groups/:id", rt.wrap(rt.getGroupDetail))
@@ -35,13 +34,13 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.POST(basePath+"/groups/:id/members", rt.wrap(rt.addToGroup))
 	rt.router.DELETE(basePath+"/groups/:id/members", rt.wrap(rt.leaveGroup))
 
-	// Messages related routes
+	// Messages
 	rt.router.GET(basePath+"/messages", rt.wrap(rt.getMessages))
 	rt.router.POST(basePath+"/messages", rt.wrap(rt.sendMessage))
 	rt.router.GET(basePath+"/messages/:id", rt.wrap(rt.getMessageById))
 	rt.router.DELETE(basePath+"/messages/:id", rt.wrap(rt.deleteMessage))
 	rt.router.POST(basePath+"/messages/:id/forward", rt.wrap(rt.forwardMessage))
-	rt.router.GET(basePath+"/messages/:id/comment", rt.wrap(rt.getMessageComments))
+	rt.router.GET(basePath+"/messages/:id/comment", rt.wrap(rt.getMessageComments)) // ← 放在这里
 	rt.router.POST(basePath+"/messages/:id/comment", rt.wrap(rt.commentMessage))
 	rt.router.POST(basePath+"/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
 }

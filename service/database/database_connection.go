@@ -50,11 +50,13 @@ func initializeTables(db *sql.DB) error {
 			sender_id TEXT NOT NULL,
 			receiver_id TEXT,
 			group_id TEXT,
+			conversation_id TEXT,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(sender_id) REFERENCES users(id),
 			FOREIGN KEY(receiver_id) REFERENCES users(id),
 			FOREIGN KEY(group_id) REFERENCES groups(id)
 		);
+
 
 		CREATE TABLE IF NOT EXISTS groups (
 			id TEXT PRIMARY KEY,

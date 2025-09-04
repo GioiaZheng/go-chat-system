@@ -1,58 +1,89 @@
 package api
 
 import (
+	"database/sql"
 	"net/http"
+	"strings"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-// getConversation handles GET /messages
-// 只从查询参数(Query Parameters)获取 chat_type 和 target_id
+// GET /api/v1/messages?chat_type=private|group&target_id=...
 func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
-		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	// 从URL Query取参数
-	query := r.URL.Query()
-	chatType := query.Get("chat_type") // private 或 group
-	targetID := query.Get("target_id") // 目标用户ID 或 群组ID
-
+	q := r.URL.Query()
+	chatType := q.Get("chat_type") // "private" | "group"
+	targetID := q.Get("target_id") // 对方用户ID 或 群ID
 	if chatType == "" || targetID == "" {
-		http.Error(w, `{"code": 400, "message": "chat_type and target_id are required"}`, http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "chat_type and target_id are required")
 		return
 	}
 
-	var messages []models.Message
-	var err error
+	var (
+		msgs []models.Message
+		err  error
+	)
 
-	if chatType == "private" {
-		// 私聊查询
-		messages, err = rt.db.GetPrivateConversation(userID, targetID)
-	} else if chatType == "group" {
-		// 群聊查询
-		messages, err = rt.db.GetGroupConversation(targetID)
-	} else {
-		http.Error(w, `{"code": 400, "message": "Invalid chat_type: must be 'private' or 'group'"}`, http.StatusBadRequest)
+	switch chatType {
+	case "private":
+		// 先按 userID,targetID 查；查不到再反向试一次，避免实现对顺序敏感
+		msgs, err = rt.db.GetPrivateConversation(userID, targetID)
+		if notFoundErr(err) {
+			msgs, err = rt.db.GetPrivateConversation(targetID, userID)
+		}
+	case "group":
+		msgs, err = rt.db.GetGroupConversation(targetID)
+	default:
+		writeError(w, http.StatusBadRequest, "invalid chat_type: must be 'private' or 'group'")
 		return
 	}
 
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to get conversation")
-		http.Error(w, `{"code": 500, "message": "Failed to get conversation"}`, http.StatusInternalServerError)
-		return
+		// “未找到/空结果/扫描到 NULL” → 返回 200 + 空数组
+		if notFoundErr(err) {
+			msgs = []models.Message{}
+		} else {
+			rt.baseLogger.WithError(err).Error("failed to get conversation")
+			writeError(w, http.StatusInternalServerError, "Failed to get conversation")
+			return
+		}
+	}
+
+	// 关键：确保不是 nil，而是空切片，序列化为 []
+	if msgs == nil {
+		msgs = []models.Message{}
 	}
 
 	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Conversation fetched successfully",
 		"data": map[string]interface{}{
-			"messages": messages,
+			"messages": msgs,
 		},
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// 识别“未找到/无记录/扫描到 NULL”类错误
+func notFoundErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == sql.ErrNoRows {
+		return true
+	}
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "not found") ||
+		strings.Contains(s, "no rows") ||
+		strings.Contains(s, "no conversation") ||
+		strings.Contains(s, "record not found") ||
+		strings.Contains(s, "empty result") ||
+		strings.Contains(s, "converting null to string")
 }

@@ -1,6 +1,10 @@
 package database
 
-import "github.com/GioiaZheng/Wasa_proj/service/models"
+import (
+	"database/sql"
+
+	"github.com/GioiaZheng/Wasa_proj/service/models"
+)
 
 func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, error) {
 	rows, err := db.c.Query(`
@@ -16,11 +20,25 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 
 	var messages []models.Message
 	for rows.Next() {
-		var m models.Message
-		if err := rows.Scan(&m.ID, &m.SenderID, &m.GroupID, &m.Content, &m.CreatedAt); err != nil {
+		var (
+			id, senderID, gid, content, createdAt sql.NullString
+		)
+		if err := rows.Scan(&id, &senderID, &gid, &content, &createdAt); err != nil {
 			return nil, err
 		}
-		messages = append(messages, m)
+		if !id.Valid {
+			continue
+		}
+		messages = append(messages, models.Message{
+			ID:        id.String,
+			Content:   content.String,
+			SenderID:  senderID.String,
+			GroupID:   gid.String,    // 为空时为 ""
+			CreatedAt: createdAt.String,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return messages, nil
 }
