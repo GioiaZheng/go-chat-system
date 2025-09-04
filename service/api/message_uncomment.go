@@ -8,14 +8,11 @@ import (
 )
 
 // uncommentMessage handles DELETE /messages/:id/comment
+// It removes the comment associated with the given message.
 func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	messageID := ps.ByName("id")
 	if messageID == "" {
 		http.Error(w, `{"code": 400, "message": "Missing message ID"}`, http.StatusBadRequest)
-		return
-	}
-	if ctx.UserID == "" {
-		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 

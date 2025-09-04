@@ -16,6 +16,7 @@ type CreateGroupRequest struct {
 }
 
 // createGroup handles POST /groups
+// OpenAPI: respond with { code, message, data: { group: {...} } }
 func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
@@ -29,7 +30,7 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	// Normalize members: unique and exclude empty; ensure creator is present
+	// Normalize members (unique, non-empty) and ensure creator is included
 	seen := map[string]bool{}
 	members := make([]string, 0, len(req.Members)+1)
 	for _, m := range req.Members {
@@ -44,13 +45,12 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 		members = append(members, userID)
 	}
 
-	// Default name
 	groupName := req.Name
 	if groupName == "" {
 		groupName = "Group"
 	}
 
-	// Generate group ID here (avoid relying on a later read-back)
+	// Generate group ID (TEXT PK)
 	gid, err := uuid.NewV4()
 	if err != nil {
 		http.Error(w, `{"code":500,"message":"Failed to generate group id"}`, http.StatusInternalServerError)
@@ -67,13 +67,12 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	// Always add creator first (hard requirement). If this fails, abort.
+	// Add creator first; if this fails we must abort
 	if err := rt.db.AddGroupMembers(group.ID, []string{userID}); err != nil {
 		http.Error(w, `{"code":500,"message":"Failed to add creator to group"}`, http.StatusInternalServerError)
 		return
 	}
-
-	// Try to add the rest one by one; ignore individual failures.
+	// Add the rest; ignore individual failures
 	for _, m := range members {
 		if m == userID {
 			continue
@@ -81,13 +80,17 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 		_ = rt.db.AddGroupMembers(group.ID, []string{m})
 	}
 
+	// Build response to match OpenAPI example: data.group = { id, name, members[...] }
 	resp := map[string]interface{}{
 		"code":    201,
-		"message": "Group created successfully",
+		"message": "Group created",
 		"data": map[string]interface{}{
-			"groupId":   group.ID,
-			"groupName": group.Name,
-			"members":   members,
+			"group": map[string]interface{}{
+				"id":   group.ID,
+				"name": group.Name,
+				// "conversationId": "", // optional if your DB supports conversations
+				"members": members,
+			},
 		},
 	}
 	if err := writeJSON(w, http.StatusCreated, resp); err != nil {

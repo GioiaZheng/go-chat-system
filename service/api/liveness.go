@@ -6,12 +6,14 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// liveness is an HTTP handler that checks the API server status.
+// liveness reports that the API is up.
 func (rt *_router) liveness(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte(`{"code":200,"message":"Service is alive"}`)); err != nil {
-		// 记录写入失败（通常不会发生，但满足评分器对返回值检查的要求）
+	resp := map[string]interface{}{
+		"code":    200,
+		"message": "Service is alive",
+	}
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		// Best-effort fallback; at least log the failure
 		rt.baseLogger.WithError(err).Error("failed to write liveness response")
 	}
 }
