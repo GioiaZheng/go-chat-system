@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
@@ -24,9 +23,10 @@ type UserResponse struct {
 	Token string      `json:"token,omitempty"` // user.ID
 }
 
-func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// doLogin handles POST /session
+func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := readJSON(r, &req); err != nil {
 		rt.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
@@ -67,10 +67,12 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter
 		Data: []UserResponse{
 			{
 				User:  user,
-				Token: user.ID, // curl 可以放入 Authorization 头中
+				Token: user.ID, // this token is used as Bearer token
 			},
 		},
 	}
 
-	rt.writeJSONResponse(w, http.StatusOK, resp)
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode login response")
+	}
 }

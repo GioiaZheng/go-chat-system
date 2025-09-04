@@ -1,13 +1,13 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
+// getUserInfo handles GET /users/me
 func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
@@ -36,6 +36,8 @@ func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprou
 		},
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	// Use centralized writeJSON and check for error
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode user info response")
+	}
 }

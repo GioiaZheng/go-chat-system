@@ -1,56 +1,49 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-// Request body 兼容两种写法：{"user_ids": ["u1","u2"]} 或 {"user_id": "u1"}
-type addMembersReq struct {
-	UserIDs []string `json:"user_ids"`
-	UserID  string   `json:"user_id"`
+type AddMemberRequest struct {
+	UserID string `json:"userId"`
 }
 
-// POST /api/v1/groups/:id/members
+// addToGroup handles POST /groups/:id/add
 func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	groupID := ps.ByName("id")
 	if groupID == "" {
-		rt.sendError(w, http.StatusBadRequest, "group id is required")
+		rt.sendError(w, http.StatusBadRequest, "missing group id")
+		return
+	}
+	if ctx.UserID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	var req addMembersReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.sendError(w, http.StatusBadRequest, "invalid JSON body")
+	var req AddMemberRequest
+	if err := readJSON(r, &req); err != nil {
+		rt.sendError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.UserID == "" {
+		rt.sendError(w, http.StatusBadRequest, "userId is required")
 		return
 	}
 
-	// 兼容 user_ids / user_id 两种
-	var userIDs []string
-	if len(req.UserIDs) > 0 {
-		userIDs = req.UserIDs
-	} else if strings.TrimSpace(req.UserID) != "" {
-		userIDs = []string{strings.TrimSpace(req.UserID)}
-	}
-
-	if len(userIDs) == 0 {
-		rt.sendError(w, http.StatusBadRequest, "user_ids or user_id is required")
+	// Use bulk API with a single member for simplicity
+	if err := rt.db.AddGroupMembers(groupID, []string{req.UserID}); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "failed to add member to group")
 		return
 	}
 
-	// 调用数据库批量添加
-	if err := rt.db.AddGroupMembers(groupID, userIDs); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to add members", err.Error())
-		return
-	}
-
-	// 与 api.yaml 的 BaseSuccessResponse 对齐
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	resp := map[string]interface{}{
 		"code":    200,
-		"message": "Members added successfully",
-	})
+		"message": "Member added to group",
+	}
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode add-to-group response")
+	}
 }

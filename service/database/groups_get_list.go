@@ -33,5 +33,11 @@ func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 
 		groups = append(groups, group)
 	}
+
+	// ✅ 必须检查 rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return groups, nil
 }

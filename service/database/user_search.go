@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
-	"fmt" 
+	"fmt"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
@@ -42,6 +42,11 @@ func (db *appdbimpl) SearchUsers(ctx context.Context, userID string, query strin
 		user.Gender = gender.String
 
 		users = append(users, user)
+	}
+
+	// ✅ 必须检查 rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return users, nil

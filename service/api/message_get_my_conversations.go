@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
@@ -16,7 +15,6 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, _ 
 		return
 	}
 
-	// 获取用户的会话列表
 	conversations, err := rt.db.GetMyConversations(userID)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("failed to get my conversations")
@@ -24,8 +22,7 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, _ 
 		return
 	}
 
-	// 构建响应
-	response := map[string]interface{}{
+	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Conversations fetched successfully",
 		"data": map[string]interface{}{
@@ -33,10 +30,8 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, _ 
 		},
 	}
 
-	// 返回 JSON 响应
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	// Use writeJSON and handle error
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode conversations response")
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 }

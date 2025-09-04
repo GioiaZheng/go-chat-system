@@ -1,0 +1,53 @@
+// CREATION OF USERS
+
+sqlite3 /tmp/decaf.db < scripts/init_db.sql
+
+sqlite3 /tmp/decaf.db ".tables"
+
+
+
+curl -X POST http://localhost:3000/api/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newuser123",
+    "email": "newuser123@example.com",
+    "password": "123456",
+    "name": "Licia",
+    "gender": "female"
+  }'
+
+curl -X POST http://localhost:3000/api/v1/session \
+  -H "Content-Type: application/json" \
+  -d '{"name":"testuser", "password":"123456"}'
+
+curl -X PUT http://localhost:3000/api/v1/users/set_photo \
+  -H "Authorization: Bearer 74eb0e7b-72e3-4ed1-852d-aec142fb1be3" \
+  -F "photo=@uploads/photos/avatar1.jpg"
+
+
+curl -X PUT http://localhost:3000/api/v1/users/set_username \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "new_username"}'
+
+curl -X GET http://localhost:3000/api/v1/users/me   
+  -H "Authorization: Bearer 74eb0e7b-72e3-4ed1-852d-aec142fb1be3"
+
+curl -X GET http://localhost:3000/api/v1/users/profile/74eb0e7b-72e3-4ed1-852d-aec142fb1be3   
+  -H "Authorization: Bearer 74eb0e7b-72e3-4ed1-852d-aec142fb1be3"
+
+
+curl -X GET http://localhost:3000/api/v1/users/profile/b60fe5b1-d3fe-4171-8359-61a337e4c05e \
+  -H "Authorization: Bearer 74eb0e7b-72e3-4ed1-852d-aec142fb1be3"
+
+curl -X PUT http://localhost:3000/api/v1/users/set_photo \
+  -H "Authorization: Bearer 74eb0e7b-72e3-4ed1-852d-aec142fb1be3" \
+  -F "photo=@uploads/photos/avatar1.jpg"
+
+curl -X POST http://localhost:3000/api/v1/messages \
+  -H "Authorization: Bearer b6982295-c8a0-48ce-a0ad-32296d7048ea" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "toUserId": "1834762e-0b1b-4951-be50-a1e027d55d15",
+    "content": "Hello, this is testuser!"
+  }'

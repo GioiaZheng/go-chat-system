@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -11,13 +10,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// DataResponse is the standard API response format
-type DataResponse struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
-}
-
+// searchUsers handles GET /users/search?q=...
 func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
@@ -25,7 +18,7 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	// 从查询参数获取搜索关键词
+	// Parse query string
 	queryParams, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		http.Error(w, `{"code": 400, "message": "Invalid query parameters"}`, http.StatusBadRequest)
@@ -38,6 +31,7 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
+	// Pattern deliberately does NOT allow spaces or non-ASCII
 	queryPattern := regexp.MustCompile(`^[a-zA-Z0-9_\-@.]+$`)
 	if !queryPattern.MatchString(query) || len(query) > 255 {
 		http.Error(w, `{"code": 400, "message": "Invalid query"}`, http.StatusBadRequest)
@@ -46,14 +40,14 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 
 	users, err := rt.db.SearchUsers(r.Context(), userID, query)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("Failed to search users")
+		rt.baseLogger.WithError(err).Error("failed to search users")
 		http.Error(w, `{"code": 500, "message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
-	var response []map[string]interface{}
+	items := make([]map[string]interface{}, 0, len(users))
 	for _, user := range users {
-		response = append(response, map[string]interface{}{
+		items = append(items, map[string]interface{}{
 			"id":        user.ID,
 			"username":  user.Username,
 			"email":     user.Email,
@@ -62,12 +56,17 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	// Ensure empty array instead of null
+	if items == nil {
+		items = make([]map[string]interface{}, 0)
+	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Search successful",
-		"items":   response,
-	})
-
+		"items":   items,
+	}
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode user search response")
+	}
 }

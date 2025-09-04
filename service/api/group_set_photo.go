@@ -11,44 +11,69 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// setGroupPhoto handles PUT /groups/:id/set-photo (multipart/form-data)
+// Expected field name: "upload"
 func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	groupID := ps.ByName("id")
-
-	err := r.ParseMultipartForm(10 << 20) // 10MB
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid multipart form")
+	if groupID == "" {
+		http.Error(w, `{"code":400,"message":"Group ID is required"}`, http.StatusBadRequest)
+		return
+	}
+	userID := ctx.UserID
+	if userID == "" {
+		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
-	file, handler, err := r.FormFile("photo")
+	// Parse multipart form
+	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB
+		http.Error(w, `{"code":400,"message":"Invalid multipart form"}`, http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("upload")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Photo file is required")
+		http.Error(w, `{"code":400,"message":"Missing file field 'upload'"}`, http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
-	savePath := filepath.Join("uploads", "group_photos", fmt.Sprintf("%s_%s", groupID, handler.Filename))
+	// Save to local uploads folder
+	if err := os.MkdirAll("uploads", 0o755); err != nil {
+		http.Error(w, `{"code":500,"message":"Failed to prepare upload directory"}`, http.StatusInternalServerError)
+		return
+	}
+	filename := fmt.Sprintf("%s_%s", groupID, header.Filename)
+	dstPath := filepath.Join("uploads", filename)
 
-	dst, err := os.Create(savePath)
+	dst, err := os.Create(dstPath)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to save photo")
+		http.Error(w, `{"code":500,"message":"Failed to save file"}`, http.StatusInternalServerError)
 		return
 	}
 	defer dst.Close()
 
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to write photo")
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, `{"code":500,"message":"Failed to write file"}`, http.StatusInternalServerError)
 		return
 	}
 
-	err = rt.db.SetGroupPhoto(groupID, "/static/group_photos/"+filepath.Base(savePath))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to update group photo")
+	urlPath := "/" + dstPath
+	if err := rt.db.SetGroupPhoto(groupID, urlPath); err != nil {
+		http.Error(w, `{"code":500,"message":"Failed to update group photo"}`, http.StatusInternalServerError)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
-		"message": "Group photo updated successfully",
-	})
+	resp := map[string]interface{}{
+		"code":    200,
+		"message": "Group photo uploaded",
+		"data": map[string]interface{}{
+			"file": map[string]interface{}{
+				"url": urlPath,
+			},
+		},
+	}
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode set group photo response")
+	}
 }

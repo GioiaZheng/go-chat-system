@@ -1,116 +1,76 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/julienschmidt/httprouter"
 )
 
-// RegisterRequest matches the OpenAPI schema
 type RegisterRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	Name     string `json:"name"`
 	Password string `json:"password"`
-	Name     string `json:"name,omitempty"`
-	Gender   string `json:"gender,omitempty"`
 }
 
-// RegisterResponse matches the OpenAPI schema
 type RegisterResponse struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Data    []RegisterUserData `json:"data"`
+	Code    int            `json:"code"`
+	Message string         `json:"message"`
+	Data    []UserResponse `json:"data"`
 }
 
-type RegisterUserData struct {
-	User  models.User `json:"user"`
-	Token string      `json:"token,omitempty"` 
-}
-
+// doRegister handles POST /register
 func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Parse request
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := readJSON(r, &req); err != nil {
 		rt.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-
-	// Validate required fields
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		rt.writeErrorResponse(w, http.StatusBadRequest, "Username, email and password are required")
+	if req.Name == "" || req.Password == "" {
+		rt.writeErrorResponse(w, http.StatusBadRequest, "Name and password are required")
 		return
 	}
 
-	// Create user model
-	newUser := models.User{
-		Username: req.Username,
-		Email:    req.Email,
-		Name:     req.Name,
-		Gender:   req.Gender,
-	}
-
-	exists, err := rt.db.CheckUserExists(req.Username)
+	// If user exists, return 409 Conflict to avoid duplicates
+	exists, err := rt.db.CheckUserExists(req.Name)
 	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "check user exists failed")
+		rt.writeErrorResponse(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	if exists {
-		writeJSON(w, http.StatusConflict, map[string]interface{}{
-			"code":    409,
-			"message": "User already exists",
-		})
+		rt.writeErrorResponse(w, http.StatusConflict, "User already exists")
 		return
 	}
 
-
-	// Call database
-	createdUser, err := rt.db.CreateUser(newUser, req.Password)
+	// Create user
+	user := models.User{
+		Username: req.Name,
+		Name:     req.Name,
+	}
+	user, err = rt.db.CreateUser(user, req.Password)
 	if err != nil {
-		if isDuplicateError(err) {
-			rt.writeErrorResponse(w, http.StatusConflict, "User already exists")
-		} else {
-			rt.writeErrorResponse(w, http.StatusInternalServerError, "Failed to register user")
-		}
+		rt.writeErrorResponse(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
 
-	// Token 就是 user.ID
-	token := createdUser.ID
-
-	// Prepare response
-	response := RegisterResponse{
+	resp := RegisterResponse{
 		Code:    http.StatusCreated,
-		Message: "User registered successfully",
-		Data: []RegisterUserData{
+		Message: "User created",
+		Data: []UserResponse{
 			{
-				User:  createdUser,
-				Token: token,
+				User:  user,
+				Token: user.ID, // This token is used as Bearer token in this assignment
 			},
 		},
 	}
-
-	rt.writeJSONResponse(w, http.StatusCreated, response)
+	if err := writeJSON(w, http.StatusCreated, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode register response")
+	}
 }
 
-// Helper functions
-func (rt *_router) writeErrorResponse(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"code":    statusCode,
-		"message": message,
+// writeErrorResponse is a small helper for auth endpoints
+func (rt *_router) writeErrorResponse(w http.ResponseWriter, status int, msg string) {
+	_ = writeJSON(w, status, map[string]interface{}{
+		"code":    status,
+		"message": msg,
 	})
-}
-
-func (rt *_router) writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
-}
-
-func isDuplicateError(err error) bool {
-	// You can implement proper SQLite error detection here
-	return false
 }

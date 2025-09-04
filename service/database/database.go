@@ -7,7 +7,6 @@ import (
 )
 
 // AppDatabase interface
-// AppDatabase interface
 type AppDatabase interface {
 	Ping() error
 	Close() error

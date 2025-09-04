@@ -7,26 +7,28 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// uncommentMessage handles DELETE /messages/:id/comment
 func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	// 获取消息 ID
 	messageID := ps.ByName("id")
-
 	if messageID == "" {
 		http.Error(w, `{"code": 400, "message": "Missing message ID"}`, http.StatusBadRequest)
 		return
 	}
+	if ctx.UserID == "" {
+		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
 
-	// 调用数据库方法删除评论
-	err := rt.db.UncommentMessage(messageID)
-	if err != nil {
+	if err := rt.db.UncommentMessage(messageID); err != nil {
 		http.Error(w, `{"code": 500, "message": "Failed to uncomment message"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// 返回成功响应
 	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Comment removed successfully",
 	}
-	writeJSON(w, http.StatusOK, resp)
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode uncomment response")
+	}
 }

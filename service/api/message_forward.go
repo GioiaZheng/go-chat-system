@@ -1,58 +1,49 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
-// ForwardMessageRequest 转发请求体
-type ForwardMessageRequest struct {
+type ForwardRequest struct {
 	ToUserID  string `json:"toUserId,omitempty"`
 	ToGroupID string `json:"toGroupId,omitempty"`
 }
 
 // forwardMessage handles POST /messages/:id/forward
 func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	userID := ctx.UserID
-	if userID == "" {
-		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+	msgID := ps.ByName("id")
+	if msgID == "" {
+		rt.sendError(w, http.StatusBadRequest, "missing message id")
+		return
+	}
+	if ctx.UserID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	messageID := ps.ByName("id")
-	if messageID == "" {
-		http.Error(w, `{"code": 400, "message": "Message ID is required"}`, http.StatusBadRequest)
+	var req ForwardRequest
+	if err := readJSON(r, &req); err != nil {
+		rt.sendError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if (req.ToUserID == "" && req.ToGroupID == "") || (req.ToUserID != "" && req.ToGroupID != "") {
+		rt.sendError(w, http.StatusBadRequest, "must provide either toUserId or toGroupId")
 		return
 	}
 
-	var req ForwardMessageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to decode forward request")
-		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
+	if err := rt.db.ForwardMessage(ctx.UserID, msgID, req.ToUserID, req.ToGroupID); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "failed to forward message")
 		return
 	}
 
-	// 确保目标用户或群组存在
-	if req.ToUserID == "" && req.ToGroupID == "" {
-		http.Error(w, `{"code": 400, "message": "Must specify either toUserId or toGroupId"}`, http.StatusBadRequest)
-		return
-	}
-
-	// 调用数据库方法转发消息
-	err := rt.db.ForwardMessage(userID, messageID, req.ToUserID, req.ToGroupID)
-	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to forward message")
-		http.Error(w, `{"code": 500, "message": "Failed to forward message"}`, http.StatusInternalServerError)
-		return
-	}
-
-	// 返回成功响应
-	response := map[string]interface{}{
+	resp := map[string]interface{}{
 		"code":    200,
-		"message": "Message forwarded successfully",
+		"message": "Message forwarded",
 	}
-	writeJSON(w, http.StatusOK, response)
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode forward response")
+	}
 }

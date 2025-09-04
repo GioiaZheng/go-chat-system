@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
@@ -29,8 +28,7 @@ func (rt *_router) getMessageById(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
-	// 构建响应
-	response := map[string]interface{}{
+	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Message fetched successfully",
 		"data": map[string]interface{}{
@@ -38,10 +36,8 @@ func (rt *_router) getMessageById(w http.ResponseWriter, r *http.Request, ps htt
 		},
 	}
 
-	// 返回 JSON 响应
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	// Use centralized writeJSON and check for error
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode message response")
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 }

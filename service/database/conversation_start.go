@@ -12,7 +12,8 @@ func (db *appdbimpl) StartConversation(ctx context.Context, userID string, membe
 	if err != nil {
 		return models.Conversation{}, err
 	}
-	defer tx.Rollback()
+	// ✅ Rollback 返回值忽略并确保调用
+	defer func() { _ = tx.Rollback() }()
 
 	conversationID := uuid.NewString()
 
@@ -43,6 +44,7 @@ func (db *appdbimpl) StartConversation(ctx context.Context, userID string, membe
 		Name: name,
 	}, nil
 }
+
 func (db *appdbimpl) GetConversationMembers(conversationID string) ([]string, error) {
 	rows, err := db.c.Query(`
 		SELECT user_id FROM conversation_members WHERE conversation_id = ?`,
@@ -61,5 +63,11 @@ func (db *appdbimpl) GetConversationMembers(conversationID string) ([]string, er
 		}
 		members = append(members, uid)
 	}
+
+	// ✅ 必须检查 rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return members, nil
 }

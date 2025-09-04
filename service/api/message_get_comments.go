@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
@@ -14,31 +13,34 @@ type getCommentsResponse struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// GET /api/v1/messages/:id/comment
-func (rt *_router) getMessageComments(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+// getMessageComments handles GET /messages/:id/comment
+func (rt *_router) getMessageComments(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	msgID := ps.ByName("id")
 	if msgID == "" {
 		rt.sendError(w, http.StatusBadRequest, "message id is required")
 		return
 	}
 
-	// 先校验消息是否存在
+	// Validate message existence before returning comments
 	if _, err := rt.db.GetMessageByID(msgID); err != nil {
 		rt.sendError(w, http.StatusNotFound, "message not found")
 		return
 	}
 
-	// 占位返回（后续接入真实评论数据）
+	// Placeholder payload (replace with real comments list when DB is ready)
 	payload := map[string]interface{}{
 		"message_id": msgID,
-		"comments":   []interface{}{}, // TODO: 替换为真实的评论数组
+		"comments":   []interface{}{},
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(getCommentsResponse{
+	resp := getCommentsResponse{
 		Code:    200,
 		Message: "ok",
 		Data:    payload,
-	})
+	}
+
+	// Use centralized writeJSON and check for error
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode message comments response")
+	}
 }

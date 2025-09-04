@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"regexp"
 
@@ -13,7 +12,7 @@ type SetUserNameRequest struct {
 	Username string `json:"username"`
 }
 
-// PUT /users/set_username
+// setMyUserName handles PUT /users/set_username
 func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
 	userID := ctx.UserID
 	if userID == "" {
@@ -22,21 +21,21 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 
 	var req SetUserNameRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := readJSON(r, &req); err != nil {
 		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 校验用户名合法性
+	// Username validation (ASCII letters, digits, underscore, hyphen)
 	usernamePattern := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if req.Username == "" || !usernamePattern.MatchString(req.Username) || len(req.Username) > 50 {
 		http.Error(w, `{"code": 400, "message": "Invalid username: must be 1-50 characters long and contain only letters, numbers, underscores, or hyphens"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 数据库更新
+	// Update username
 	if err := rt.db.UpdateUserName(userID, req.Username); err != nil {
-		rt.baseLogger.WithError(err).Error("Failed to update username")
+		rt.baseLogger.WithError(err).Error("failed to update username")
 		http.Error(w, `{"code": 500, "message": "Failed to update username"}`, http.StatusInternalServerError)
 		return
 	}
@@ -45,7 +44,8 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 		"code":    200,
 		"message": "Username updated successfully",
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
 
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode set username response")
+	}
 }

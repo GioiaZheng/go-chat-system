@@ -1,9 +1,9 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
@@ -16,14 +16,18 @@ func (rt *_router) getGroupsList(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	// 从数据库获取群组列表
+	// Fetch groups the user belongs to
 	groups, err := rt.db.GetGroupsList(userID)
 	if err != nil {
 		http.Error(w, `{"code": 500, "message": "Failed to get groups list"}`, http.StatusInternalServerError)
 		return
 	}
+	// Ensure empty slice instead of null
+	if groups == nil {
+		groups = make([]models.Group, 0)
+	}
 
-	// 构建响应
+	// Build response payload
 	resp := map[string]interface{}{
 		"code":    200,
 		"message": "Groups list retrieved successfully",
@@ -32,9 +36,8 @@ func (rt *_router) getGroupsList(w http.ResponseWriter, r *http.Request, _ httpr
 		},
 	}
 
-	// 设置响应头并返回JSON
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, `{"code": 500, "message": "Failed to encode response"}`, http.StatusInternalServerError)
+	// Use centralized writeJSON and handle error
+	if err := writeJSON(w, http.StatusOK, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode groups list response")
 	}
 }

@@ -1,69 +1,76 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
+type SendMessageRequest struct {
+	Content   string `json:"content"`
+	ToUserID  string `json:"toUserId,omitempty"`
+	ToGroupID string `json:"toGroupId,omitempty"`
+}
+
 // sendMessage handles POST /messages
+// It sends a message either to a user (private) or to a group depending on payload.
 func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
-	userID := ctx.UserID
-	if userID == "" {
-		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+	if ctx.UserID == "" {
+		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
-	var req struct {
-		ToUserID  string `json:"toUserId"`
-		ToGroupID string `json:"toGroupId"`
-		Content   string `json:"content"`
-	}
-
-	// 解析请求体
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to decode send request")
-		http.Error(w, `{"code": 400, "message": "Invalid request body"}`, http.StatusBadRequest)
+	var req SendMessageRequest
+	if err := readJSON(r, &req); err != nil {
+		http.Error(w, `{"code":400,"message":"Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
-
-	// 检查消息内容
+	req.Content = strings.TrimSpace(req.Content)
 	if req.Content == "" {
-		http.Error(w, `{"code": 400, "message": "Message content cannot be empty"}`, http.StatusBadRequest)
+		http.Error(w, `{"code":400,"message":"Content is required"}`, http.StatusBadRequest)
+		return
+	}
+	// Exactly one target must be provided
+	if (req.ToUserID == "" && req.ToGroupID == "") || (req.ToUserID != "" && req.ToGroupID != "") {
+		http.Error(w, `{"code":400,"message":"Provide either toUserId or toGroupId"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 构建消息对象
-	message := models.Message{
-		SenderID:   userID,
-		Content:    req.Content,
-		ReceiverID: req.ToUserID,
-		GroupID:    req.ToGroupID,
-	}
-
-	var err error
+	// Dispatch based on target using AppDatabase interface methods
 	if req.ToUserID != "" {
-		err = rt.db.SendPrivateMessage(message)
-	} else if req.ToGroupID != "" {
-		err = rt.db.SendGroupMessage(message)
+		msg := models.Message{
+			SenderID:   ctx.UserID,
+			ReceiverID: req.ToUserID,
+			Content:    req.Content,
+		}
+		// Interface method name: SendPrivateMessage
+		if err := rt.db.SendPrivateMessage(msg); err != nil {
+			rt.baseLogger.WithError(err).Error("failed to send private message")
+			http.Error(w, `{"code":500,"message":"Failed to send message"}`, http.StatusInternalServerError)
+			return
+		}
 	} else {
-		http.Error(w, `{"code": 400, "message": "Must specify either toUserId or toGroupId"}`, http.StatusBadRequest)
-		return
+		msg := models.Message{
+			SenderID: ctx.UserID,
+			GroupID:  req.ToGroupID,
+			Content:  req.Content,
+		}
+		// Interface method name: SendGroupMessage
+		if err := rt.db.SendGroupMessage(msg); err != nil {
+			rt.baseLogger.WithError(err).Error("failed to send group message")
+			http.Error(w, `{"code":500,"message":"Failed to send message"}`, http.StatusInternalServerError)
+			return
+		}
 	}
 
-	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to send message")
-		http.Error(w, `{"code": 500, "message": "Failed to send message"}`, http.StatusInternalServerError)
-		return
-	}
-
-	// 返回成功响应
 	resp := map[string]interface{}{
 		"code":    201,
-		"message": "Message sent successfully",
+		"message": "Message sent",
 	}
-	writeJSON(w, http.StatusCreated, resp)
+	if err := writeJSON(w, http.StatusCreated, resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode send message response")
+	}
 }
