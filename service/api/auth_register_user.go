@@ -2,14 +2,18 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/julienschmidt/httprouter"
 )
 
-// Flexible request that accepts both legacy {"name","password"} and OpenAPI {"username","email","password",...}.
+// Flexible request that accepts both legacy {"name","password"}
+// and OpenAPI {"username","email","password",...}.
 type registerFlexibleReq struct {
 	// Legacy fields
 	Name     string `json:"name,omitempty"`
@@ -22,8 +26,8 @@ type registerFlexibleReq struct {
 
 // OpenAPI-shaped response: data is a single object (not an array)
 type registerResponse struct {
-	Code    int               `json:"code"`
-	Message string            `json:"message"`
+	Code    int                `json:"code"`
+	Message string             `json:"message"`
 	Data    registerDataObject `json:"data"`
 }
 
@@ -86,13 +90,18 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 		return
 	}
 
+	// Pick a random default avatar from local uploads/photos/avatar{1..10}.jpg
+	rand.Seed(time.Now().UnixNano())
+	avatarIndex := rand.Intn(10) + 1 // 1..10
+	avatarURL := fmt.Sprintf("/uploads/photos/avatar%d.jpg", avatarIndex)
+
 	// Build model and create
 	user := models.User{
 		Username:  username,
 		Email:     email,
 		Name:      displayName,
 		Gender:    gender,
-		AvatarUrl: "https://example.com/default-avatar.png",
+		AvatarUrl: avatarURL,
 	}
 	created, err := rt.db.CreateUser(user, password)
 	if err != nil {
