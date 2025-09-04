@@ -1,8 +1,8 @@
 package api
 
 import (
-	"net/http"
 	"github.com/julienschmidt/httprouter"
+	"net/http"
 )
 
 func (rt *_router) RegisterRoutes() {
@@ -15,7 +15,7 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.OPTIONS(basePath+"/cors", rt.handleCorsPreflight)
 
 	// Auth-required
-	rt.router.POST(basePath+"/conversations", rt.wrap(rt.startConversation)) 
+	rt.router.POST(basePath+"/conversations", rt.wrap(rt.startConversation))
 	rt.router.GET(basePath+"/conversations", rt.wrap(rt.getMyConversations))
 
 	// Users

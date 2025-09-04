@@ -126,4 +126,3 @@ func (db *appdbimpl) CheckUserExists(username string) (bool, error) {
 	}
 	return count > 0, nil
 }
-

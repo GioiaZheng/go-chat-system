@@ -33,7 +33,7 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 			ID:        id.String,
 			Content:   content.String,
 			SenderID:  senderID.String,
-			GroupID:   gid.String,    // 为空时为 ""
+			GroupID:   gid.String, // 为空时为 ""
 			CreatedAt: createdAt.String,
 		})
 	}

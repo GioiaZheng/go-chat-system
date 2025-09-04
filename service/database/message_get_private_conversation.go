@@ -31,11 +31,11 @@ func (db *appdbimpl) GetPrivateConversation(userID1, userID2 string) ([]models.M
 			continue
 		}
 		messages = append(messages, models.Message{
-			ID:        id.String,
-			Content:   content.String,
-			SenderID:  senderID.String,
+			ID:         id.String,
+			Content:    content.String,
+			SenderID:   senderID.String,
 			ReceiverID: receiverID.String, // 为空时为 ""，符合你的 json omitempty
-			CreatedAt: createdAt.String,
+			CreatedAt:  createdAt.String,
 		})
 	}
 	if err := rows.Err(); err != nil {

@@ -3,8 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
-	"log"
 	"fmt"
+	"log"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )

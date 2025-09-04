@@ -6,7 +6,7 @@ type User struct {
 	Username  string `json:"username"`
 	Name      string `json:"name,omitempty"`
 	Email     string `json:"email"`
-	Password  string `json:"-"`                
+	Password  string `json:"-"`
 	AvatarUrl string `json:"avatarUrl,omitempty"`
 	Photo     string `json:"-"`
 	Gender    string `json:"gender,omitempty"`
@@ -14,18 +14,18 @@ type User struct {
 
 // --- Group ---
 type Group struct {
-	ID            string        `json:"id"`
-	Name          string        `json:"name"`
-	AvatarUrl     string        `json:"avatarUrl,omitempty"`
-	CreatedAt     string        `json:"createdAt,omitempty"`
-	Members       []GroupMember `json:"members,omitempty"`
-	ConversationID string       `json:"conversationId,omitempty"`
+	ID             string        `json:"id"`
+	Name           string        `json:"name"`
+	AvatarUrl      string        `json:"avatarUrl,omitempty"`
+	CreatedAt      string        `json:"createdAt,omitempty"`
+	Members        []GroupMember `json:"members,omitempty"`
+	ConversationID string        `json:"conversationId,omitempty"`
 }
 
 // --- GroupMember ---
 type GroupMember struct {
 	UserID    string `json:"userId"`
-	UserName  string `json:"username"`  
+	UserName  string `json:"username"`
 	Role      string `json:"role,omitempty"`
 	AvatarUrl string `json:"avatarUrl,omitempty"`
 }

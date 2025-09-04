@@ -6,6 +6,7 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/gofrs/uuid"
 )
+
 func (db *appdbimpl) CreateUser(user models.User, password string) (models.User, error) {
 	// 生成 UUID
 	userID, err := uuid.NewV4()

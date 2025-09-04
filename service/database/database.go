@@ -54,5 +54,4 @@ type AppDatabase interface {
 	SearchUsers(ctx context.Context, userID string, query string) ([]models.User, error)
 	StartConversation(ctx context.Context, userID string, memberIDs []string, name string) (models.Conversation, error)
 	GetConversationMembers(conversationID string) ([]string, error)
-
 }
