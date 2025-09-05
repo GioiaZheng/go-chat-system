@@ -80,8 +80,8 @@ yarn run dev
 ## Health Checks
 Public endpoints (no auth required):
 ```bash
-curl -sS http://localhost:3000/liveness
-curl -sS http://localhost:3000/api/v1/liveness
+curl -sS "${BASE}/liveness"
+curl -sS "${BASE}${PFX}/liveness"
 ```
 
 ---

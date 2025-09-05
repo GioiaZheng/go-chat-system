@@ -110,3 +110,5 @@ desktop.ini
 # Windows
 Thumbs.db
 ehthumbs.db
+cmd/webapi/webapi
+webapi

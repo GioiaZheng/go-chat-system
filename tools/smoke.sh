@@ -1,60 +1,67 @@
 #!/usr/bin/env bash
-# Purpose: quick smoke test for OpenAPI routes.
-# Notes:
-# - We do NOT 'set -e' so that even if one request fails, the script continues.
-# - A status code of 000 means the HTTP request failed (connection refused, etc).
+# Unauthenticated smoke test (no hardcoded absolute URLs).
+# Configure either:
+#   BASE="http://<host>:<port>"  and optionally PFX (default: /api/v1)
+# or:
+#   SCHEME=http|https  HOST=<host>  PORT=<port>  and optionally PFX
+#
+# Example:
+#   BASE="http://<host>:<port>" ./tools/smoke.sh
+#   SCHEME=http HOST=<host> PORT=<port> ./tools/smoke.sh
 
-set -u
+set -euo pipefail
 
-BASE="${BASE:-http://localhost:3000}"   # e.g., http://localhost:3000
-PFX="${PFX:-/api/v1}"                   # e.g., /api/v1
+BASE="${BASE:-}"
+PFX="${PFX:-/api/v1}"
+
+if [[ -z "$BASE" ]]; then
+  if [[ -n "${SCHEME:-}" && -n "${HOST:-}" && -n "${PORT:-}" ]]; then
+    BASE="${SCHEME}://${HOST}:${PORT}"
+  else
+    echo "ERROR: Set BASE or SCHEME/HOST/PORT (no hardcoded defaults in this script)." >&2
+    exit 2
+  fi
+fi
 
 probe() {
-  local method="$1" path="$2" data="${3:-}"
+  local method="$1" path="$2"
   local code
-  if [[ -n "${data}" ]]; then
-    code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" \
-      -H "Content-Type: application/json" \
-      "${BASE}${PFX}${path}" -d "$data" || echo "000")
-  else
-    code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" \
-      "${BASE}${PFX}${path}" || echo "000")
-  fi
-  printf "%-6s %-38s -> %s\n" "$method" "${PFX}${path}" "$code"
+  code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "${BASE}${path}")
+  printf "%-6s %-36s -> %s\n" "$method" "${path}" "$code"
 }
 
 echo "Public:"
-probe GET  /liveness
-echo
+probe GET  "${PFX}/liveness"
 
+echo
 echo "Protected (expect 401 without token):"
-probe POST /conversations '{"name":"smoke","memberIds":[]}'
-probe GET  /conversations
-probe PUT  /users/set_username '{"username":"alice"}'
-probe PUT  /users/set_photo '{"avatarUrl":"x"}'
-probe GET  /users/me
-probe GET  "/users/search?q=a"
-probe GET  /users/profile/USER_ID
-probe POST /groups '{"name":"g"}'
-probe GET  /groups
-probe GET  /groups/GROUP_ID
-probe PUT  /groups/GROUP_ID/name '{"name":"g2"}'
-probe PUT  /groups/GROUP_ID/photo '{"avatarUrl":"x"}'
-probe POST /groups/GROUP_ID/members '{"userIds":["u"]}'
-probe DELETE /groups/GROUP_ID/members
-probe GET  "/messages?chat_type=private&target_id=U"
-probe POST /messages '{"chat_type":"private","target_id":"U","content":"hi"}'
-probe GET  /messages/MSG_ID
-probe DELETE /messages/MSG_ID
-probe POST /messages/MSG_ID/forward '{"target_type":"group","target_id":"G"}'
-probe GET  /messages/MSG_ID/comment
-probe POST /messages/MSG_ID/comment '{"content":"nice"}'
-probe POST /messages/MSG_ID/uncomment
+probe POST "${PFX}/conversations"
+probe GET  "${PFX}/conversations"
+probe PUT  "${PFX}/users/set_username"
+probe PUT  "${PFX}/users/set_photo"
+probe GET  "${PFX}/users/me"
+probe GET  "${PFX}/users/search?q=a"
+probe GET  "${PFX}/users/profile/USER_ID"
+probe POST "${PFX}/groups"
+probe GET  "${PFX}/groups"
+probe GET  "${PFX}/groups/GROUP_ID"
+probe PUT  "${PFX}/groups/GROUP_ID/name"
+probe PUT  "${PFX}/groups/GROUP_ID/photo"
+probe POST "${PFX}/groups/GROUP_ID/members"
+probe DELETE "${PFX}/groups/GROUP_ID/members"
+probe GET  "${PFX}/messages?chat_type=private&target_id=U"
+probe POST "${PFX}/messages"
+probe GET  "${PFX}/messages/MSG_ID"
+probe DELETE "${PFX}/messages/MSG_ID"
+probe POST "${PFX}/messages/MSG_ID/forward"
+probe GET  "${PFX}/messages/MSG_ID/comment"
+probe POST "${PFX}/messages/MSG_ID/comment"
+probe POST "${PFX}/messages/MSG_ID/uncomment"
 
 echo
 echo "Compat (should exist, may return 401):"
-probe GET "/messages-group?target_id=G"
-probe GET "/messages-private?target_id=U"
+probe GET  "${PFX}/messages-group?target_id=G"
+probe GET  "${PFX}/messages-private?target_id=U"
 
 echo
 echo "Hint: '000' means connection failed. Make sure the server is running:"
