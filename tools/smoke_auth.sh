@@ -1,26 +1,31 @@
+cat > tools/smoke_auth.sh <<'EOF'
 #!/usr/bin/env bash
-# Authenticated smoke test:
-# - Try register (best-effort)
-# - Login to obtain a Bearer token
-# - Call a subset of protected endpoints with the token
+# Authenticated smoke test (no hardcoded absolute URLs).
+# Configure either:
+#   BASE="http://<host>:<port>" and optionally PFX (default: /api/v1)
+# or:
+#   SCHEME=http|https HOST=<host> PORT=<port> and optionally PFX
 #
-# Your backend expects login JSON to use: {"name":"...","password":"..."}  (NOT "username").
-# The login response contains token at: data[0].token
-#
-# Env:
-#   BASE=http://localhost:3000   (default)
-#   PFX=/api/v1                  (default)
-#   NAME=alice                   (default)   # <-- note: NAME
-#   PASSWORD=passw0rd            (default)
+# Login expects JSON: {"name":"...", "password":"..."}
+# Token is extracted from: data[0].token
 
 set -euo pipefail
 
-BASE="${BASE:-http://localhost:3000}"
+BASE="${BASE:-}"
 PFX="${PFX:-/api/v1}"
-NAME="${NAME:-alice}"             # <-- your LoginRequest uses "name"
+NAME="${NAME:-alice}"
 PASSWORD="${PASSWORD:-passw0rd}"
 
-# Print command to STDERR, run command and keep STDOUT clean for capture.
+if [[ -z "$BASE" ]]; then
+  if [[ -n "${SCHEME:-}" && -n "${HOST:-}" && -n "${PORT:-}" ]]; then
+    BASE="${SCHEME}://${HOST}:${PORT}"
+  else
+    echo "ERROR: Set BASE or SCHEME/HOST/PORT (no hardcoded defaults in this script)." >&2
+    exit 2
+  fi
+fi
+
+# Print command to STDERR, keep STDOUT clean for captures
 run() {
   >&2 printf '+ '
   >&2 printf '%q ' "$@"
@@ -28,9 +33,6 @@ run() {
   "$@"
 }
 
-# ---- 1) Register (best-effort) ----
-# If your register expects {"name": "...", "password": "..."} it will work.
-# If it expects extra fields, add them here.
 echo "== Register (best-effort) =="
 code=$(run curl -s -o /dev/null -w "%{http_code}" \
   -X POST "${BASE}${PFX}/register" \
@@ -45,7 +47,6 @@ LOGIN_JSON=$(run curl -sS \
   -H "Content-Type: application/json" \
   -d "{\"name\":\"${NAME}\",\"password\":\"${PASSWORD}\"}")
 
-# Extract token at data[0].token; jq is preferred; grep/sed fallback if jq is missing.
 if command -v jq >/dev/null 2>&1; then
   TOKEN="$(printf '%s' "$LOGIN_JSON" | jq -r '.data[0].token // empty')"
 else
@@ -71,24 +72,27 @@ probe() {
   if [[ -n "$data" ]]; then
     code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" \
       "${AUTH[@]}" -H "Content-Type: application/json" \
-      "${BASE}${PFX}${path}" -d "$data")
+      "${BASE}${path}" -d "$data")
   else
     code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" \
-      "${AUTH[@]}" "${BASE}${PFX}${path}")
+      "${AUTH[@]}" "${BASE}${path}")
   fi
-  printf "%-6s %-36s -> %s\n" "$method" "${PFX}${path}" "$code"
+  printf "%-6s %-36s -> %s\n" "$method" "${path}" "$code"
 }
 
 echo
 echo "== Protected endpoints with token (expect 200/201) =="
-probe GET  /users/me
-probe GET  "/users/search?q=a"
-probe POST /conversations "{\"name\":\"test\",\"memberIds\":[\"${NAME}\"]}"
-probe GET  /conversations
-probe POST /groups "{\"name\":\"demo-group\"}"
-probe GET  /groups
-probe GET  "/messages?chat_type=private&target_id=${NAME}"
-probe POST /messages "{\"chat_type\":\"private\",\"target_id\":\"${TOKEN}\",\"content\":\"hi\"}"
+probe GET  "${PFX}/users/me"
+probe GET  "${PFX}/users/search?q=a"
+probe POST "${PFX}/conversations" "{\"name\":\"test\",\"memberIds\":[\"${NAME}\"]}"
+probe GET  "${PFX}/conversations"
+probe POST "${PFX}/groups" "{\"name\":\"demo-group\"}"
+probe GET  "${PFX}/groups"
+probe GET  "${PFX}/messages?chat_type=private&target_id=${NAME}"
+probe POST "${PFX}/messages" "{\"chat_type\":\"private\",\"target_id\":\"${TOKEN}\",\"content\":\"hi\"}"
 
 echo
 echo "Done."
+EOF
+
+chmod +x tools/smoke_auth.sh
