@@ -1,4 +1,3 @@
-cat > tools/smoke.sh <<'EOF'
 #!/usr/bin/env bash
 # Unauthenticated smoke test (no hardcoded absolute URLs).
 # Configure either:
@@ -7,8 +6,8 @@ cat > tools/smoke.sh <<'EOF'
 #   SCHEME=http|https  HOST=<host>  PORT=<port>  and optionally PFX
 #
 # Example:
-#   BASE="http://localhost:3000" ./tools/smoke.sh
-#   SCHEME=http HOST=localhost PORT=3000 ./tools/smoke.sh
+#   BASE="http://<host>:<port>" ./tools/smoke.sh
+#   SCHEME=http HOST=<host> PORT=<port> ./tools/smoke.sh
 
 set -euo pipefail
 
@@ -61,12 +60,9 @@ probe POST "${PFX}/messages/MSG_ID/uncomment"
 
 echo
 echo "Compat (should exist, may return 401):"
-probe GET  "${PFX}-group?target_id=G"
-probe GET  "${PFX}-private?target_id=U"
+probe GET  "${PFX}/messages-group?target_id=G"
+probe GET  "${PFX}/messages-private?target_id=U"
 
 echo
 echo "Hint: '000' means connection failed. Make sure the server is running:"
 echo "  go run ./cmd/webapi"
-EOF
-
-chmod +x tools/smoke.sh
