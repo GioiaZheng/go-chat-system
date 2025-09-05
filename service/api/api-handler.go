@@ -1,20 +1,24 @@
 package api
 
 import (
-	"github.com/julienschmidt/httprouter"
 	"net/http"
+
+	"github.com/julienschmidt/httprouter"
 )
 
+// RegisterRoutes wires all HTTP endpoints to handlers.
+// Make sure each path+method is registered exactly once.
 func (rt *_router) RegisterRoutes() {
 	basePath := "/api/v1"
 
-	// Public (no auth)
+	// ----- Public (no auth) -----
 	rt.router.POST(basePath+"/session", rt.doLogin)
 	rt.router.POST(basePath+"/register", rt.doRegister)
 	rt.router.GET(basePath+"/liveness", rt.liveness)
 	rt.router.OPTIONS(basePath+"/cors", rt.handleCorsPreflight)
 
-	// Auth-required
+	// ----- Auth-required -----
+	// Conversations
 	rt.router.POST(basePath+"/conversations", rt.wrap(rt.startConversation))
 	rt.router.GET(basePath+"/conversations", rt.wrap(rt.getMyConversations))
 
@@ -30,7 +34,12 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.GET(basePath+"/groups", rt.wrap(rt.getGroupsList))
 	rt.router.GET(basePath+"/groups/:id", rt.wrap(rt.getGroupDetail))
 	rt.router.PUT(basePath+"/groups/:id/name", rt.wrap(rt.setGroupName))
+
+	// Register the group photo route ONCE
 	rt.router.PUT(basePath+"/groups/:id/photo", rt.wrap(rt.setGroupPhoto))
+	// Optional alias for compatibility (different path, same handler)
+	rt.router.PUT(basePath+"/groups/:id/set_photo", rt.wrap(rt.setGroupPhoto))
+
 	rt.router.POST(basePath+"/groups/:id/members", rt.wrap(rt.addToGroup))
 	rt.router.DELETE(basePath+"/groups/:id/members", rt.wrap(rt.leaveGroup))
 
@@ -40,11 +49,12 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.GET(basePath+"/messages/:id", rt.wrap(rt.getMessageById))
 	rt.router.DELETE(basePath+"/messages/:id", rt.wrap(rt.deleteMessage))
 	rt.router.POST(basePath+"/messages/:id/forward", rt.wrap(rt.forwardMessage))
-	rt.router.GET(basePath+"/messages/:id/comment", rt.wrap(rt.getMessageComments)) // ← 放在这里
+	rt.router.GET(basePath+"/messages/:id/comment", rt.wrap(rt.getMessageComments))
 	rt.router.POST(basePath+"/messages/:id/comment", rt.wrap(rt.commentMessage))
 	rt.router.POST(basePath+"/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
 }
 
+// CORS preflight responder for manual OPTIONS checks.
 func (rt *_router) handleCorsPreflight(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")

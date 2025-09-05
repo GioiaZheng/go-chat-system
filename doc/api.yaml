@@ -86,7 +86,7 @@ components:
             $ref: '#/components/schemas/Error'
   schemas:
     AuthEnvelope:
-      description: Wrapper for authentication result (e.g., JWT token and basic user info).
+      description: Authentication response envelope containing user data and JWT token
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -160,7 +160,7 @@ components:
           - unspecified
           default: unspecified
     UserEnvelope:
-      description: Single user envelope used in responses.
+      description: Response envelope containing a single user resource
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -176,7 +176,7 @@ components:
                 user:
                   $ref: '#/components/schemas/User'
     UserEnvelopeCollection:
-      description: Envelope containing a list of users and optional paging info.
+      description: Response envelope containing a collection of user resources
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -437,7 +437,7 @@ components:
     
     BaseSuccessResponse:
       type: object
-      description:  Base structure for all success responses
+      description: Base structure for all successful API responses containing status code and message
       required:
       - code
       - message
@@ -460,7 +460,7 @@ components:
           example: "Operation succeeded"  
     RegisterUserRequest:
       type: object
-      description: User registration request model for creating new user accounts
+      description: User registration request containing account creation details
       required:
       - username
       - email
@@ -611,7 +611,7 @@ components:
             maxLength: 64
     MessageCollection:
       type: object
-      description: Paginated collection of messages with metadata
+      description: Paginated collection of messages with metadata including messages array and pagination information
       required:
         - messages
         - pagination
@@ -639,7 +639,7 @@ components:
 
     UpdateGroupNameRequest:
       type: object
-      description: Request model for updating a group's name
+      description: Request payload for adding new members to an existing group
       required:
       - name
       properties:
@@ -683,6 +683,7 @@ paths:
           description: CORS allowed
           headers:
             Access-Control-Allow-Origin:
+              description: Allowed origin for CORS requests
               schema:
                 type: string
                 example: '*'
@@ -690,6 +691,7 @@ paths:
                 minLength: 1
                 maxLength: 255
             Access-Control-Allow-Methods:
+              description: Allowed HTTP methods for CORS requests
               schema:
                 type: string
                 example: GET,POST,PUT,DELETE,OPTIONS
@@ -697,6 +699,7 @@ paths:
                 minLength: 1
                 maxLength: 255
             Access-Control-Allow-Headers:
+              description: Allowed HTTP headers for CORS requests
               schema:
                 type: string
                 example: Content-Type, Authorization
@@ -704,6 +707,7 @@ paths:
                 minLength: 1
                 maxLength: 255
             Access-Control-Max-Age:
+              description: Maximum age (in seconds) for CORS preflight response caching
               schema:
                 type: integer
                 example: 1
