@@ -1,4 +1,3 @@
-cat > tools/smoke_auth.sh <<'EOF'
 #!/usr/bin/env bash
 # Authenticated smoke test (no hardcoded absolute URLs).
 # Configure either:
@@ -86,6 +85,3 @@ probe POST "${PFX}/messages" "{\"chat_type\":\"private\",\"target_id\":\"${TOKEN
 
 echo
 echo "Done."
-EOF
-
-chmod +x tools/smoke_auth.sh
