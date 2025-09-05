@@ -1,114 +1,22 @@
-# Go binary and object files
+cat > .gitignore <<'EOF'
+# --- Build outputs ---
+webapi
+cmd/webapi/webapi
 *.exe
-*.dll
-*.so
-*.dylib
-*.bin
-*.o
-*.a
-*.lo
-*.la
-
-# Go build and cache directories
-/build/
-/bin/
-/dist/
-/cache/
-/out/
-*.test
-
-# Go modules and dependencies
-/go.sum
-/go.mod
-/vendor/
-*.mod
-*.sum
-
-# Temporary and local configuration files
-*.tmp
-*.bak
-*.swp
-*.swo
-*.swn
-*.log
-*.trace
 *.out
-*.err
-*.pid
-*.lock
-*.backup
 
-# Environment and secrets
-.env
-.env.*
-*.env
-*.secret
-*.local
-*.private
-*.key
-*.crt
-*.pem
-config.yaml
-config.json
-secrets.json
-
-# Database and data files
+# --- Local DB / runtime files ---
 *.db
 *.sqlite
 *.sqlite3
-*.db-journal
-*.ldb
 
-# Web UI build
-/webui/dist/
-/webui/node_modules/
-/webui/.env
-/webui/.env.local
-/webui/.env.production
-/webui/.env.development
-
-# Node.js logs
-node_modules/
-npm-debug.log*
-yarn-error.log*
-
-# IDE settings
-.vscode/
-/.idea/
-/.history/
-*.code-workspace
-*.iml
-
-# OS specific files
+# --- Logs / temp ---
+*.log
+tmp/
 .DS_Store
-Thumbs.db
-desktop.ini
-.AppleDouble
-.LSOverride
 
-# Git specific
-!.gitignore
-
-# Test coverage and profiling files
-*.cover
-*.cov
-*.prof
-*.coverage
-*.pprof
-*.trace
-*.testresult
-
-# Temporary build files
-*.temp
-*.tmp
-*.bak
-*.swp
-*.swo
-*.swn
-
-
-# Windows
-Thumbs.db
-ehthumbs.db
-cmd/webapi/webapi
-webapi
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.iml
+EOF

@@ -5,11 +5,6 @@ cat > tools/smoke_auth.sh <<'EOF'
 #   BASE="http://<host>:<port>" and optionally PFX (default: /api/v1)
 # or:
 #   SCHEME=http|https HOST=<host> PORT=<port> and optionally PFX
-# Authenticated smoke test (no hardcoded absolute URLs).
-# Configure either:
-#   BASE="http://<host>:<port>" and optionally PFX (default: /api/v1)
-# or:
-#   SCHEME=http|https HOST=<host> PORT=<port> and optionally PFX
 #
 # Login expects: {"name":"...", "password":"..."}
 # Token extracted from: data[0].token
@@ -17,9 +12,7 @@ cat > tools/smoke_auth.sh <<'EOF'
 set -euo pipefail
 
 BASE="${BASE:-}"
-BASE="${BASE:-}"
 PFX="${PFX:-/api/v1}"
-NAME="${NAME:-alice}"
 NAME="${NAME:-alice}"
 PASSWORD="${PASSWORD:-passw0rd}"
 
@@ -73,13 +66,10 @@ probe() {
     code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" \
       "${AUTH[@]}" -H "Content-Type: application/json" \
       "${BASE}${path}" -d "$data")
-      "${BASE}${path}" -d "$data")
   else
     code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" \
       "${AUTH[@]}" "${BASE}${path}")
-      "${AUTH[@]}" "${BASE}${path}")
   fi
-  printf "%-6s %-36s -> %s\n" "$method" "${path}" "$code"
   printf "%-6s %-36s -> %s\n" "$method" "${path}" "$code"
 }
 
@@ -93,17 +83,8 @@ probe POST "${PFX}/groups" "{\"name\":\"demo-group\"}"
 probe GET  "${PFX}/groups"
 probe GET  "${PFX}/messages?chat_type=private&target_id=${NAME}"
 probe POST "${PFX}/messages" "{\"chat_type\":\"private\",\"target_id\":\"${TOKEN}\",\"content\":\"hi\"}"
-probe GET  "${PFX}/users/me"
-probe GET  "${PFX}/users/search?q=a"
-probe POST "${PFX}/conversations" "{\"name\":\"test\",\"memberIds\":[\"${NAME}\"]}"
-probe GET  "${PFX}/conversations"
-probe POST "${PFX}/groups" "{\"name\":\"demo-group\"}"
-probe GET  "${PFX}/groups"
-probe GET  "${PFX}/messages?chat_type=private&target_id=${NAME}"
-probe POST "${PFX}/messages" "{\"chat_type\":\"private\",\"target_id\":\"${TOKEN}\",\"content\":\"hi\"}"
 
 echo
 echo "Done."
 EOF
-
 chmod +x tools/smoke_auth.sh
