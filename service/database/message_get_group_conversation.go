@@ -1,14 +1,12 @@
 package database
 
-import (
-	"database/sql"
+import "github.com/GioiaZheng/Wasa_proj/service/models"
 
-	"github.com/GioiaZheng/Wasa_proj/service/models"
-)
-
+// GetGroupConversation returns the ordered messages of a group.
+// FIX: check rows.Err() after iteration.
 func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, error) {
 	rows, err := db.c.Query(`
-		SELECT id, sender_id, group_id, content, created_at
+		SELECT id, content, sender_id, group_id, conversation_id, created_at
 		FROM messages
 		WHERE group_id = ?
 		ORDER BY created_at ASC
@@ -18,27 +16,18 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 	}
 	defer rows.Close()
 
-	var messages []models.Message
+	var out []models.Message
 	for rows.Next() {
-		var (
-			id, senderID, gid, content, createdAt sql.NullString
-		)
-		if err := rows.Scan(&id, &senderID, &gid, &content, &createdAt); err != nil {
+		var m models.Message
+		if err := rows.Scan(&m.ID, &m.Content, &m.SenderID, &m.GroupID, &m.ConversationID, &m.CreatedAt); err != nil {
 			return nil, err
 		}
-		if !id.Valid {
-			continue
-		}
-		messages = append(messages, models.Message{
-			ID:        id.String,
-			Content:   content.String,
-			SenderID:  senderID.String,
-			GroupID:   gid.String, // 为空时为 ""
-			CreatedAt: createdAt.String,
-		})
+		out = append(out, m)
 	}
+
+	// FIX: must check rows.Err() after iteration
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return messages, nil
+	return out, nil
 }

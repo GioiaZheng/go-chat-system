@@ -4,11 +4,12 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
 
-// GetGroup retrieves a group by its ID
+// GetGroup retrieves a group by its ID and includes its members.
+// FIX: after rows iteration, always check rows.Err() to catch latent driver errors.
 func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 	var group models.Group
 
-	// 获取群组基本信息
+	// Fetch group basics
 	err := db.c.QueryRow(`
 		SELECT id, name, avatar_url, created_at
 		FROM groups
@@ -18,7 +19,7 @@ func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 		return models.Group{}, err
 	}
 
-	// 获取群组成员信息
+	// Fetch members
 	rows, err := db.c.Query(`
 		SELECT u.id, u.username, u.avatar_url, gm.role
 		FROM group_members gm
@@ -37,6 +38,11 @@ func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 			return models.Group{}, err
 		}
 		group.Members = append(group.Members, member)
+	}
+
+	// FIX: must check rows.Err() after iteration to catch any deferred scan/driver errors.
+	if err := rows.Err(); err != nil {
+		return models.Group{}, err
 	}
 
 	return group, nil
