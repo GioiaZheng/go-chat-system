@@ -1,4 +1,3 @@
-cat > tools/smoke.sh <<'EOF'
 #!/usr/bin/env bash
 # Unauthenticated smoke test (no hardcoded absolute URLs).
 # Configure either:
@@ -67,5 +66,3 @@ probe GET  "${PFX}/messages-private?target_id=U"
 echo
 echo "Hint: '000' means connection failed. Make sure the server is running:"
 echo "  go run ./cmd/webapi"
-EOF
-chmod +x tools/smoke.sh
