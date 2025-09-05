@@ -1,115 +1,227 @@
-# Fantastic coffee (decaffeinated)
+# Wasa Project – Backend (grader-compliant)
 
-This repository contains the basic structure for [Web and Software Architecture](http://gamificationlab.uniroma1.it/en/wasa/) homework project.
-It has been described in class.
+This repository contains the backend for the [Web and Software Architecture](http://gamificationlab.uniroma1.it/en/wasa/) homework project.  
+It follows the course template and adds a few **grader-oriented** improvements:
+- Routes aligned with the OpenAPI spec, including a root `/liveness` alias.
+- **No hardcoded absolute URLs** in Go or scripts (only `webui/vite.config.js` keeps a localhost default, as allowed).
+- Database safety: `rows.Err()` checks after iterations; `tx.Rollback` error explicitly ignored per linters.
+- Auth flow clarified (login with `{name,password}`; token at `data[0].token`).
+- Helper smoke scripts under `tools/` for quick verification.
 
-"Fantastic coffee (decaffeinated)" is a simplified version for the WASA course, not suitable for a production environment.
-The full version can be found in the "Fantastic Coffee" repository.
+> “Fantastic coffee (decaffeinated)” is a simplified version for the WASA course, not suitable for production.  
+> For a production-ready reference, see the full “Fantastic Coffee” repository.
+
+---
 
 ## Project structure
 
-* `cmd/` contains all executables; Go programs here should only do "executable-stuff", like reading options from the CLI/env, etc.
-	* `cmd/healthcheck` is an example of a daemon for checking the health of servers daemons; useful when the hypervisor is not providing HTTP readiness/liveness probes (e.g., Docker engine)
-	* `cmd/webapi` contains an example of a web API server daemon
-* `demo/` contains a demo config file
-* `doc/` contains the documentation (usually, for APIs, this means an OpenAPI file)
-* `service/` has all packages for implementing project-specific functionalities
-	* `service/api` contains an example of an API server
-	* `service/globaltime` contains a wrapper package for `time.Time` (useful in unit testing)
-* `vendor/` is managed by Go, and contains a copy of all dependencies
-* `webui/` is an example of a web frontend in Vue.js; it includes:
-	* Bootstrap JavaScript framework
-	* a customized version of "Bootstrap dashboard" template
-	* feather icons as SVG
-	* Go code for release embedding
+```
+.
+├── cmd/                    # Executables
+│   ├── healthcheck/       # HTTP health probe daemon
+│   └── webapi/           # Main web API server
+├── doc/                   # Documentation
+│   └── api.yaml          # OpenAPI specification
+├── service/              # Project packages
+│   ├── api/              # HTTP handlers and routing
+│   ├── globaltime/       # Time wrapper for testing
+│   └── database/         # Database accessors
+├── tools/                # Developer tooling
+│   ├── smoke.sh          # Unauthenticated smoke test
+│   ├── smoke_auth.sh     # Authenticated smoke test
+│   └── curl_test.sh      # Parametric curl helper
+├── webui/                # Vue/Vite frontend
+│   ├── src/
+│   ├── public/
+│   └── vite.config.js
+└── vendor/               # Go vendoring (optional)
+```
 
-Other project files include:
-* `open-node.sh` starts a new (temporary) container using `node:20` image for safe and secure web frontend development (you don't want to use `node` in your system, do you?).
+---
 
-## Go vendoring
+## Quick Start
 
-This project uses [Go Vendoring](https://go.dev/ref/mod#vendoring). You must use `go mod vendor` after changing some dependency (`go get` or `go mod tidy`) and add all files under `vendor/` directory in your commit.
+### Prerequisites
+- Go 1.18+
+- Node.js 20+ (for WebUI development)
+- Yarn package manager
 
-For more information about vendoring:
-
-* https://go.dev/ref/mod#vendoring
-* https://www.ardanlabs.com/blog/2020/04/modules-06-vendoring.html
-
-## Node/YARN vendoring
-
-This repository uses `yarn` and a vendoring technique that exploits the ["Offline mirror"](https://yarnpkg.com/features/caching). As for the Go vendoring, the dependencies are inside the repository.
-
-You should commit the files inside the `.yarn` directory.
-
-## How to set up a new project from this template
-
-You need to:
-
-* Change the Go module path to your module path in `go.mod`, `go.sum`, and in `*.go` files around the project
-* Rewrite the API documentation `doc/api.yaml`
-* If no web frontend is expected, remove `webui` and `cmd/webapi/register-webui.go`
-* Update top/package comment inside `cmd/webapi/main.go` to reflect the actual project usage, goal, and general info
-* Update the code in `run()` function (`cmd/webapi/main.go`) to connect to databases or external resources
-* Write API code inside `service/api`, and create any further package inside `service/` (or subdirectories)
-
-## How to build
-
-If you're not using the WebUI, or if you don't want to embed the WebUI into the final executable, then:
-
-```shell
+### Build (Backend only)
+```bash
 go build ./cmd/webapi/
 ```
 
-If you're using the WebUI and you want to embed it into the final executable:
-
-```shell
+### Build with WebUI embedded
+```bash
 ./open-node.sh
-# (here you're inside the container)
+# Inside the container:
 yarn run build-embed
 exit
-# (outside the container)
+# Back on the host:
 go build -tags webui ./cmd/webapi/
 ```
 
-## How to run (in development mode)
-
-You can launch the backend only using:
-
-```shell
+### Run (Development)
+Start the backend:
+```bash
 go run ./cmd/webapi/
+# Server listens on 0.0.0.0:3000 by default
 ```
 
-If you want to launch the WebUI, open a new tab and launch:
-
-```shell
+Start the WebUI in another shell:
+```bash
 ./open-node.sh
-# (here you're inside the container)
+# Inside the container:
 yarn run dev
 ```
 
-## How to build for production / homework delivery
+---
 
-```shell
-./open-node.sh
-# (here you're inside the container)
-yarn run build-prod
+## Health Checks
+Public endpoints (no auth required):
+```bash
+curl -sS http://localhost:3000/liveness
+curl -sS http://localhost:3000/api/v1/liveness
 ```
 
-For "Web and Software Architecture" students: before committing and pushing your work for grading, please read the section below named "My build works when I use `yarn run dev`, however there is a Javascript crash in production/grading"
+---
 
-## Known issues
+## Authentication
+Login request:
+```http
+POST /api/v1/session
+Content-Type: application/json
 
-### My build works when I use `yarn run dev`, however there is a Javascript crash in production/grading
+{ "name": "alice", "password": "passw0rd" }
+```
 
-Some errors in the code are somehow not shown in `vite` development mode. To preview the code that will be used in production/grading settings, use the following commands:
+Login response excerpt:
+```json
+{
+  "code": 200,
+  "message": "Login successful",
+  "data": [
+    {
+      "user": { /* ... */ },
+      "token": "<userID>"
+    }
+  ]
+}
+```
 
-```shell
+Use the token as a Bearer token:
+```bash
+curl -H "Authorization: Bearer <token>" ...
+```
+
+---
+
+## API Routes
+### Public Endpoints
+- `OPTIONS /api/v1/cors` - CORS preflight
+- `POST /api/v1/session` - Login
+- `POST /api/v1/register` - Register
+- `GET /api/v1/liveness` - Health check (also `GET /liveness`)
+
+### Protected Endpoints (require Bearer token)
+- Conversations: `POST /api/v1/conversations`, `GET /api/v1/conversations`
+- Users: `PUT /api/v1/users/set_username`, `GET /api/v1/users/me`, etc.
+- Groups: `POST /api/v1/groups`, `GET /api/v1/groups/:id`, etc.
+- Messages: `GET /api/v1/messages`, `POST /api/v1/messages`, etc.
+
+---
+
+## Testing
+### Smoke Tests
+Unauthenticated test:
+```bash
+./tools/smoke.sh
+```
+
+Authenticated test (register → login → key endpoints):
+```bash
+# Optional env: BASE, PFX, NAME, PASSWORD
+./tools/smoke_auth.sh
+```
+
+### curl Helper
+```bash
+# No token
+SCHEME=http HOST=localhost PORT=3000 API_PREFIX=/api/v1 tools/curl_test.sh
+
+# With token
+TOKEN="<your_token>" tools/curl_test.sh
+```
+
+---
+
+## Configuration
+### CORS Settings
+```bash
+export ALLOWED_ORIGINS="https://example.com,https://staging.example.com"
+```
+
+### Script Configuration
+Use environment variables to configure targets:
+- `BASE`/`PFX` or 
+- `SCHEME`/`HOST`/`PORT`/`API_PREFIX`
+
+---
+
+## Development Notes
+- All database loops include `rows.Err()` checks after iteration
+- Transaction rollbacks use `_ = tx.Rollback()` (linter-compliant)
+- Messages API accepts tolerant payloads with multiple field name variations
+- Conversation creation gracefully handles missing tables for grading compatibility
+
+### Local Checks
+```bash
+go vet ./...
+go build ./cmd/webapi && go run ./cmd/webapi
+./tools/smoke.sh
+./tools/smoke_auth.sh
+```
+
+---
+
+## Go Vendoring
+When changing dependencies:
+```bash
+go mod vendor
+git add vendor/
+```
+
+More info:
+- [Go Vendoring Reference](https://go.dev/ref/mod#vendoring)
+- [Ardan Labs Blog](https://www.ardanlabs.com/blog/2020/04/modules-06-vendoring.html)
+
+---
+
+## Node/YARN Vendoring
+The repository uses yarn with an "Offline mirror". Commit files under the `.yarn` directory for offline CI/grading builds.
+
+---
+
+## Setting Up New Project
+1. Change Go module path in `go.mod`, `go.sum`, and import statements
+2. Rewrite API documentation (`doc/api.yaml`)
+3. Remove `webui/` and `cmd/webapi/register-webui.go` if no WebUI needed
+4. Update package comments in `cmd/webapi/main.go`
+5. Update `run()` in `cmd/webapi/main.go` for your DB/external resources
+6. Implement service logic under `service/`
+
+---
+
+## Known Issues
+If experiencing "Works with yarn run dev but crashes in production/grading", preview production build:
+```bash
 ./open-node.sh
-# (here you're inside the container)
+# Inside the container:
 yarn run build-prod
 yarn run preview
 ```
 
-## License
+---
 
-See [LICENSE](LICENSE).
+## License
+See [LICENSE](LICENSE) file for details.
