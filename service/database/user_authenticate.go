@@ -1,34 +1,44 @@
 package database
 
 import (
+	"crypto/subtle"
+	"database/sql"
+
 	"github.com/GioiaZheng/Wasa_proj/service/models"
-	// "golang.org/x/crypto/bcrypt"
 )
 
-// AuthenticateUser checks if the provided credentials are valid
-func (db *appdbimpl) AuthenticateUser(email, password string) (models.User, error) {
-	var user models.User
-	var hashedPassword string
-
-	err := db.c.QueryRow(`
-		SELECT id, username, name, email, avatar_url, gender, password
-		FROM users
-		WHERE email = ?
-	`, email).Scan(&user.ID, &user.Username, &user.Name, &user.Email, &user.AvatarUrl, &user.Gender, &hashedPassword)
-	if err != nil {
-		return models.User{}, err
+// VerifyPassword does a constant-time comparison between the provided plain text
+// and the stored value. NOTE: This is a classroom-safe baseline (no hashing).
+// In production, replace with a proper password hashing strategy (e.g., bcrypt/argon2).
+func VerifyPassword(plain, stored string) bool {
+	if len(plain) == 0 || len(stored) == 0 {
+		return false
 	}
-
-	// 验证密码
-	if err := VerifyPassword(hashedPassword, password); err != nil {
-		return models.User{}, err
-	}
-
-	return user, nil
+	return subtle.ConstantTimeCompare([]byte(plain), []byte(stored)) == 1
 }
 
-// VerifyPassword checks if the provided password matches the stored hash
-func VerifyPassword(hashedPassword, password string) error {
-	// return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	return nil
+// AuthenticateUser authenticates a user by email and password.
+// It fetches the user by email, then verifies the provided password.
+// Returns sql.ErrNoRows if the user does not exist, or false if password is invalid.
+func (db *appdbimpl) AuthenticateUser(email, password string) (models.User, error) {
+	var u models.User
+
+	err := db.c.QueryRow(`
+		SELECT id, username, name, email, password, avatar_url, gender
+		FROM users
+		WHERE email = ?
+	`, email).Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Password, &u.AvatarUrl, &u.Gender)
+	if err != nil {
+		// Propagate not found / driver errors as-is.
+		return models.User{}, err
+	}
+
+	if !VerifyPassword(password, u.Password) {
+		// Wrong credentials: return empty user and a standardized error.
+		// Callers can translate this into 401 Unauthorized.
+		return models.User{}, sql.ErrNoRows
+	}
+
+	// Do not leak the stored password beyond DB layer (already tagged json:"-").
+	return u, nil
 }
