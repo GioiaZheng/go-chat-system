@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -12,6 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Internal context keys used to store request-scoped values.
+// Keep them unexported to avoid collisions outside this package.
 type contextKey string
 
 const (
@@ -20,29 +24,27 @@ const (
 	loggerKey    contextKey = "logger"
 )
 
+// errorPayload is a unified JSON shape for error responses.
+// Using a struct ensures stable field names and easy encoding.
 type errorPayload struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Details interface{} `json:"details,omitempty"`
 }
 
-// ---------- 通用 JSON 工具 ----------
+// -------------------------- JSON Helpers --------------------------
 
+// writeJSON writes a JSON response with the provided status code.
+// It sets the Content-Type header and encodes the given value.
 func writeJSON(w http.ResponseWriter, status int, v interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(v)
 }
 
-func writeError(w http.ResponseWriter, statusCode int, message string) {
-	_ = writeJSON(w, statusCode, map[string]string{"error": message})
-}
-
-func readJSON(r *http.Request, dst interface{}) error {
-	return json.NewDecoder(r.Body).Decode(dst)
-}
-
-// sendError：项目里已有大量调用，保持兼容
+// sendError writes a structured error JSON while preserving backward compatibility
+// with existing call sites across the project. Optional details can be attached
+// (they will be omitted if empty).
 func (rt *_router) sendError(w http.ResponseWriter, status int, msg string, details ...interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -64,8 +66,10 @@ func (rt *_router) sendError(w http.ResponseWriter, status int, msg string, deta
 	})
 }
 
-// ---------- 请求上下文辅助 ----------
+// ----------------------- Request Context Utils --------------------
 
+// GetUserIDFromContext returns the authenticated userID stored in the request context.
+// It is safe to call with a nil context and will return an empty string if not present.
 func GetUserIDFromContext(ctx context.Context) string {
 	if ctx == nil {
 		return ""
@@ -76,61 +80,111 @@ func GetUserIDFromContext(ctx context.Context) string {
 	return ""
 }
 
+// SetUserIDInContext attaches a userID into the request context and returns a new *http.Request.
+// This is useful for tests or internal rewrites where you need to inject identity.
 func SetUserIDInContext(r *http.Request, userID string) *http.Request {
 	ctx := context.WithValue(r.Context(), userIDKey, userID)
 	return r.WithContext(ctx)
 }
 
-// ---------- wrap 中间件：为所有受保护路由注入 ctx ----------
+// ----------------------- Auth Wrap Middleware ---------------------
 
-func (rt *_router) wrap(next func(http.ResponseWriter, *http.Request, httprouter.Params, reqcontext.RequestContext)) httprouter.Handle {
+// wrap is the auth+context middleware used for all protected routes.
+// It performs the following steps:
+//  1) Parse "Authorization: Bearer <token>" header.
+//  2) Validate the token (in this assignment we treat the token as userID).
+//  3) Create a per-request UUID.
+//  4) Attach requestID, userID and a request-scoped logger into the context.
+//  5) Call the next handler with an enriched reqcontext.RequestContext.
+func (rt *_router) wrap(
+	next func(http.ResponseWriter, *http.Request, httprouter.Params, reqcontext.RequestContext),
+) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		// 1) 解析 Authorization: Bearer <token>
-		authHeader := r.Header.Get("Authorization")
+		// 1) Parse "Authorization: Bearer <token>"
+		authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			rt.baseLogger.Error("missing or malformed authorization header")
 			http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
-		token := strings.TrimPrefix(authHeader, "Bearer ")
+		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 		if token == "" {
 			rt.baseLogger.Error("empty bearer token")
 			http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
 
-		// 2) 校验 token（当前实现：token 即 userID）
+		// 2) Validate token (current behavior: token == userID).
+		//    If you later switch to real JWT, only this method needs to change.
 		userID, err := rt.validateToken(token)
-		if err != nil {
-			rt.baseLogger.WithError(err).Error("invalid token")
+		if err != nil || userID == "" {
+			if err != nil {
+				rt.baseLogger.WithError(err).Error("invalid token")
+			} else {
+				rt.baseLogger.Error("invalid token: empty userID")
+			}
 			http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
 			return
 		}
 
-		// 3) 生成请求 ID
+		// 3) Generate a per-request UUID for tracing and correlation.
 		reqUUID, err := uuid.NewV4()
 		if err != nil {
-			rt.baseLogger.WithError(err).Error("can't generate a request UUID")
+			rt.baseLogger.WithError(err).Error("failed to generate request UUID")
 			http.Error(w, `{"code": 500, "message": "Internal Server Error"}`, http.StatusInternalServerError)
 			return
 		}
 
-		// 4) 注入上下文
+		// 4) Enrich the context with requestID, userID and a scoped logger.
 		ctx := context.WithValue(r.Context(), requestIDKey, reqUUID.String())
 		ctx = context.WithValue(ctx, userIDKey, userID)
-
 		logger := rt.baseLogger.WithFields(logrus.Fields{
 			"reqid":     reqUUID.String(),
-			"remote-ip": r.RemoteAddr,
+			"remote_ip": r.RemoteAddr,
 			"user_id":   userID,
 		})
 		ctx = context.WithValue(ctx, loggerKey, logger)
 
-		// 5) 调用下游处理，附带我们自己的 reqcontext
+		// 5) Call the next handler with our typed reqcontext, which mirrors what
+		//    you already use across the project.
 		next(w, r.WithContext(ctx), ps, reqcontext.RequestContext{
 			UserID:  userID,
 			ReqUUID: reqUUID,
 			Logger:  logger,
 		})
 	}
+}
+
+// readJSON reads and validates a JSON request body into dst.
+// Features:
+//  - Limits body size (default: 1MB) to avoid abuse.
+//  - Disallows unknown fields to catch client typos early.
+//  - Returns clear errors for empty body or malformed JSON.
+func readJSON(r *http.Request, dst interface{}) error {
+	const maxBody = 1 << 20 // 1 MiB
+
+	if r.Body == nil {
+		return fmt.Errorf("empty request body")
+	}
+	defer r.Body.Close()
+
+	dec := json.NewDecoder(io.LimitReader(r.Body, maxBody))
+	dec.DisallowUnknownFields()
+
+	// Decode the first JSON object
+	if err := dec.Decode(dst); err != nil {
+		return fmt.Errorf("invalid JSON: %w", err)
+	}
+
+	// Ensure there's no trailing garbage after the first JSON object
+	// (e.g., "{}{}" or "{} extra")
+	var extra json.RawMessage
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("invalid JSON: multiple JSON values in body")
+		}
+		return fmt.Errorf("invalid JSON (trailing content): %w", err)
+	}
+
+	return nil
 }

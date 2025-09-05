@@ -2,11 +2,12 @@ package database
 
 import "github.com/GioiaZheng/Wasa_proj/service/models"
 
-// GetMyConversations retrieves all conversations (direct and group) for a given user
+// GetMyConversations retrieves all conversations (direct and group) for a given user.
+// FIX: after each rows iteration, check rows.Err() to capture driver-side errors.
 func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, error) {
 	var conversations []models.Conversation
 
-	// Retrieve direct conversations
+	// --- Direct (private) conversations ---
 	rows, err := db.c.Query(`
 		SELECT u.id, u.username, u.avatar_url, m.content
 		FROM messages m
@@ -26,17 +27,20 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 		if err := rows.Scan(&conv.ID, &conv.Name, &conv.AvatarUrl, &conv.LastMessage); err != nil {
 			return nil, err
 		}
-
-		// Avoid duplicate user conversations
+		// Deduplicate by user id
 		if seenUsers[conv.ID] {
 			continue
 		}
 		seenUsers[conv.ID] = true
-
 		conversations = append(conversations, conv)
 	}
 
-	// Retrieve group conversations
+	// FIX: must check rows.Err() after iteration
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// --- Group conversations ---
 	groupRows, err := db.c.Query(`
 		SELECT g.id, g.name, g.avatar_url, m.content
 		FROM messages m
@@ -57,14 +61,17 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 		if err := groupRows.Scan(&conv.ID, &conv.Name, &conv.AvatarUrl, &conv.LastMessage); err != nil {
 			return nil, err
 		}
-
-		// Avoid duplicate group conversations
+		// Deduplicate by group id
 		if seenGroups[conv.ID] {
 			continue
 		}
 		seenGroups[conv.ID] = true
-
 		conversations = append(conversations, conv)
+	}
+
+	// FIX: must check groupRows.Err() after iteration
+	if err := groupRows.Err(); err != nil {
+		return nil, err
 	}
 
 	return conversations, nil
