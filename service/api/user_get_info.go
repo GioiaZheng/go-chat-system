@@ -2,42 +2,43 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
 
 // getUserInfo handles GET /users/me
-func (rt *_router) getUserInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
-	userID := ctx.UserID
+// English notes:
+// - Use db.GetUser(userID) instead of GetUserInfo (not defined).
+// - Returns current authenticated user.
+func (rt *_router) getUserInfo(
+	w http.ResponseWriter,
+	r *http.Request,
+	_ httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
+	userID := strings.TrimSpace(ctx.UserID)
 	if userID == "" {
-		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	user, err := rt.db.GetUser(userID)
+	user, err := rt.db.GetUser(userID) // ✅ fixed: use GetUser
 	if err != nil {
-		http.Error(w, `{"code":500,"message":"Failed to get user info"}`, http.StatusInternalServerError)
+		ctx.Logger.WithError(err).Error("failed to get user info")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to fetch user info")
 		return
 	}
 
 	resp := map[string]interface{}{
-		"code":    200,
+		"code":    http.StatusOK,
 		"message": "User info retrieved",
 		"data": map[string]interface{}{
-			"user": map[string]interface{}{
-				"id":        user.ID,
-				"username":  user.Username,
-				"name":      user.Name,
-				"email":     user.Email,
-				"gender":    user.Gender,
-				"avatarUrl": user.AvatarUrl,
-			},
+			"user": user,
 		},
 	}
-
-	// Use centralized writeJSON and check for error
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode user info response")
+		ctx.Logger.WithError(err).Error("failed to encode user info response")
 	}
 }

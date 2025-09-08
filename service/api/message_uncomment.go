@@ -8,24 +8,32 @@ import (
 )
 
 // uncommentMessage handles DELETE /messages/:id/comment
-// It removes the comment associated with the given message.
-func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+// English notes:
+// - All errors via rt.sendError; success via writeJSON.
+// - Logs internal DB failures via ctx.Logger.
+func (rt *_router) uncommentMessage(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
 	messageID := ps.ByName("id")
 	if messageID == "" {
-		http.Error(w, `{"code": 400, "message": "Missing message ID"}`, http.StatusBadRequest)
+		rt.sendError(w, http.StatusBadRequest, "Missing message ID")
 		return
 	}
 
 	if err := rt.db.UncommentMessage(messageID); err != nil {
-		http.Error(w, `{"code": 500, "message": "Failed to uncomment message"}`, http.StatusInternalServerError)
+		ctx.Logger.WithError(err).Error("failed to uncomment message")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to uncomment message")
 		return
 	}
 
 	resp := map[string]interface{}{
-		"code":    200,
+		"code":    http.StatusOK,
 		"message": "Comment removed successfully",
 	}
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode uncomment response")
+		ctx.Logger.WithError(err).Error("failed to encode uncomment response")
 	}
 }

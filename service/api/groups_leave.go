@@ -8,28 +8,36 @@ import (
 )
 
 // leaveGroup handles POST /groups/:id/leave
-func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+// English notes:
+// - Use rt.sendError for all failures, log internal errors.
+// - Keep response shape consistent project-wide.
+func (rt *_router) leaveGroup(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
 	groupID := ps.ByName("id")
 	if groupID == "" {
-		http.Error(w, `{"code":400,"message":"Group ID is required"}`, http.StatusBadRequest)
+		rt.sendError(w, http.StatusBadRequest, "Group ID is required")
 		return
 	}
 	if ctx.UserID == "" {
-		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	if err := rt.db.LeaveGroup(groupID, ctx.UserID); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to leave group")
-		http.Error(w, `{"code":500,"message":"Failed to leave group"}`, http.StatusInternalServerError)
+		ctx.Logger.WithError(err).Error("failed to leave group")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to leave group")
 		return
 	}
 
 	resp := map[string]interface{}{
-		"code":    200,
+		"code":    http.StatusOK,
 		"message": "Left group successfully",
 	}
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode leave group response")
+		ctx.Logger.WithError(err).Error("failed to encode leave group response")
 	}
 }

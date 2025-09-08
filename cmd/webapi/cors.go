@@ -10,7 +10,8 @@ import (
 // No absolute URL literals embedded in code; default is permissive for local/dev.
 //
 // Example:
-//   ALLOWED_ORIGINS="https://example.com,https://staging.example.com"
+//
+//	ALLOWED_ORIGINS="https://example.com,https://staging.example.com"
 func allowedOrigins() string {
 	if v := strings.TrimSpace(os.Getenv("ALLOWED_ORIGINS")); v != "" {
 		return v

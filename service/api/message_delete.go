@@ -8,28 +8,37 @@ import (
 )
 
 // deleteMessage handles DELETE /messages/:id
-func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+// English notes:
+// - Use rt.sendError instead of http.Error.
+// - Log internal errors, but don't leak details to clients.
+func (rt *_router) deleteMessage(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
 	if ctx.UserID == "" {
-		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	messageID := ps.ByName("id")
 	if messageID == "" {
-		http.Error(w, `{"code":400,"message":"Message ID is required"}`, http.StatusBadRequest)
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
 
 	if err := rt.db.DeleteMessage(ctx.UserID, messageID); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to delete message")
-		http.Error(w, `{"code":403,"message":"Unauthorized or message not found"}`, http.StatusForbidden)
+		// Forbidden covers both "not owner" and "not found" cases without leaking details
+		ctx.Logger.WithError(err).Error("failed to delete message")
+		rt.sendError(w, http.StatusForbidden, "Unauthorized or message not found")
 		return
 	}
 
 	resp := map[string]interface{}{
-		"code":    200,
+		"code":    http.StatusOK,
 		"message": "Message deleted",
 	}
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode delete message response")
+		ctx.Logger.WithError(err).Error("failed to encode delete message response")
 	}
 }

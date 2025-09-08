@@ -8,36 +8,41 @@ import (
 )
 
 // getMessageById handles GET /messages/:id
-func (rt *_router) getMessageById(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	userID := ctx.UserID
-	if userID == "" {
-		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+// English notes:
+// - Use rt.sendError for all failures; log internal errors.
+// - Return consistent envelope on success.
+func (rt *_router) getMessageById(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
+	if ctx.UserID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	messageID := ps.ByName("id")
 	if messageID == "" {
-		http.Error(w, `{"code": 400, "message": "Message ID is required"}`, http.StatusBadRequest)
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
 
 	message, err := rt.db.GetMessageByID(messageID)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("failed to get message by ID")
-		http.Error(w, `{"code": 404, "message": "Message not found"}`, http.StatusNotFound)
+		ctx.Logger.WithError(err).Error("failed to get message by ID")
+		rt.sendError(w, http.StatusNotFound, "Message not found")
 		return
 	}
 
 	resp := map[string]interface{}{
-		"code":    200,
+		"code":    http.StatusOK,
 		"message": "Message fetched successfully",
 		"data": map[string]interface{}{
 			"message": message,
 		},
 	}
-
-	// Use centralized writeJSON and check for error
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode message response")
+		ctx.Logger.WithError(err).Error("failed to encode message response")
 	}
 }

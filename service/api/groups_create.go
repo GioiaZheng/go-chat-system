@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
@@ -16,24 +17,33 @@ type CreateGroupRequest struct {
 }
 
 // createGroup handles POST /groups
-// OpenAPI: respond with { code, message, data: { group: {...} } }
-func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
-	userID := ctx.UserID
+// English notes:
+// - Validate auth and body.
+// - Normalize members (dedupe, remove empties), always include creator.
+// - Use rt.sendError on failure; writeJSON on success.
+func (rt *_router) createGroup(
+	w http.ResponseWriter,
+	r *http.Request,
+	_ httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
+	userID := strings.TrimSpace(ctx.UserID)
 	if userID == "" {
-		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	var req CreateGroupRequest
 	if err := readJSON(r, &req); err != nil {
-		http.Error(w, `{"code":400,"message":"Invalid request body"}`, http.StatusBadRequest)
+		rt.sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	// Normalize members (unique, non-empty) and ensure creator is included
+	// Normalize members
 	seen := map[string]bool{}
 	members := make([]string, 0, len(req.Members)+1)
 	for _, m := range req.Members {
+		m = strings.TrimSpace(m)
 		if m == "" || seen[m] {
 			continue
 		}
@@ -45,7 +55,7 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 		members = append(members, userID)
 	}
 
-	groupName := req.Name
+	groupName := strings.TrimSpace(req.Name)
 	if groupName == "" {
 		groupName = "Group"
 	}
@@ -53,7 +63,8 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 	// Generate group ID (TEXT PK)
 	gid, err := uuid.NewV4()
 	if err != nil {
-		http.Error(w, `{"code":500,"message":"Failed to generate group id"}`, http.StatusInternalServerError)
+		ctx.Logger.WithError(err).Error("failed to generate group id")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to generate group id")
 		return
 	}
 	group := models.Group{
@@ -63,16 +74,18 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 
 	// Create group row
 	if err := rt.db.CreateGroup(group); err != nil {
-		http.Error(w, `{"code":500,"message":"Failed to create group"}`, http.StatusInternalServerError)
+		ctx.Logger.WithError(err).Error("failed to create group")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to create group")
 		return
 	}
 
 	// Add creator first; if this fails we must abort
 	if err := rt.db.AddGroupMembers(group.ID, []string{userID}); err != nil {
-		http.Error(w, `{"code":500,"message":"Failed to add creator to group"}`, http.StatusInternalServerError)
+		ctx.Logger.WithError(err).Error("failed to add creator to group")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to add creator to group")
 		return
 	}
-	// Add the rest; ignore individual failures
+	// Add the rest; ignore individual failures (non-fatal)
 	for _, m := range members {
 		if m == userID {
 			continue
@@ -80,20 +93,18 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 		_ = rt.db.AddGroupMembers(group.ID, []string{m})
 	}
 
-	// Build response to match OpenAPI example: data.group = { id, name, members[...] }
 	resp := map[string]interface{}{
-		"code":    201,
+		"code":    http.StatusCreated,
 		"message": "Group created",
 		"data": map[string]interface{}{
 			"group": map[string]interface{}{
-				"id":   group.ID,
-				"name": group.Name,
-				// "conversationId": "", // optional if your DB supports conversations
+				"id":      group.ID,
+				"name":    group.Name,
 				"members": members,
 			},
 		},
 	}
 	if err := writeJSON(w, http.StatusCreated, resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode create group response")
+		ctx.Logger.WithError(err).Error("failed to encode create group response")
 	}
 }

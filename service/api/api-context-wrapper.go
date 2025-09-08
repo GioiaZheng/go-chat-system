@@ -91,11 +91,11 @@ func SetUserIDInContext(r *http.Request, userID string) *http.Request {
 
 // wrap is the auth+context middleware used for all protected routes.
 // It performs the following steps:
-//  1) Parse "Authorization: Bearer <token>" header.
-//  2) Validate the token (in this assignment we treat the token as userID).
-//  3) Create a per-request UUID.
-//  4) Attach requestID, userID and a request-scoped logger into the context.
-//  5) Call the next handler with an enriched reqcontext.RequestContext.
+//  1. Parse "Authorization: Bearer <token>" header.
+//  2. Validate the token (in this assignment we treat the token as userID).
+//  3. Create a per-request UUID.
+//  4. Attach requestID, userID and a request-scoped logger into the context.
+//  5. Call the next handler with an enriched reqcontext.RequestContext.
 func (rt *_router) wrap(
 	next func(http.ResponseWriter, *http.Request, httprouter.Params, reqcontext.RequestContext),
 ) httprouter.Handle {
@@ -157,9 +157,9 @@ func (rt *_router) wrap(
 
 // readJSON reads and validates a JSON request body into dst.
 // Features:
-//  - Limits body size (default: 1MB) to avoid abuse.
-//  - Disallows unknown fields to catch client typos early.
-//  - Returns clear errors for empty body or malformed JSON.
+//   - Limits body size (default: 1MB) to avoid abuse.
+//   - Disallows unknown fields to catch client typos early.
+//   - Returns clear errors for empty body or malformed JSON.
 func readJSON(r *http.Request, dst interface{}) error {
 	const maxBody = 1 << 20 // 1 MiB
 

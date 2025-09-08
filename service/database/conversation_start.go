@@ -7,13 +7,14 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/google/uuid"
 )
+
 // StartConversation creates a new conversation and adds the given members.
 // Implementation notes:
-//  - Uses an explicit transaction with a deferred rollback (ignored error) to satisfy linters.
-//  - Normalizes member IDs: trims, drops empties, deduplicates.
-//  - Ensures the creator (userID) is part of the conversation members.
-//  - Uses a prepared statement for member inserts.
-//  - Returns the created conversation (ID + Name); callers can fetch members separately if needed.
+//   - Uses an explicit transaction with a deferred rollback (ignored error) to satisfy linters.
+//   - Normalizes member IDs: trims, drops empties, deduplicates.
+//   - Ensures the creator (userID) is part of the conversation members.
+//   - Uses a prepared statement for member inserts.
+//   - Returns the created conversation (ID + Name); callers can fetch members separately if needed.
 func (db *appdbimpl) StartConversation(ctx context.Context, userID string, memberIDs []string, name string) (models.Conversation, error) {
 	convID := uuid.NewString()
 

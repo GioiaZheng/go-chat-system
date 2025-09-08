@@ -8,31 +8,40 @@ import (
 )
 
 // getGroupDetail handles GET /groups/:id
-func (rt *_router) getGroupDetail(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+// English notes:
+// - No http.Error; use rt.sendError for failures and writeJSON for success.
+// - Log internal errors via ctx.Logger.
+func (rt *_router) getGroupDetail(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
 	groupID := ps.ByName("id")
 	if groupID == "" {
-		http.Error(w, `{"code":400,"message":"Group ID is required"}`, http.StatusBadRequest)
+		rt.sendError(w, http.StatusBadRequest, "Group ID is required")
 		return
 	}
 	if ctx.UserID == "" {
-		http.Error(w, `{"code":401,"message":"Unauthorized"}`, http.StatusUnauthorized)
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	group, err := rt.db.GetGroup(groupID)
 	if err != nil {
-		http.Error(w, `{"code":404,"message":"Group not found"}`, http.StatusNotFound)
+		// Not found is not necessarily an internal error; respond 404 without leaking details
+		rt.sendError(w, http.StatusNotFound, "Group not found")
 		return
 	}
 
 	resp := map[string]interface{}{
-		"code":    200,
+		"code":    http.StatusOK,
 		"message": "Group retrieved",
 		"data": map[string]interface{}{
 			"group": group,
 		},
 	}
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode get group response")
+		ctx.Logger.WithError(err).Error("failed to encode get group response")
 	}
 }

@@ -9,17 +9,25 @@ import (
 )
 
 // getGroupsList handles GET /groups
-// OpenAPI: response uses top-level "items" for the collection.
-func (rt *_router) getGroupsList(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+// English notes:
+// - On error, use rt.sendError.
+// - On success, respond with an "items" array (empty array if no groups).
+func (rt *_router) getGroupsList(
+	w http.ResponseWriter,
+	r *http.Request,
+	_ httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
 	userID := ctx.UserID
 	if userID == "" {
-		http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	groups, err := rt.db.GetGroupsList(userID)
 	if err != nil {
-		http.Error(w, `{"code": 500, "message": "Failed to get groups list"}`, http.StatusInternalServerError)
+		ctx.Logger.WithError(err).Error("failed to get groups list")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to get groups list")
 		return
 	}
 	if groups == nil {
@@ -27,11 +35,11 @@ func (rt *_router) getGroupsList(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 
 	resp := map[string]interface{}{
-		"code":    200,
+		"code":    http.StatusOK,
 		"message": "Groups list retrieved",
 		"items":   groups,
 	}
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode groups list response")
+		ctx.Logger.WithError(err).Error("failed to encode groups list response")
 	}
 }

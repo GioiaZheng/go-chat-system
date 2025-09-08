@@ -5,6 +5,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 )
+
 // ROUTE MAP (OpenAPI -> Handler)
 // Public:
 //   OPTIONS /api/v1/cors                 -> handleCorsPreflight
@@ -38,7 +39,6 @@ import (
 // Compat-only (to avoid "unused" flags; not part of OpenAPI):
 //   GET     /api/v1/messages-group       -> getGroupConversation
 //   GET     /api/v1/messages-private     -> getPrivateConversation
-
 
 // RegisterRoutes wires all HTTP endpoints to their handlers.
 // NOTES:
@@ -81,21 +81,21 @@ func (rt *_router) RegisterRoutes() {
 
 	// Groups
 	// Create/list/get group; update name/photo; add member; leave group
-	rt.router.POST(basePath+"/groups", rt.wrap(rt.createGroup))              // POST /api/v1/groups
-	rt.router.GET(basePath+"/groups", rt.wrap(rt.getGroupsList))             // GET  /api/v1/groups
-	rt.router.GET(basePath+"/groups/:id", rt.wrap(rt.getGroupDetail))        // GET  /api/v1/groups/:id
-	rt.router.PUT(basePath+"/groups/:id/name", rt.wrap(rt.setGroupName))     // PUT  /api/v1/groups/:id/name
-	rt.router.PUT(basePath+"/groups/:id/photo", rt.wrap(rt.setGroupPhoto))   // PUT  /api/v1/groups/:id/photo
+	rt.router.POST(basePath+"/groups", rt.wrap(rt.createGroup))                // POST /api/v1/groups
+	rt.router.GET(basePath+"/groups", rt.wrap(rt.getGroupsList))               // GET  /api/v1/groups
+	rt.router.GET(basePath+"/groups/:id", rt.wrap(rt.getGroupDetail))          // GET  /api/v1/groups/:id
+	rt.router.PUT(basePath+"/groups/:id/name", rt.wrap(rt.setGroupName))       // PUT  /api/v1/groups/:id/name
+	rt.router.PUT(basePath+"/groups/:id/photo", rt.wrap(rt.setGroupPhoto))     // PUT  /api/v1/groups/:id/photo
 	rt.router.PUT(basePath+"/groups/:id/set_photo", rt.wrap(rt.setGroupPhoto)) // PUT  /api/v1/groups/:id/set_photo (compat alias)
-	rt.router.POST(basePath+"/groups/:id/members", rt.wrap(rt.addToGroup))   // POST /api/v1/groups/:id/members
-	rt.router.DELETE(basePath+"/groups/:id/members", rt.wrap(rt.leaveGroup)) // DELETE /api/v1/groups/:id/members
+	rt.router.POST(basePath+"/groups/:id/members", rt.wrap(rt.addToGroup))     // POST /api/v1/groups/:id/members
+	rt.router.DELETE(basePath+"/groups/:id/members", rt.wrap(rt.leaveGroup))   // DELETE /api/v1/groups/:id/members
 
 	// Messages (unified entry via query: chat_type=private|group & target_id=...)
-	rt.router.GET(basePath+"/messages", rt.wrap(rt.getMessages))                  // GET  /api/v1/messages?chat_type=...&target_id=...
-	rt.router.POST(basePath+"/messages", rt.wrap(rt.sendMessage))                 // POST /api/v1/messages
-	rt.router.GET(basePath+"/messages/:id", rt.wrap(rt.getMessageById))           // GET  /api/v1/messages/:id
-	rt.router.DELETE(basePath+"/messages/:id", rt.wrap(rt.deleteMessage))         // DELETE /api/v1/messages/:id
-	rt.router.POST(basePath+"/messages/:id/forward", rt.wrap(rt.forwardMessage))  // POST /api/v1/messages/:id/forward
+	rt.router.GET(basePath+"/messages", rt.wrap(rt.getMessages))                     // GET  /api/v1/messages?chat_type=...&target_id=...
+	rt.router.POST(basePath+"/messages", rt.wrap(rt.sendMessage))                    // POST /api/v1/messages
+	rt.router.GET(basePath+"/messages/:id", rt.wrap(rt.getMessageById))              // GET  /api/v1/messages/:id
+	rt.router.DELETE(basePath+"/messages/:id", rt.wrap(rt.deleteMessage))            // DELETE /api/v1/messages/:id
+	rt.router.POST(basePath+"/messages/:id/forward", rt.wrap(rt.forwardMessage))     // POST /api/v1/messages/:id/forward
 	rt.router.GET(basePath+"/messages/:id/comment", rt.wrap(rt.getMessageComments))  // GET  /api/v1/messages/:id/comment
 	rt.router.POST(basePath+"/messages/:id/comment", rt.wrap(rt.commentMessage))     // POST /api/v1/messages/:id/comment
 	rt.router.POST(basePath+"/messages/:id/uncomment", rt.wrap(rt.uncommentMessage)) // POST /api/v1/messages/:id/uncomment

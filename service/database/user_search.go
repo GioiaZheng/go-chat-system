@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"   // FIX: needed for fmt.Errorf
+	"fmt" // FIX: needed for fmt.Errorf
 	"log"
 	"strings"
 
@@ -60,10 +60,10 @@ func (db *appdbimpl) SearchUsers(ctx context.Context, userID string, query strin
 
 // GetUserByCredentials retrieves a user by username and verifies the password.
 // Security notes:
-// - Uses VerifyPassword (constant-time compare) to avoid obvious timing side-channels.
-// - Returns a generic "invalid credentials" error on mismatch (do not leak which field failed).
-// - The stored password field must be a plain text or pre-hashed value consistent with VerifyPassword.
-//   For the assignment baseline we use plain text; replace VerifyPassword with a bcrypt/argon2 check in production.
+//   - Uses VerifyPassword (constant-time compare) to avoid obvious timing side-channels.
+//   - Returns a generic "invalid credentials" error on mismatch (do not leak which field failed).
+//   - The stored password field must be a plain text or pre-hashed value consistent with VerifyPassword.
+//     For the assignment baseline we use plain text; replace VerifyPassword with a bcrypt/argon2 check in production.
 func (db *appdbimpl) GetUserByCredentials(username string, password string) (models.User, error) {
 	var user models.User
 	var storedPassword string

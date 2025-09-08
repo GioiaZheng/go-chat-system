@@ -18,8 +18,8 @@ type sendMessageRequest struct {
 	ReceiverID string `json:"receiver_id,omitempty"`
 	ToUserID   string `json:"to_user_id,omitempty"`
 	GroupID    string `json:"group_id,omitempty"`
-	Content    string `json:"content,omitempty"`   // preferred
-	Message    string `json:"message,omitempty"`   // alias
+	Content    string `json:"content,omitempty"` // preferred
+	Message    string `json:"message,omitempty"` // alias
 }
 
 // normalize returns (chatType, targetID, content)

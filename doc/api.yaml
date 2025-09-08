@@ -86,7 +86,7 @@ components:
             $ref: '#/components/schemas/Error'
   schemas:
     AuthEnvelope:
-      description: Authentication response envelope containing user data and JWT token
+      description: Wrapper for authentication result (e.g., JWT token and basic user info).
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -115,7 +115,7 @@ components:
       required:
       - id
       - username
-      - avatarUrl
+      - avatar_url
       - email
       - gender
       properties:
@@ -144,10 +144,10 @@ components:
           minLength: 5
           maxLength: 255
           pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
-        avatarUrl:
+        avatar_url:
           type: string
           description: URL of user's avatar
-          format: uri
+          format: url
           maxLength: 255
           minLength: 1
           pattern: ^https?://[^\s/$.?#].[^\s]*$
@@ -160,7 +160,7 @@ components:
           - unspecified
           default: unspecified
     UserEnvelope:
-      description: Response envelope containing a single user resource
+      description: Single user envelope used in responses.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -176,7 +176,7 @@ components:
                 user:
                   $ref: '#/components/schemas/User'
     UserEnvelopeCollection:
-      description: Response envelope containing a collection of user resources
+      description: Envelope containing a list of users and optional paging info.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -230,16 +230,16 @@ components:
             pattern: ^[a-zA-Z0-9-]+$
             minLength: 1
             maxLength: 64
-        avatarUrl:
+        avatar_url:
           type: string
           description: URL of conversation avatar
-          format: uri
+          format: url
           minLength: 1
           maxLength: 255
           pattern: ^https?://[^\s/$.?#].[^\s]*$
-        lastMessage:
+        last_message:
           $ref: '#/components/schemas/Message'
-        createdAt:
+        created_at:
           type: string
           description: Conversation creation timestamp in ISO 8601 format
           format: date-time
@@ -261,13 +261,14 @@ components:
           pattern: ^[a-zA-Z0-9_\-. ]+$
         size:
           type: integer
+          format: int64
           description: File size in bytes
           minimum: 1
           maximum: 10485760  # 10MB
         url:
           type: string
           description: File access URL
-          format: uri
+          format: url
           minLength: 1
           maxLength: 255
           pattern: ^https?://[^\s/$.?#].[^\s]*$
@@ -308,9 +309,9 @@ components:
       required:
       - id
       - content
-      - senderId
-      - conversationId
-      - createdAt
+      - sender_id
+      - conversation_id
+      - created_at
       - type
       - status
       properties:
@@ -326,19 +327,19 @@ components:
           minLength: 1
           maxLength: 1000
           pattern: ^[\s\S]{1,1000}$
-        senderId:
+        sender_id:
           type: string
           description: ID of the message sender
           pattern: ^[a-zA-Z0-9-]+$
           minLength: 1
           maxLength: 64
-        conversationId:
+        conversation_id:
           type: string
           description: ID of the present conversation
           pattern: ^[a-zA-Z0-9-]+$
           minLength: 1
           maxLength: 64
-        createdAt:
+        created_at:
           type: string
           description:  Message creation timestamp in ISO 8601 format
           format: date-time
@@ -402,6 +403,7 @@ components:
       properties:
         code:
           type: integer
+          format: int64
           description: HTTP error code
           minimum: 400
           maximum: 599
@@ -437,13 +439,14 @@ components:
     
     BaseSuccessResponse:
       type: object
-      description: Base structure for all successful API responses containing status code and message
+      description:  Base structure for all success responses
       required:
       - code
       - message
       properties:
         code:
           type: integer
+          format: int64
           description: HTTP status code indicating success
           enum:
           - 200
@@ -460,7 +463,7 @@ components:
           example: "Operation succeeded"  
     RegisterUserRequest:
       type: object
-      description: User registration request containing account creation details
+      description: User registration request model for creating new user accounts
       required:
       - username
       - email
@@ -506,7 +509,7 @@ components:
       required:
       - id
       - name
-      - conversationId
+      - conversation_id
       - members
       properties:
         id:
@@ -521,15 +524,15 @@ components:
           minLength: 1
           maxLength: 100
           pattern: ^[a-zA-Z0-9\s'-]+$
-        conversationId:
+        conversation_id:
           type: string
           description: ID of the present conversation
           pattern: ^[a-zA-Z0-9-]+$
           minLength: 1
           maxLength: 64
-        photoUrl:
+        photo_url:
           type: string
-          format: uri
+          format: url
           description: URL of group photo
           minLength: 1
           maxLength: 255
@@ -543,10 +546,10 @@ components:
             type: object
             description: Group member information
             required:
-            - userId
+            - user_id
             - role
             properties:
-              userId:
+              user_id:
                 type: string
                 description: User ID of the member
                 minLength: 1
@@ -596,9 +599,9 @@ components:
       type: object
       description: Request model for adding members to an existing group
       required:
-      - memberIds
+      - member_ids
       properties:
-        memberIds:
+        member_ids:
           type: array
           description: Array of user IDs to add to the group
           minItems: 1
@@ -611,7 +614,7 @@ components:
             maxLength: 64
     MessageCollection:
       type: object
-      description: Paginated collection of messages with metadata including messages array and pagination information
+      description: Paginated collection of messages with metadata
       required:
         - messages
         - pagination
@@ -629,17 +632,25 @@ components:
           properties:
             total:
               type: integer
+              format: int32
               description: Total number of messages available
+              minimum: 0
+              maximum: 2147483647 
             limit:
               type: integer
+              format: int32
               description: Maximum number of messages returned per page
+              minimum: 1
+              maximum: 100
             offset:
               type: integer
+              format: int32
               description: Starting position of the returned messages
+              minimum: 0
 
     UpdateGroupNameRequest:
       type: object
-      description: Request payload for adding new members to an existing group
+      description: Request model for updating a group's name
       required:
       - name
       properties:
@@ -650,7 +661,7 @@ components:
           pattern: ^[a-zA-Z0-9\s_-]+$
           description: New name for the group
   parameters:
-    userId:
+    user_id:
       name: user_id
       in: path
       required: true
@@ -660,6 +671,7 @@ components:
         pattern: ^[a-zA-Z0-9-]+$
         minLength: 1
         maxLength: 64
+        description: unique identifier of user
     id:
       name: id
       in: path
@@ -670,6 +682,7 @@ components:
         pattern: ^[a-zA-Z0-9-]+$
         minLength: 1
         maxLength: 64
+        description: uniquie identifier
 paths:
   /cors:
     options:
@@ -683,34 +696,37 @@ paths:
           description: CORS allowed
           headers:
             Access-Control-Allow-Origin:
-              description: Allowed origin for CORS requests
               schema:
                 type: string
                 example: '*'
                 pattern: ^\*|https?://[^\s/$.?#].[^\s]*$
                 minLength: 1
                 maxLength: 255
+                descsription: Allowed origin domains for CORS requests, use '*' for all origins
             Access-Control-Allow-Methods:
-              description: Allowed HTTP methods for CORS requests
               schema:
                 type: string
                 example: GET,POST,PUT,DELETE,OPTIONS
                 pattern: ^[A-Z,]+$
                 minLength: 1
                 maxLength: 255
+                description: Comma-separated list of HTTP methods allowed for CORS requests
             Access-Control-Allow-Headers:
-              description: Allowed HTTP headers for CORS requests
               schema:
                 type: string
                 example: Content-Type, Authorization
                 pattern: ^[a-zA-Z0-9\s,-]+$
                 minLength: 1
                 maxLength: 255
+                description: Comma-separated list of HTTP headers allowed in CORS requests
             Access-Control-Max-Age:
-              description: Maximum age (in seconds) for CORS preflight response caching
               schema:
                 type: integer
+                format: int64
+                minimum: 0
+                maximum: 86400
                 example: 1
+                description: Maximum time in seconds to cache CORS preflight response
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -737,15 +753,16 @@ paths:
               type: object
               description: Request to start a new conversation
               required:
-                - memberIds
+                - member_ids
                 - name
               properties:
-                memberIds:
+                member_ids:
                   type: array
                   description: List of member IDs to include in the conversation
                   items:
                     type: string
                     pattern: ^[a-zA-Z0-9-]+$
+                    description: User ID of a conversation member
                     minLength: 1
                     maxLength: 64
                   minItems: 1
@@ -833,7 +850,7 @@ paths:
                     id: usr-999
                     username: maria
                     email: maria@example.com
-                    avatarUrl: https://example.com/avatars/maria.jpg
+                    avatar_url: https://example.com/avatars/maria.jpg
                     gender: unspecified
                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
         '400':
@@ -872,7 +889,7 @@ paths:
                     id: usr-123456
                     username: john_doe
                     email: john@example.com
-                    avatarUrl: https://example.com/avatars/john_doe.jpg
+                    avatar_url: https://example.com/avatars/john_doe.jpg
                     gender: male
                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
         '400':
@@ -986,7 +1003,7 @@ paths:
                     username: john_doe
                     name: John Doe
                     email: john@example.com
-                    avatarUrl: https://example.com/avatars/john_doe.jpg
+                    avatar_url: https://example.com/avatars/john_doe.jpg
                     gender: male
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1013,6 +1030,7 @@ paths:
           minLength: 1
           maxLength: 255
           pattern: ^[a-zA-Z0-9\s@.-]+$
+          description: Search keyword to match against user names,usernames, or email addresses
       security:
       - BearerAuth: []
       responses:
@@ -1028,7 +1046,7 @@ paths:
                 items:
                   - id: usr-1
                     username: alice
-                    avatarUrl: https://example.com/avatars/alice.jpg
+                    avatar_url: https://example.com/avatars/alice.jpg
                     email: alice@example.com
                     gender: female
         '400':
@@ -1042,7 +1060,7 @@ paths:
   
   /users/profile/{user_id}:
     parameters:
-      - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/user_id'
     get:
       tags:
       - users
@@ -1067,7 +1085,7 @@ paths:
                     username: john_doe
                     name: John Doe
                     email: john@example.com
-                    avatarUrl: https://example.com/avatars/john_doe.jpg
+                    avatar_url: https://example.com/avatars/john_doe.jpg
                     gender: male
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1095,7 +1113,7 @@ paths:
               description: Create a new group 
               required: 
               - name
-              - memberIds
+              - member_ids
               properties:
                 name:
                   type: string
@@ -1103,14 +1121,14 @@ paths:
                   minLength: 1
                   maxLength: 100
                   pattern: "^[a-zA-Z0-9\\s'-]+$"
-                memberIds:
+                member_ids:
                   type: array
                   description: IDs of users to include
                   minItems: 1
                   maxItems: 100
                   items:
                     type: string
-                    description: User ID
+                    description: User ID to add to the group
                     pattern: '^[a-zA-Z0-9-]+$'
                     minLength: 1
                     maxLength: 64
@@ -1128,9 +1146,9 @@ paths:
                   group:
                     id: '1'
                     name: Group 1
-                    conversationId: 'c-1'  
+                    conversation_id: 'c-1'  
                     members:
-                      - userId: '1'
+                      - user_id: '1'
                         role: admin
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1161,9 +1179,9 @@ paths:
                 items:                        
                   - id: '1'
                     name: Group 1
-                    conversationId: 'c-1'        
+                    conversation_id: 'c-1'        
                     members:
-                      - userId: '1'
+                      - user_id: '1'
                         role: admin
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1198,9 +1216,9 @@ paths:
                     group:
                       id: '1'
                       name: Group 1
-                      conversationId: 'c-1' 
+                      conversation_id: 'c-1' 
                       members:
-                        - userId: '1'
+                        - user_id: '1'
                           role: admin
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1355,13 +1373,14 @@ paths:
       security:
         - BearerAuth: []
       parameters:
-        - name: conversationId
+        - name: conversation_id
           in: query
           required: true
           description: ID of the conversation
           schema:
             type: string
             pattern: ^[a-zA-Z0-9-]+$
+            description: Unique identifier of the conversation to retrieve messages from
             minLength: 1
             maxLength: 64
         - name: limit
@@ -1370,14 +1389,17 @@ paths:
           description: Maximum number of messages to return
           schema:
             type: integer
+            format: int64
             minimum: 1
             maximum: 100
             default: 20
+            description: Maximum number of messages to return in a single page
         - name: before
           in: query
           description: Get messages before this timestamp (ISO 8601 format)
           schema:
             type: string
+            description: ISO 8601 timestamp to get messages before this time
             format: date-time
             minLength: 20
             maxLength: 35
@@ -1395,9 +1417,9 @@ paths:
                   messages:
                     - id: '1'
                       content: Hello!
-                      senderId: '1'
-                      conversationId: 'c-1'
-                      createdAt: '2023-10-01T12:00:00Z'
+                      sender_id: '1'
+                      conversation_id: 'c-1'
+                      created_at: '2023-10-01T12:00:00Z'
                       type: text
                       status: delivered
                   pagination:
@@ -1429,10 +1451,10 @@ paths:
               type: object
               description: Send a message
               required:
-              - conversationId
+              - conversation_id
               - content
               properties:
-                conversationId:
+                conversation_id:
                   type: string
                   description: ID of the target conversation
                   pattern: ^[a-zA-Z0-9-]+$
@@ -1467,9 +1489,9 @@ paths:
                   resource:
                     id: '123'
                     content: Hello!
-                    senderId: '1'
-                    conversationId: 'c-1'
-                    createdAt: '2023-10-01T12:00:00Z'
+                    sender_id: '1'
+                    conversation_id: 'c-1'
+                    created_at: '2023-10-01T12:00:00Z'
                     type: text
                     status: sent
         '400':
@@ -1505,9 +1527,9 @@ paths:
                   resource:
                     id: '123'
                     content: Hello!
-                    senderId: '1'
-                    conversationId: 'c-1'
-                    createdAt: '2023-10-01T12:00:00Z'
+                    sender_id: '1'
+                    conversation_id: 'c-1'
+                    created_at: '2023-10-01T12:00:00Z'
                     type: text
                     status: delivered
         '400':
@@ -1563,9 +1585,9 @@ paths:
               type: object
               description: Forward a message to another conversation
               required:
-              - conversationId
+              - conversation_id
               properties:
-                conversationId:
+                conversation_id:
                   type: string
                   description: Target conversation ID
                   pattern: '^[a-zA-Z0-9-]+$'
@@ -1667,11 +1689,12 @@ paths:
                     maxItems: 1000    
                     items:
                       type: object
+                      description: Comment/reaction object for a message
                       required: 
                         - id
-                        - authorId
+                        - author_id
                         - content
-                        - createdAt
+                        - created_at
                       properties:
                         id:
                           type: string
@@ -1679,7 +1702,7 @@ paths:
                           pattern: ^[a-zA-Z0-9-]+$
                           minLength: 1
                           maxLength: 64
-                        authorId:
+                        author_id:
                           type: string
                           description: Author user ID
                           pattern: ^[a-zA-Z0-9-]+$
@@ -1691,7 +1714,7 @@ paths:
                           minLength: 1
                           maxLength: 1000
                           pattern: ^[\s\S]{1,1000}$
-                        createdAt:
+                        created_at:
                           type: string
                           description: ISO 8601 timestamp
                           format: date-time
