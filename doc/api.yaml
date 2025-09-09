@@ -41,6 +41,7 @@ components:
       content:
         application/json:
           schema:
+            description: Error payload
             $ref: '#/components/schemas/Error'
           example:
             code: 400
@@ -57,6 +58,7 @@ components:
       content:
         application/json:
           schema:
+            description: Error payload
             $ref: '#/components/schemas/Error'
           example:
             code: 401
@@ -69,6 +71,7 @@ components:
       content:
         application/json:
           schema:
+            description: Error payload
             $ref: '#/components/schemas/Error'
           example:
             code: 404
@@ -82,6 +85,7 @@ components:
         Authenticated user does not have permission to access this resource
       content:
         application/json:
+          description: Error payload
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
@@ -702,7 +706,7 @@ paths:
                 pattern: ^\*|https?://[^\s/$.?#].[^\s]*$
                 minLength: 1
                 maxLength: 255
-                descsription: Allowed origin domains for CORS requests, use '*' for all origins
+                description: Allowed origin domains for CORS requests, use '*' for all origins
             Access-Control-Allow-Methods:
               schema:
                 type: string
