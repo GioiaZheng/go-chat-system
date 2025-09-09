@@ -1,22 +1,8 @@
 <template>
-  <!-- Simple red error text block -->
-  <div v-if="$slots.default" class="err">
-    <slot />
+  <div class="p-2 bg-red-50 text-red-700 border border-red-200 rounded">
+    {{ text }}
   </div>
 </template>
-
-<script>
-/**
- * ErrorMsg
- * - Minimal error message component.
- * - Renders slot content in a styled red text block.
- */
-export default { name: "ErrorMsg" };
+<script setup>
+const props = defineProps({ text: { type: String, default: "Error" } });
 </script>
-
-<style scoped>
-.err {
-  color: crimson;
-  padding: 8px 0;
-}
-</style>

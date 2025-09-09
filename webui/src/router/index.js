@@ -1,39 +1,31 @@
-// src/router/index.js
+// English: routes + auth guard
 import { createRouter, createWebHistory } from "vue-router";
-import LoginView from "../views/LoginView.vue";
-import ConversationsView from "../views/ConversationsView.vue";
-import ChatView from "../views/ChatView.vue";
-import GroupsView from "../views/GroupsView.vue";
-import ProfileView from "../views/ProfileView.vue";
 
-/**
- * Router configuration
- * - English comments for TA/teacher clarity.
- * - Defines assignment-required routes: login, conversations, chat, groups, profile.
- * - Includes a navigation guard that redirects to /login if no token is present.
- */
+const LoginView = () => import("../views/LoginView.vue");
+const ConversationsView = () => import("../views/ConversationsView.vue");
+const ChatView = () => import("../views/ChatView.vue");
+const GroupView = () => import("../views/GroupView.vue");
+const ProfileView = () => import("../views/ProfileView.vue");
+
+const routes = [
+  { path: "/login", name: "login", component: LoginView },
+  { path: "/conversations", name: "conversations", component: ConversationsView },
+  // type: conv | private | group
+  { path: "/chat/:type/:id", name: "chat", component: ChatView, props: true },
+  { path: "/groups", name: "groups", component: GroupView },
+  { path: "/me", name: "me", component: ProfileView },
+  { path: "/:pathMatch(.*)*", redirect: "/conversations" },
+];
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    { path: "/login", component: LoginView },
-    { path: "/conversations", component: ConversationsView },
-    { path: "/chat/:type/:id", component: ChatView, props: true },
-    { path: "/groups", component: GroupsView },
-    { path: "/me", component: ProfileView },
-    { path: "/:pathMatch(.*)*", redirect: "/conversations" }, // fallback
-  ],
+  history: createWebHistory(),
+  routes,
 });
 
-// Navigation guard: check authentication before each route
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const token = localStorage.getItem("token");
-  if (!token && to.path !== "/login") {
-    // No token → must login
-    next("/login");
-  } else {
-    next();
-  }
+  if (!token && to.name !== "login") return { name: "login" };
+  return true;
 });
 
 export default router;

@@ -1,168 +1,93 @@
 <template>
-  <div class="page">
-    <header class="bar">
-      <h2 class="title">My Profile</h2>
-    </header>
+  <div class="max-w-xl mx-auto p-4">
+    <h2 class="text-xl font-semibold mb-4">My Profile</h2>
+    <ErrorMsg v-if="err" :text="err" class="mb-3" />
+    <div v-if="me" class="space-y-2 bg-white p-4 rounded border">
+      <div><span class="font-medium">id:</span> {{ me.id }}</div>
+      <div><span class="font-medium">username:</span> {{ me.username }}</div>
+      <div><span class="font-medium">name:</span> {{ me.name }}</div>
+      <div><span class="font-medium">email:</span> {{ me.email }}</div>
+      <div><span class="font-medium">gender:</span> {{ me.gender }}</div>
 
-    <section class="body" v-if="loading">
-      <LoadingSpinner text="Loading profile..." />
-    </section>
-
-    <section class="body" v-else>
-      <!-- Basic info -->
-      <div class="row">
-        <label>ID</label>
-        <div>#{{ me?.id }}</div>
+      <div class="mt-4">
+        <label class="block mb-1 text-sm">Change username</label>
+        <input v-model="newName" class="input" placeholder="new username" />
+        <button class="btn mt-2" @click="setUsername" :disabled="loading">Save</button>
       </div>
 
-      <div class="row">
-        <label>Username</label>
-        <form class="inline" @submit.prevent="saveName">
-          <input v-model="username" placeholder="Enter new username" />
-          <button :disabled="savingName">{{ savingName ? "Saving…" : "Save" }}</button>
-        </form>
+      <div class="mt-4">
+        <label class="block mb-1 text-sm">Set photo</label>
+        <input type="file" @change="onFile" />
+        <button class="btn mt-2" @click="setPhoto" :disabled="loading || !file">Upload</button>
       </div>
-
-      <div class="row">
-        <label>Photo</label>
-        <div class="photo">
-          <img v-if="me?.avatarUrl" :src="me.avatarUrl" class="avatar" alt="me" />
-          <div class="btns">
-            <!-- Preset quick set -->
-            <button @click="setPreset('avatar6')">Use preset: avatar6</button>
-            <!-- Upload -->
-            <input type="file" accept="image/*" @change="uploadPhoto" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Feedback -->
-      <ErrorMsg v-if="error">{{ error }}</ErrorMsg>
-      <div v-if="ok" class="ok">Saved ✔</div>
-    </section>
+    </div>
   </div>
 </template>
 
-<script>
-/**
- * ProfileView
- * - English comments for TA/teacher clarity.
- * - Shows current user info and allows:
- *   (1) setMyUserName(username)
- *   (2) setMyPhoto (preset or file upload)
- * - Uses APIs: me, setMyUserName, setMyPhotoPreset, setMyPhotoUpload.
- */
-
+<script setup>
 import { ref, onMounted } from "vue";
-import {
-  me as apiMe,
-  setMyUserName,
-  setMyPhotoPreset,
-  setMyPhotoUpload,
-} from "../services/api";
-import LoadingSpinner from "../components/LoadingSpinner.vue";
+import axios from "../services/axios";
 import ErrorMsg from "../components/ErrorMsg.vue";
 
-export default {
-  name: "ProfileView",
-  components: { LoadingSpinner, ErrorMsg },
-  setup() {
-    const loading = ref(true);
-    const me = ref(null);
-    const username = ref("");
-    const savingName = ref(false);
-    const error = ref("");
-    const ok = ref(false);
+const me = ref(null);
+const newName = ref("");
+const file = ref(null);
+const loading = ref(false);
+const err = ref("");
 
-    onMounted(fetchMe);
+onMounted(async () => {
+  try {
+    const res = await axios.get("/users/me");
+    me.value = res.data?.data?.user || res.data?.user || null;
+    if (me.value) localStorage.setItem("me", JSON.stringify(me.value));
+  } catch (e) {
+    err.value = e?.response?.data?.message || "Failed to load profile";
+  }
+});
 
-    async function fetchMe() {
-      loading.value = true;
-      error.value = "";
-      ok.value = false;
-      try {
-        const r = await apiMe();
-        me.value = r?.data?.user || r?.data || null;
-        username.value = me.value?.username || me.value?.name || "";
-      } catch (e) {
-        error.value = e?.message || "Failed to load profile";
-      } finally {
-        loading.value = false;
-      }
-    }
+function onFile(e) {
+  file.value = e.target.files?.[0] || null;
+}
 
-    async function saveName() {
-      if (!username.value.trim()) return;
-      savingName.value = true;
-      error.value = "";
-      ok.value = false;
-      try {
-        await setMyUserName(username.value.trim());
-        await fetchMe();
-        ok.value = true;
-        // persist local cache
-        localStorage.setItem("me", JSON.stringify(me.value));
-      } catch (e) {
-        error.value = e?.message || "Failed to save username";
-      } finally {
-        savingName.value = false;
-      }
-    }
+async function setUsername() {
+  if (!newName.value) return;
+  loading.value = true; err.value = "";
+  try {
+    await axios.put("/users/set_username", { username: newName.value });
+    const res = await axios.get("/users/me");
+    me.value = res.data?.data?.user || me.value;
+    localStorage.setItem("me", JSON.stringify(me.value));
+    newName.value = "";
+  } catch (e) {
+    err.value = e?.response?.data?.message || "Failed to set username";
+  } finally {
+    loading.value = false;
+  }
+}
 
-    async function setPreset(preset) {
-      error.value = "";
-      ok.value = false;
-      try {
-        await setMyPhotoPreset(preset);
-        await fetchMe();
-        ok.value = true;
-        localStorage.setItem("me", JSON.stringify(me.value));
-      } catch (e) {
-        error.value = e?.message || "Failed to set preset photo";
-      }
-    }
-
-    async function uploadPhoto(ev) {
-      const f = ev?.target?.files?.[0];
-      if (!f) return;
-      error.value = "";
-      ok.value = false;
-      try {
-        await setMyPhotoUpload(f);
-        await fetchMe();
-        ok.value = true;
-        localStorage.setItem("me", JSON.stringify(me.value));
-      } catch (e) {
-        error.value = e?.message || "Failed to upload photo";
-      } finally {
-        ev.target.value = ""; // reset file input
-      }
-    }
-
-    return {
-      loading,
-      me,
-      username,
-      savingName,
-      error,
-      ok,
-      saveName,
-      setPreset,
-      uploadPhoto,
-    };
-  },
-};
+async function setPhoto() {
+  if (!file.value) return;
+  loading.value = true; err.value = "";
+  try {
+    const form = new FormData();
+    form.append("upload", file.value);
+    await axios.put("/users/set_photo", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    // refresh
+    const res = await axios.get("/users/me");
+    me.value = res.data?.data?.user || me.value;
+    localStorage.setItem("me", JSON.stringify(me.value));
+    file.value = null;
+  } catch (e) {
+    err.value = e?.response?.data?.message || "Failed to set photo";
+  } finally {
+    loading.value = false;
+  }
+}
 </script>
 
 <style scoped>
-.page { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
-.bar { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid #eee; }
-.title { margin: 0; font-size: 18px; font-weight: 700; }
-.body { padding: 12px 14px; display: grid; gap: 14px; max-width: 720px; }
-.row { display: grid; grid-template-columns: 140px 1fr; gap: 10px; align-items: center; }
-.inline { display: flex; gap: 8px; }
-.photo { display: flex; align-items: center; gap: 12px; }
-.avatar { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; }
-.btns { display: flex; gap: 8px; align-items: center; }
-.ok { color: #2a7a2a; }
+.input { width:100%; border:1px solid #ddd; padding:.5rem .75rem; border-radius:.375rem; }
+.btn { background:#111827; color:#fff; padding:.5rem .75rem; border-radius:.375rem; }
 </style>

@@ -1,37 +1,25 @@
 <template>
-  <form class="msg-input" @submit.prevent="submit">
-    <input v-model="text" placeholder="Type a message..." />
-    <button type="submit">Send</button>
+  <form @submit.prevent="submit" class="flex gap-2">
+    <input v-model="text" class="flex-1 input" placeholder="Type a message..." />
+    <button class="btn">Send</button>
   </form>
 </template>
 
-<script>
-/**
- * MessageInput
- * - Input box for composing a message.
- * - Emits 'send' with the message text.
- */
-export default {
-  name: "MessageInput",
-  data() {
-    return { text: "" };
-  },
-  methods: {
-    submit() {
-      if (!this.text.trim()) return;
-      this.$emit("send", this.text.trim());
-      this.text = "";
-    },
-  },
-};
+<script setup>
+// English: emit send(text)
+import { ref } from "vue";
+const emit = defineEmits(["send"]);
+const text = ref("");
+
+function submit() {
+  const t = text.value.trim();
+  if (!t) return;
+  emit("send", t);
+  text.value = "";
+}
 </script>
 
 <style scoped>
-.msg-input {
-  display: flex;
-  gap: 8px;
-}
-.msg-input input {
-  flex: 1;
-}
+.input { width:100%; border:1px solid #ddd; padding:.5rem .75rem; border-radius:.375rem; }
+.btn { background:#111827; color:#fff; padding:.5rem .75rem; border-radius:.375rem; }
 </style>

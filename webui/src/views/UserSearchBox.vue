@@ -1,105 +1,33 @@
 <template>
-  <div class="search">
-    <!-- Search input -->
-    <input
-      :disabled="busy"
-      v-model="q"
-      placeholder="Search users by username..."
-      @input="emitQuery"
-    />
-
-    <!-- Results dropdown -->
-    <div v-if="q && results?.length" class="dropdown">
-      <button
-        v-for="u in results"
-        :key="u.id"
-        class="row"
-        @click="pick(u)"
-      >
-        <span class="name">{{ u.username || u.name || u.id }}</span>
-        <span class="id">#{{ u.id }}</span>
-      </button>
+  <div>
+    <div class="flex gap-2">
+      <input v-model="q" @keyup.enter="search" class="input flex-1" placeholder="Search users..." />
+      <button class="btn" @click="search">Search</button>
     </div>
-
-    <!-- Clear icon -->
-    <button v-if="q" class="clear" @click="clear">✕</button>
+    <ul v-if="items.length" class="mt-2 space-y-1">
+      <li v-for="u in items" :key="u.id" class="p-2 bg-white border rounded flex justify-between">
+        <span>{{ u.username || u.email }}</span>
+        <button class="text-blue-600" @click="$emit('select', u)">Select</button>
+      </li>
+    </ul>
   </div>
 </template>
 
-<script>
-/**
- * UserSearchBox
- * - Emits 'query' on input (parent performs API call to searchUsers).
- * - Emits 'pick' when a user is selected.
- * - Emits 'clear' to reset results in parent.
- */
-export default {
-  name: "UserSearchBox",
-  props: {
-    busy: { type: Boolean, default: false },
-    results: { type: Array, default: () => [] },
-  },
-  emits: ["query", "pick", "clear"],
-  data() {
-    return { q: "" };
-  },
-  methods: {
-    emitQuery() {
-      this.$emit("query", this.q.trim());
-    },
-    pick(u) {
-      this.$emit("pick", u);
-      this.q = "";
-      this.$emit("clear");
-    },
-    clear() {
-      this.q = "";
-      this.$emit("clear");
-    },
-  },
-};
+<script setup>
+import { ref } from "vue";
+import axios from "../services/axios";
+
+const q = ref("");
+const items = ref([]);
+
+async function search() {
+  if (!q.value.trim()) { items.value = []; return; }
+  const res = await axios.get("/users/search", { params: { q: q.value } });
+  items.value = res.data?.items || res.data?.data?.items || [];
+}
 </script>
 
 <style scoped>
-.search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.search input {
-  width: 280px;
-}
-.clear {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-.dropdown {
-  position: absolute;
-  top: 36px;
-  left: 0;
-  width: 100%;
-  max-height: 240px;
-  overflow: auto;
-  border: 1px solid #eee;
-  background: #fff;
-  z-index: 3;
-}
-.row {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  border: 0;
-  background: #fff;
-  padding: 8px 10px;
-  text-align: left;
-  cursor: pointer;
-  border-bottom: 1px solid #f7f7f7;
-}
-.row:hover {
-  background: #fafafa;
-}
-.name { overflow: hidden; text-overflow: ellipsis; }
-.id   { font-size: 12px; opacity: 0.65; }
+.input { width:100%; border:1px solid #ddd; padding:.5rem .75rem; border-radius:.375rem; }
+.btn { background:#111827; color:#fff; padding:.5rem .75rem; border-radius:.375rem; }
 </style>
