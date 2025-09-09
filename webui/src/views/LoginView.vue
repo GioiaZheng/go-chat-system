@@ -1,23 +1,27 @@
 <template>
-  <div class="max-w-md mx-auto pt-20">
-    <h1 class="text-2xl font-semibold mb-6">Login</h1>
-    <ErrorMsg v-if="err" :text="err" class="mb-3" />
-    <form @submit.prevent="login">
-      <label class="block mb-2 text-sm">Name</label>
-      <input v-model.trim="name" class="input" placeholder="Your name" />
-      <button class="btn mt-4 w-full" :disabled="loading">
-        <LoadingSpinner v-if="loading" class="inline-block mr-2" />
-        Sign in
-      </button>
-    </form>
+  <div class="center-screen">
+    <div class="card">
+      <h1 class="h1">Login</h1>
+      <ErrorMsg v-if="err" :text="err" class="mt-2" />
+      <form @submit.prevent="login" class="mt-3">
+        <label class="label">Name</label>
+        <input v-model.trim="name" class="input" placeholder="Your name" />
+        <button class="btn block mt-3" :disabled="loading">
+          <LoadingSpinner v-if="loading" style="margin-right:8px" />
+          Sign in
+        </button>
+      </form>
+      <div class="text-muted mt-3">Tip: Any name will create / login the account.</div>
+    </div>
   </div>
 </template>
 
 <script setup>
-// English: login to /session; store data.token + goto conversations
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import axios from "../services/axios";
+import ErrorMsg from "../components/ErrorMsg.vue";
+import LoadingSpinner from "../components/LoadingSpinner.vue";
 
 const router = useRouter();
 const name = ref("");
@@ -26,17 +30,13 @@ const err = ref("");
 
 async function login() {
   err.value = "";
-  if (!name.value) {
-    err.value = "Name is required";
-    return;
-  }
+  if (!name.value) { err.value = "Name is required"; return; }
   loading.value = true;
   try {
     const res = await axios.post("/session", { name: name.value });
     const token = res.data?.data?.token;
     if (!token) throw new Error("Invalid login response");
     localStorage.setItem("token", token);
-    // optional: store user profile
     const user = res.data?.data?.user;
     if (user) localStorage.setItem("me", JSON.stringify(user));
     router.push({ name: "conversations" });
@@ -47,8 +47,3 @@ async function login() {
   }
 }
 </script>
-
-<style scoped>
-.input { width:100%; border:1px solid #ddd; padding:.5rem .75rem; border-radius:.375rem; }
-.btn { background:#111827; color:#fff; padding:.5rem .75rem; border-radius:.375rem; }
-</style>
