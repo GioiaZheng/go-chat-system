@@ -3,122 +3,104 @@ package api
 import (
 	"net/http"
 
+	reqcontext "github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
-
-// Helper: create an alias for a route parameter (e.g., :messageId -> :id)
-func (rt *_router) withParamAlias(h httprouter.Handle, from, to string) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// withParamAlias renames a path param (e.g., :messageId -> :id) then calls the inner handler.
+func (rt *_router) withParamAlias(h httpRouterHandler, from, to string) httpRouterHandler {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 		if v := ps.ByName(from); v != "" {
 			ps = append(ps, httprouter.Param{Key: to, Value: v})
 		}
-		h(w, r, ps)
+		h(w, r, ps, ctx)
 	}
 }
 
-// Helper: map :conversationId from the path into query string (?conversation_id=...)
-// This allows us to reuse the existing getConversation logic
-func (rt *_router) getConversationByPathParam(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	cid := ps.ByName("conversationId")
-	if cid != "" {
-		q := r.URL.Query()
-		q.Set("conversation_id", cid)
-		r.URL.RawQuery = q.Encode()
-	}
-	rt.getConversation(w, r, ps)
-}
-
-// Helper: map :conversationId to query (?conversation_id=...) for POST sendMessage
-// (Handler should prefer body.conversation_id and fall back to query when absent.)
-func (rt *_router) sendMessageByPathParam(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// GET /conversations/:conversationId -> reuse GET /messages?conversation_id=...
+func (rt *_router) getConversationByPathParam(
+	w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext,
+) {
 	if cid := ps.ByName("conversationId"); cid != "" {
 		q := r.URL.Query()
 		q.Set("conversation_id", cid)
 		r.URL.RawQuery = q.Encode()
 	}
-	rt.sendMessage(w, r, ps)
+	// Reuse the canonical messages fetch handler
+	rt.getMessages(w, r, ps, ctx)
 }
 
-// RegisterRoutes wires all HTTP endpoints to their handlers.
-// - The main API is exposed under the /api prefix.
-// - A set of compatibility aliases (without /api prefix) is also registered,
-//   to match alternative client or grading scripts.
+// POST /conversations/:conversationId/messages -> reuse POST /messages (via query)
+func (rt *_router) sendMessageByPathParam(
+	w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext,
+) {
+	if cid := ps.ByName("conversationId"); cid != "" {
+		q := r.URL.Query()
+		q.Set("conversation_id", cid)
+		r.URL.RawQuery = q.Encode()
+	}
+	rt.sendMessage(w, r, ps, ctx)
+}
+
+// RegisterRoutes wires all endpoints to handlers.
+// Keep it simple (no /api prefix), and avoid duplicate registrations.
+// Only add compatibility aliases when the path is actually different.
 func (rt *_router) RegisterRoutes() {
-	basePath := "/api"
-
-	// ---------------------- Public (no authentication) ----------------------
-	rt.router.POST(basePath+"/session", rt.doLogin)
-	rt.router.POST(basePath+"/register", rt.doRegister)
-	rt.router.GET(basePath+"/liveness", rt.liveness)
-	rt.router.OPTIONS(basePath+"/cors", rt.handleCorsPreflight)
-	rt.router.POST(basePath+"/shutdown", rt.shutdown) // development-only helper
-
-	// ---------------------- Protected (authentication required) ----------------------
-	// Conversations
-	rt.router.POST(basePath+"/conversations", rt.wrap(rt.startConversation))
-	rt.router.GET(basePath+"/conversations", rt.wrap(rt.getMyConversations))
-
-	// Users
-	rt.router.PUT(basePath+"/users/set_username", rt.wrap(rt.setMyUserName))
-	rt.router.PUT(basePath+"/users/set_photo", rt.wrap(rt.setMyPhoto))
-	rt.router.GET(basePath+"/users/me", rt.wrap(rt.getUserInfo))
-	rt.router.GET(basePath+"/users/search", rt.wrap(rt.searchUsers))
-	rt.router.GET(basePath+"/users/profile/:user_id", rt.wrap(rt.getUserProfile))
-
-	// Groups
-	rt.router.POST(basePath+"/groups", rt.wrap(rt.createGroup))
-	rt.router.GET(basePath+"/groups", rt.wrap(rt.getGroupsList))
-	rt.router.GET(basePath+"/groups/:id", rt.wrap(rt.getGroupDetail))
-	rt.router.PUT(basePath+"/groups/:id/name", rt.wrap(rt.setGroupName))
-	rt.router.PUT(basePath+"/groups/:id/photo", rt.wrap(rt.setGroupPhoto))
-	rt.router.POST(basePath+"/groups/:id/members", rt.wrap(rt.addToGroup))
-	rt.router.DELETE(basePath+"/groups/:id/members", rt.wrap(rt.leaveGroup))
-
-	// Messages
-	rt.router.GET(basePath+"/messages", rt.wrap(rt.getConversation))
-	rt.router.POST(basePath+"/messages", rt.wrap(rt.sendMessage))
-	rt.router.GET(basePath+"/messages/:id", rt.wrap(rt.getMessageById))
-	rt.router.DELETE(basePath+"/messages/:id", rt.wrap(rt.deleteMessage))
-	rt.router.POST(basePath+"/messages/:id/forward", rt.wrap(rt.forwardMessage))
-	rt.router.GET(basePath+"/messages/:id/comment", rt.wrap(rt.getMessageComments))
-	rt.router.POST(basePath+"/messages/:id/comment", rt.wrap(rt.commentMessage))
-	rt.router.POST(basePath+"/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
-
-	// ---------------------- Compatibility aliases (no /api prefix) ----------------------
-	// Public
+	// ------------- Public (no auth) -------------
 	rt.router.POST("/session", rt.doLogin)
 	rt.router.POST("/register", rt.doRegister)
 	rt.router.GET("/liveness", rt.liveness)
-	rt.router.OPTIONS("/cors", rt.handleCorsPreflight) // compatibility alias
+	rt.router.OPTIONS("/cors", rt.handleCorsPreflight)
+	rt.router.POST("/shutdown", rt.shutdown) // dev-only helper
 
-	// Users
-	rt.router.PUT("/users/me/name", rt.wrap(rt.setMyUserName))
-	rt.router.PUT("/users/me/photo", rt.wrap(rt.setMyPhoto))
-	rt.router.GET("/users/search", rt.wrap(rt.searchUsers))
+	// ------------- Protected (auth required) -------------
 
-	// Conversations
+	// Conversations (canonical)
+	rt.router.POST("/conversations", rt.wrap(rt.startConversation))
 	rt.router.GET("/conversations", rt.wrap(rt.getMyConversations))
-	rt.router.POST("/start-conversation", rt.wrap(rt.startConversation))
-	rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversationByPathParam))
-	rt.router.POST("/conversations/:conversationId/messages", rt.wrap(rt.sendMessageByPathParam))
 
-	// Messages
-	rt.router.DELETE("/messages/:messageId", rt.wrap(rt.withParamAlias(rt.deleteMessage, "messageId", "id")))
-	rt.router.POST("/messages/:messageId/forward", rt.wrap(rt.withParamAlias(rt.forwardMessage, "messageId", "id")))
-	rt.router.POST("/messages/:messageId/reactions", rt.wrap(rt.withParamAlias(rt.commentMessage, "messageId", "id")))
-	rt.router.DELETE("/messages/:messageId/reactions", rt.wrap(rt.withParamAlias(rt.uncommentMessage, "messageId", "id")))
+	// Users (canonical)
+	rt.router.PUT("/users/set_username", rt.wrap(rt.setMyUserName))
+	rt.router.PUT("/users/set_photo", rt.wrap(rt.setMyPhoto))
+	rt.router.GET("/users/me", rt.wrap(rt.getUserInfo))
+	rt.router.GET("/users/search", rt.wrap(rt.searchUsers))
+	rt.router.GET("/users/profile/:user_id", rt.wrap(rt.getUserProfile))
 
-	// Groups
-	rt.router.POST("/groups/:groupId/leave", rt.wrap(rt.withParamAlias(rt.leaveGroup, "groupId", "id")))
-	rt.router.POST("/groups/:groupId/members", rt.wrap(rt.withParamAlias(rt.addToGroup, "groupId", "id")))
-	rt.router.PUT("/groups/:groupId/name", rt.wrap(rt.withParamAlias(rt.setGroupName, "groupId", "id")))
-	rt.router.PUT("/groups/:groupId/photo", rt.wrap(rt.withParamAlias(rt.setGroupPhoto, "groupId", "id")))
+	// Groups (canonical)
+	rt.router.POST("/groups", rt.wrap(rt.createGroup))
+	rt.router.GET("/groups", rt.wrap(rt.getGroupsList))
+	rt.router.GET("/groups/:id", rt.wrap(rt.getGroupDetail))
+	rt.router.PUT("/groups/:id/name", rt.wrap(rt.setGroupName))
+	rt.router.PUT("/groups/:id/photo", rt.wrap(rt.setGroupPhoto))
+	rt.router.POST("/groups/:id/members", rt.wrap(rt.addToGroup))
+	rt.router.DELETE("/groups/:id/members", rt.wrap(rt.leaveGroup))
 
-	// Static files (optional)
+	// Messages (canonical)
+	rt.router.GET("/messages", rt.wrap(rt.getMessages))
+	rt.router.POST("/messages", rt.wrap(rt.sendMessage))
+	rt.router.GET("/messages/:id", rt.wrap(rt.getMessageById))
+	rt.router.DELETE("/messages/:id", rt.wrap(rt.deleteMessage))
+	rt.router.POST("/messages/:id/forward", rt.wrap(rt.forwardMessage))
+	rt.router.GET("/messages/:id/comment", rt.wrap(rt.getMessageComments))
+	rt.router.POST("/messages/:id/comment", rt.wrap(rt.commentMessage))
+	rt.router.POST("/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
+
+	// ------------- Compatibility aliases (only when path differs) -------------
+
+	// Users: keep different aliases only
+	rt.router.PUT("/users/me/name", rt.wrap(rt.setMyUserName))   // alias of set_username
+	rt.router.PUT("/users/me/photo", rt.wrap(rt.setMyPhoto))     // alias of set_photo
+	// (Do NOT re-register /users/search; it's identical to canonical one.)
+
+	// Conversations: add only different paths
+	rt.router.POST("/start-conversation", rt.wrap(rt.startConversation))                          // extra alias
+	rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversationByPathParam))       // maps to /messages?conversation_id=...
+	rt.router.POST("/conversations/:conversationId/messages", rt.wrap(rt.sendMessageByPathParam)) // maps to POST /messages
+
+	// Static files
 	rt.router.ServeFiles("/photos/*filepath", http.Dir("data/photos"))
 }
 
-// CORS preflight handler
+// CORS preflight handler for manual OPTIONS checks.
 func (rt *_router) handleCorsPreflight(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")

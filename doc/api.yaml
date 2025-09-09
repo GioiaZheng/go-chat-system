@@ -9,10 +9,8 @@ info:
     url: https://chatapp.com/support
   
 servers:
-  - url: /api
+  - url: /
     description: API foundation path
-  - url: https://api.example.com
-    description: Production
 
 tags:
   - name: auth

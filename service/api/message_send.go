@@ -11,13 +11,14 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// sendMessageRequest supports both official OpenAPI fields and legacy aliases.
+// Official: conversation_id, content, type
+// Legacy:   chat_type + target_id/receiver_id/to_user_id/group_id + message
 type sendMessageRequest struct {
-	// Official
 	ConversationID string `json:"conversation_id,omitempty"`
 	Content        string `json:"content,omitempty"`
 	Type           string `json:"type,omitempty"` // text|image|video|file (default text)
 
-	// Legacy aliases
 	ChatType   string `json:"chat_type,omitempty"`
 	TargetID   string `json:"target_id,omitempty"`
 	ReceiverID string `json:"receiver_id,omitempty"`
@@ -26,6 +27,7 @@ type sendMessageRequest struct {
 	Message    string `json:"message,omitempty"`
 }
 
+// coalesce picks the first non-empty trimmed string from the list.
 func coalesce(vals ...string) string {
 	for _, v := range vals {
 		if strings.TrimSpace(v) != "" {
@@ -35,20 +37,29 @@ func coalesce(vals ...string) string {
 	return ""
 }
 
+// sendMessage handles POST /messages.
+// Flow:
+//  1. Ensure the request is authenticated (ctx.UserID).
+//  2. Parse and normalize the JSON body.
+//  3. Choose official path (conversation_id) or legacy path (chat_type + target).
+//  4. Persist the message using db.* helpers.
+//  5. Return 201 Created with the message resource.
 func (rt *_router) sendMessage(
 	w http.ResponseWriter,
 	r *http.Request,
 	_ httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
+	// 1) Auth check
 	if strings.TrimSpace(ctx.UserID) == "" {
 		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
+	// 2) Parse request
 	var req sendMessageRequest
 	if err := readJSON(r, &req); err != nil {
-		rt.sendError(w, http.StatusBadRequest, "Invalid request body", err.Error())
+		rt.sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
@@ -58,8 +69,8 @@ func (rt *_router) sendMessage(
 		return
 	}
 
+	// Prepare message object
 	now := time.Now().UTC().Format(time.RFC3339)
-
 	msg := models.Message{
 		ID:        uuid.NewString(),
 		SenderID:  ctx.UserID,
@@ -69,7 +80,7 @@ func (rt *_router) sendMessage(
 		CreatedAt: now,
 	}
 
-	// --- Official path: by conversation_id (DO NOT guess by prefix) ---
+	// 3) Official path: use conversation_id
 	if conv := strings.TrimSpace(req.ConversationID); conv != "" {
 		msg.ConversationID = conv
 		if err := rt.db.SendMessageToConversation(msg); err != nil {
@@ -78,7 +89,7 @@ func (rt *_router) sendMessage(
 			return
 		}
 	} else {
-		// --- Legacy path: chat_type + target_id / receiver_id / group_id ---
+		// 4) Legacy path: use chat_type + target
 		chatType := strings.TrimSpace(strings.ToLower(req.ChatType))
 		targetID := strings.TrimSpace(coalesce(req.TargetID, req.ReceiverID, req.ToUserID, req.GroupID))
 
@@ -99,10 +110,9 @@ func (rt *_router) sendMessage(
 				rt.sendError(w, http.StatusBadRequest, "group_id (or target_id) is required")
 				return
 			}
-			// legacy: some callers may pass group_id; but DB should write via conversation_id
 			msg.ConversationID = targetID
 			if err := rt.db.SendMessageToConversation(msg); err != nil {
-				ctx.Logger.WithError(err).Error("failed to send group(conversation) message")
+				ctx.Logger.WithError(err).Error("failed to send group message")
 				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
 				return
 			}
@@ -112,6 +122,7 @@ func (rt *_router) sendMessage(
 		}
 	}
 
+	// 5) Success response
 	resp := map[string]interface{}{
 		"code":    http.StatusCreated,
 		"message": "Message sent successfully",

@@ -12,19 +12,17 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// Flexible request that accepts both legacy {"name","password"}
-// and OpenAPI {"username","email","password",...}.
+// Flexible request: supports both {"name","password"} (legacy) and
+// {"username","email","password","gender"} (OpenAPI).
 type registerFlexibleReq struct {
-	// Legacy fields
 	Name     string `json:"name,omitempty"`
 	Password string `json:"password,omitempty"`
-	// OpenAPI fields
 	Username string `json:"username,omitempty"`
 	Email    string `json:"email,omitempty"`
 	Gender   string `json:"gender,omitempty"`
 }
 
-// OpenAPI-shaped response: data is a single object (not an array)
+// Response format matching OpenAPI: {code,message,data:{user,token}}
 type registerResponse struct {
 	Code    int                `json:"code"`
 	Message string             `json:"message"`
@@ -36,11 +34,10 @@ type registerDataObject struct {
 	Token string      `json:"token,omitempty"`
 }
 
-// doRegister handles POST /register
-// Compatibility rules:
-// - If the request contains {name,password}, we map username=name and email=username+"@example.com".
-// - If the request contains {username,email,password}, we use them directly.
-// - "name" in OpenAPI is optional; if missing we mirror username into user.Name.
+// doRegister handles POST /register.
+// - Legacy: {"name","password"} → username=name, email=auto.
+// - OpenAPI: {"username","email","password"} → used directly.
+// - If name missing, fallback to username.
 func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var req registerFlexibleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -48,14 +45,13 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 		return
 	}
 
-	// Normalize & compatibility layer
 	username := strings.TrimSpace(req.Username)
 	email := strings.TrimSpace(req.Email)
 	password := strings.TrimSpace(req.Password)
 	displayName := strings.TrimSpace(req.Name)
 	gender := strings.TrimSpace(req.Gender)
 
-	// Legacy payload fallback: {"name","password"}
+	// Legacy compatibility
 	if username == "" && req.Name != "" {
 		username = strings.TrimSpace(req.Name)
 	}
@@ -63,7 +59,6 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 		password = strings.TrimSpace(req.Password)
 	}
 	if email == "" && username != "" {
-		// Auto-generate email for legacy path to satisfy schema
 		email = username + "@example.com"
 	}
 	if displayName == "" && username != "" {
@@ -73,7 +68,7 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 		gender = "unspecified"
 	}
 
-	// Validate minimal requirements
+	// Minimal validation
 	if username == "" || email == "" || password == "" {
 		rt.writeErrorResponse(w, http.StatusBadRequest, "Username, email and password are required")
 		return
@@ -90,12 +85,12 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 		return
 	}
 
-	// Pick a random default avatar from local uploads/photos/avatar{1..10}.jpg
+	// Pick random default avatar
 	rand.Seed(time.Now().UnixNano())
-	avatarIndex := rand.Intn(10) + 1 // 1..10
+	avatarIndex := rand.Intn(10) + 1
 	avatarURL := fmt.Sprintf("/uploads/photos/avatar%d.jpg", avatarIndex)
 
-	// Build model and create
+	// Create user
 	user := models.User{
 		Username:  username,
 		Email:     email,
@@ -114,19 +109,11 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 		Message: "User registered successfully",
 		Data: registerDataObject{
 			User:  created,
-			Token: created.ID, // In this assignment, we use userID as the bearer token
+			Token: created.ID, // assignment: use userID as bearer token
 		},
 	}
 
 	if err := writeJSON(w, http.StatusCreated, resp); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode register response")
 	}
-}
-
-// writeErrorResponse is a small helper for auth endpoints (Go 1.17 friendly: interface{} instead of any)
-func (rt *_router) writeErrorResponse(w http.ResponseWriter, status int, msg string) {
-	_ = writeJSON(w, status, map[string]interface{}{
-		"code":    status,
-		"message": msg,
-	})
 }
