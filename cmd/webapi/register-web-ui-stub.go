@@ -6,8 +6,7 @@ import (
 	"net/http"
 )
 
-// registerWebUI is a stub for builds without the webui tag.
-// This returns the given handler unchanged.
+// registerWebUI is an empty stub because `webui` tag has not been specified.
 func registerWebUI(hdl http.Handler) (http.Handler, error) {
 	return hdl, nil
 }

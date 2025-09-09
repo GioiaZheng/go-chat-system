@@ -1,13 +1,19 @@
+<!-- src/App.vue -->
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900">
-    <router-view />
-  </div>
+  <router-view></router-view>
 </template>
 
-<script setup>
-// English: bare layout shell
+<script>
+export default {
+  name: 'App'
+}
 </script>
 
 <style>
-/* keep global styles in main.css / dashboard.css */
+/* 全局样式 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 </style>

@@ -1,25 +1,40 @@
-// English: Axios instance with baseURL + auth interceptor
-import axios from "axios";
+// src/services/axios.js
+import axios from 'axios';
 
+// 创建 axios 实例
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || "http://localhost:3000/api/v1",
-  timeout: 15000,
+  baseURL: 'http://localhost:3000', // 后端 API 地址
+  timeout: 10000, // 请求超时时间
 });
 
-instance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-instance.interceptors.response.use(
-  (r) => r,
-  (err) => {
-    if (err?.response?.status === 401) {
-      localStorage.removeItem("token");
-      // optional redirect can be done in views based on error handling
+// 请求拦截器 - 添加认证 token
+instance.interceptors.request.use(
+  (config) => {
+    // 从 localStorage 获取 token
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return Promise.reject(err);
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// 响应拦截器 - 处理错误
+instance.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      // token 过期或无效，跳转到登录页
+      localStorage.removeItem('token');
+      localStorage.removeItem('me');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
   }
 );
 

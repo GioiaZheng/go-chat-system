@@ -4,20 +4,17 @@ package main
 
 import (
 	"fmt"
+	"github.com/GioiaZheng/Wasa_proj/webui"
 	"io/fs"
 	"net/http"
 	"strings"
-
-	"github.com/GioiaZheng/Wasa_proj/webui"
 )
 
-// registerWebUI serves embedded frontend assets if the webui tag is enabled.
 func registerWebUI(hdl http.Handler) (http.Handler, error) {
 	distDirectory, err := fs.Sub(webui.Dist, "dist")
 	if err != nil {
 		return nil, fmt.Errorf("error embedding WebUI dist/ directory: %w", err)
 	}
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.RequestURI, "/dashboard/") {
 			http.StripPrefix("/dashboard/", http.FileServer(http.FS(distDirectory))).ServeHTTP(w, r)

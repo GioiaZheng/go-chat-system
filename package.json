@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@stoplight/spectral-cli": "^6.15.0"
+  }
+}
