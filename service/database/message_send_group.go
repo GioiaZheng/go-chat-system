@@ -1,14 +1,16 @@
 package database
 
 import (
+	"fmt"
+
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
 
-// SendGroupMessage inserts a new message into a group chat
+// SendGroupMessage is a backward-compatible shim.
+// Internally delegates to SendMessageToConversation.
 func (db *appdbimpl) SendGroupMessage(message models.Message) error {
-	_, err := db.c.Exec(`
-		INSERT INTO messages (sender_id, group_id, content, conversation_id, created_at)
-		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-	`, message.SenderID, message.GroupID, message.Content, message.ConversationID)
-	return err
+	if message.ConversationID == "" {
+		return fmt.Errorf("conversation_id required for group message")
+	}
+	return db.SendMessageToConversation(message)
 }

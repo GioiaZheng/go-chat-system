@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
@@ -57,58 +58,51 @@ func (rt *_router) sendMessage(
 		return
 	}
 
+	now := time.Now().UTC().Format(time.RFC3339)
+
 	msg := models.Message{
-		ID:       uuid.NewString(),
-		SenderID: ctx.UserID,
-		Content:  content,
+		ID:        uuid.NewString(),
+		SenderID:  ctx.UserID,
+		Content:   content,
+		Type:      "text",
+		Status:    "sent",
+		CreatedAt: now,
 	}
 
-	// Official path: conversation_id
+	// --- Official path: by conversation_id (DO NOT guess by prefix) ---
 	if conv := strings.TrimSpace(req.ConversationID); conv != "" {
-		lc := strings.ToLower(conv)
-		switch {
-		case strings.HasPrefix(lc, "u_") || strings.HasPrefix(lc, "usr-") || strings.HasPrefix(lc, "user-"):
-			msg.ReceiverID = conv
-			if err := rt.db.SendPrivateMessage(msg); err != nil {
-				ctx.Logger.WithError(err).Error("failed to send private message")
-				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
-				return
-			}
-		case strings.HasPrefix(lc, "g_") || strings.HasPrefix(lc, "grp-") || strings.HasPrefix(lc, "group-"):
-			msg.GroupID = conv
-			if err := rt.db.SendGroupMessage(msg); err != nil {
-				ctx.Logger.WithError(err).Error("failed to send group message")
-				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
-				return
-			}
-		default:
-			rt.sendError(w, http.StatusBadRequest, "conversation_id not recognized; use legacy chat_type/target_id if needed")
+		msg.ConversationID = conv
+		if err := rt.db.SendMessageToConversation(msg); err != nil {
+			ctx.Logger.WithError(err).Error("failed to send message to conversation")
+			rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
 			return
 		}
 	} else {
-		// Legacy path: chat_type + target_id / receiver_id / group_id
+		// --- Legacy path: chat_type + target_id / receiver_id / group_id ---
 		chatType := strings.TrimSpace(strings.ToLower(req.ChatType))
 		targetID := strings.TrimSpace(coalesce(req.TargetID, req.ReceiverID, req.ToUserID, req.GroupID))
+
 		switch chatType {
 		case "private", "direct", "dm":
-			msg.ReceiverID = targetID
 			if targetID == "" {
 				rt.sendError(w, http.StatusBadRequest, "target_id (or receiver_id/to_user_id) is required")
 				return
 			}
+			msg.ReceiverID = targetID
 			if err := rt.db.SendPrivateMessage(msg); err != nil {
 				ctx.Logger.WithError(err).Error("failed to send private message")
 				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
 				return
 			}
 		case "group", "grp":
-			msg.GroupID = targetID
 			if targetID == "" {
 				rt.sendError(w, http.StatusBadRequest, "group_id (or target_id) is required")
 				return
 			}
-			if err := rt.db.SendGroupMessage(msg); err != nil {
-				ctx.Logger.WithError(err).Error("failed to send group message")
+			// legacy: some callers may pass group_id; but DB should write via conversation_id
+			msg.ConversationID = targetID
+			if err := rt.db.SendMessageToConversation(msg); err != nil {
+				ctx.Logger.WithError(err).Error("failed to send group(conversation) message")
 				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
 				return
 			}
@@ -118,7 +112,6 @@ func (rt *_router) sendMessage(
 		}
 	}
 
-	// OpenAPI: MessageResourceEnvelope -> data.resource
 	resp := map[string]interface{}{
 		"code":    http.StatusCreated,
 		"message": "Message sent successfully",

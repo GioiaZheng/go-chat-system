@@ -6,7 +6,6 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
 
-// AppDatabase interface
 type AppDatabase interface {
 	Ping() error
 	Close() error
@@ -37,6 +36,8 @@ type AppDatabase interface {
 
 	// Messages
 	SendPrivateMessage(message models.Message) error
+	SendMessageToConversation(message models.Message) error // 新名字（统一会话写入）
+	// --- 兼容旧调用（可选保留）：---
 	SendGroupMessage(message models.Message) error
 	GetPrivateConversation(userID1, userID2 string) ([]models.Message, error)
 	GetGroupConversation(groupID string) ([]models.Message, error)
