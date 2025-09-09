@@ -90,32 +90,31 @@ func SetUserIDInContext(r *http.Request, userID string) *http.Request {
 // ----------------------- Auth Wrap Middleware ---------------------
 
 // wrap is the auth+context middleware used for all protected routes.
-// It performs the following steps:
-//  1. Parse "Authorization: Bearer <token>" header.
-//  2. Validate the token (in this assignment we treat the token as userID).
-//  3. Create a per-request UUID.
-//  4. Attach requestID, userID and a request-scoped logger into the context.
-//  5. Call the next handler with an enriched reqcontext.RequestContext.
+// Steps:
+//  1) Parse "Authorization: Bearer <token>".
+//  2) Validate token (assignment: token == userID).
+//  3) Create per-request UUID.
+//  4) Put requestID/userID/logger into context.
+//  5) Call next with enriched reqcontext.
 func (rt *_router) wrap(
 	next func(http.ResponseWriter, *http.Request, httprouter.Params, reqcontext.RequestContext),
 ) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		// 1) Parse "Authorization: Bearer <token>"
+		// 1) Authorization header
 		authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			rt.baseLogger.Error("missing or malformed authorization header")
-			http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+			rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 		if token == "" {
 			rt.baseLogger.Error("empty bearer token")
-			http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+			rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 
-		// 2) Validate token (current behavior: token == userID).
-		//    If you later switch to real JWT, only this method needs to change.
+		// 2) Validate token (token==userID for this assignment)
 		userID, err := rt.validateToken(token)
 		if err != nil || userID == "" {
 			if err != nil {
@@ -123,19 +122,19 @@ func (rt *_router) wrap(
 			} else {
 				rt.baseLogger.Error("invalid token: empty userID")
 			}
-			http.Error(w, `{"code": 401, "message": "Unauthorized"}`, http.StatusUnauthorized)
+			rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 
-		// 3) Generate a per-request UUID for tracing and correlation.
+		// 3) Request UUID
 		reqUUID, err := uuid.NewV4()
 		if err != nil {
 			rt.baseLogger.WithError(err).Error("failed to generate request UUID")
-			http.Error(w, `{"code": 500, "message": "Internal Server Error"}`, http.StatusInternalServerError)
+			rt.sendError(w, http.StatusInternalServerError, "Internal Server Error")
 			return
 		}
 
-		// 4) Enrich the context with requestID, userID and a scoped logger.
+		// 4) Enrich context
 		ctx := context.WithValue(r.Context(), requestIDKey, reqUUID.String())
 		ctx = context.WithValue(ctx, userIDKey, userID)
 		logger := rt.baseLogger.WithFields(logrus.Fields{
@@ -145,8 +144,7 @@ func (rt *_router) wrap(
 		})
 		ctx = context.WithValue(ctx, loggerKey, logger)
 
-		// 5) Call the next handler with our typed reqcontext, which mirrors what
-		//    you already use across the project.
+		// 5) Call next
 		next(w, r.WithContext(ctx), ps, reqcontext.RequestContext{
 			UserID:  userID,
 			ReqUUID: reqUUID,

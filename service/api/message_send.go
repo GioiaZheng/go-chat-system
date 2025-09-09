@@ -10,29 +10,19 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// sendMessageRequest supports multiple field aliases to be tolerant with different clients.
 type sendMessageRequest struct {
-	ChatType   string `json:"chat_type,omitempty"` // preferred
-	Type       string `json:"type,omitempty"`      // alias
-	TargetID   string `json:"target_id,omitempty"` // preferred
+	// Official
+	ConversationID string `json:"conversation_id,omitempty"`
+	Content        string `json:"content,omitempty"`
+	Type           string `json:"type,omitempty"` // text|image|video|file (default text)
+
+	// Legacy aliases
+	ChatType   string `json:"chat_type,omitempty"`
+	TargetID   string `json:"target_id,omitempty"`
 	ReceiverID string `json:"receiver_id,omitempty"`
 	ToUserID   string `json:"to_user_id,omitempty"`
 	GroupID    string `json:"group_id,omitempty"`
-	Content    string `json:"content,omitempty"` // preferred
-	Message    string `json:"message,omitempty"` // alias
-}
-
-// normalize returns (chatType, targetID, content)
-func (p *sendMessageRequest) normalize() (string, string, string) {
-	chatType := strings.TrimSpace(strings.ToLower(coalesce(p.ChatType, p.Type)))
-	content := strings.TrimSpace(coalesce(p.Content, p.Message))
-
-	// targetID precedence: target_id > receiver_id/to_user_id > group_id (and implies chatType=group)
-	targetID := strings.TrimSpace(coalesce(p.TargetID, p.ReceiverID, p.ToUserID, p.GroupID))
-	if chatType == "" && p.GroupID != "" {
-		chatType = "group"
-	}
-	return chatType, targetID, content
+	Message    string `json:"message,omitempty"`
 }
 
 func coalesce(vals ...string) string {
@@ -44,10 +34,12 @@ func coalesce(vals ...string) string {
 	return ""
 }
 
-// sendMessage handles POST /messages.
-// It accepts a tolerant JSON payload and delegates to DB layer.
-// Response keeps the standard envelope: { code, message, data: { message } }.
-func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx reqcontext.RequestContext) {
+func (rt *_router) sendMessage(
+	w http.ResponseWriter,
+	r *http.Request,
+	_ httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
 	if strings.TrimSpace(ctx.UserID) == "" {
 		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
@@ -59,22 +51,7 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	chatType, targetID, content := req.normalize()
-	switch chatType {
-	case "private", "direct", "dm":
-		chatType = "private"
-	case "group", "grp":
-		chatType = "group"
-	}
-
-	if chatType != "private" && chatType != "group" {
-		rt.sendError(w, http.StatusBadRequest, "chat_type must be 'private' or 'group'")
-		return
-	}
-	if targetID == "" {
-		rt.sendError(w, http.StatusBadRequest, "target_id (or receiver_id/group_id) is required")
-		return
-	}
+	content := strings.TrimSpace(coalesce(req.Content, req.Message))
 	if content == "" {
 		rt.sendError(w, http.StatusBadRequest, "content is required")
 		return
@@ -85,25 +62,68 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, _ httprou
 		SenderID: ctx.UserID,
 		Content:  content,
 	}
-	var err error
-	if chatType == "private" {
-		msg.ReceiverID = targetID
-		err = rt.db.SendPrivateMessage(msg)
+
+	// Official path: conversation_id
+	if conv := strings.TrimSpace(req.ConversationID); conv != "" {
+		lc := strings.ToLower(conv)
+		switch {
+		case strings.HasPrefix(lc, "u_") || strings.HasPrefix(lc, "usr-") || strings.HasPrefix(lc, "user-"):
+			msg.ReceiverID = conv
+			if err := rt.db.SendPrivateMessage(msg); err != nil {
+				ctx.Logger.WithError(err).Error("failed to send private message")
+				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
+				return
+			}
+		case strings.HasPrefix(lc, "g_") || strings.HasPrefix(lc, "grp-") || strings.HasPrefix(lc, "group-"):
+			msg.GroupID = conv
+			if err := rt.db.SendGroupMessage(msg); err != nil {
+				ctx.Logger.WithError(err).Error("failed to send group message")
+				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
+				return
+			}
+		default:
+			rt.sendError(w, http.StatusBadRequest, "conversation_id not recognized; use legacy chat_type/target_id if needed")
+			return
+		}
 	} else {
-		msg.GroupID = targetID
-		err = rt.db.SendGroupMessage(msg)
-	}
-	if err != nil {
-		ctx.Logger.WithError(err).Error("failed to persist message")
-		rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
-		return
+		// Legacy path: chat_type + target_id / receiver_id / group_id
+		chatType := strings.TrimSpace(strings.ToLower(req.ChatType))
+		targetID := strings.TrimSpace(coalesce(req.TargetID, req.ReceiverID, req.ToUserID, req.GroupID))
+		switch chatType {
+		case "private", "direct", "dm":
+			msg.ReceiverID = targetID
+			if targetID == "" {
+				rt.sendError(w, http.StatusBadRequest, "target_id (or receiver_id/to_user_id) is required")
+				return
+			}
+			if err := rt.db.SendPrivateMessage(msg); err != nil {
+				ctx.Logger.WithError(err).Error("failed to send private message")
+				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
+				return
+			}
+		case "group", "grp":
+			msg.GroupID = targetID
+			if targetID == "" {
+				rt.sendError(w, http.StatusBadRequest, "group_id (or target_id) is required")
+				return
+			}
+			if err := rt.db.SendGroupMessage(msg); err != nil {
+				ctx.Logger.WithError(err).Error("failed to send group message")
+				rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
+				return
+			}
+		default:
+			rt.sendError(w, http.StatusBadRequest, "conversation_id or valid chat_type required")
+			return
+		}
 	}
 
+	// OpenAPI: MessageResourceEnvelope -> data.resource
 	resp := map[string]interface{}{
 		"code":    http.StatusCreated,
-		"message": "Message sent",
+		"message": "Message sent successfully",
 		"data": map[string]interface{}{
-			"message": msg,
+			"resource": msg,
 		},
 	}
 	if err := writeJSON(w, http.StatusCreated, resp); err != nil {

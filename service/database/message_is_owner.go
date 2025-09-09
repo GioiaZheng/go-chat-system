@@ -1,23 +1,15 @@
 package database
 
-import (
-	"database/sql"
-	"fmt"
-)
-
-// IsMessageOwner checks if the user is the owner of the message
-func (db *appdbimpl) IsMessageOwner(userID string, messageID string) (bool, error) {
-	var senderID string
-	err := db.c.QueryRow(`
-		SELECT sender_id
-		FROM messages
-		WHERE id = ?
-	`, messageID).Scan(&senderID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
-		return false, fmt.Errorf("error checking message ownership: %w", err)
+// IsMessageOwner returns true if the message is authored by the given user.
+func (db *appdbimpl) IsMessageOwner(messageID, userID string) (bool, error) {
+	var cnt int
+	if err := db.c.QueryRow(`
+		SELECT COUNT(1)
+		  FROM messages
+		 WHERE id = ?
+		   AND sender_id = ?
+	`, messageID, userID).Scan(&cnt); err != nil {
+		return false, err
 	}
-	return senderID == userID, nil
+	return cnt > 0, nil
 }

@@ -115,5 +115,6 @@ func (rt *_router) handleCorsPreflight(w http.ResponseWriter, r *http.Request, _
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 	w.Header().Set("Access-Control-Max-Age", "1") // Keep it short to avoid caching surprises
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }

@@ -1,22 +1,18 @@
 package database
 
-// UncommentMessage attempts to clear a message's comment if such a column exists.
-// If the schema does not have a dedicated comment column, this becomes a no-op.
-// Rationale:
-//   - Some implementations store comments concatenated into content.
-//   - Others use a separate "comment" column.
-//   - To maintain compatibility without changing OpenAPI, we make this tolerant.
+// UncommentMessage removes the most recent comment on a message (regardless of author).
+// This matches the AppDatabase interface: UncommentMessage(messageID string) error
+// and the API endpoint /messages/{id}/uncomment which has no request body.
 func (db *appdbimpl) UncommentMessage(messageID string) error {
-	// Try best-effort update. If the column does not exist, ignore the error to keep the API idempotent.
 	_, err := db.c.Exec(`
-		UPDATE messages
-		   SET comment = NULL
-		 WHERE id = ?
+		DELETE FROM message_comments
+		      WHERE id IN (
+					SELECT id
+					  FROM message_comments
+					 WHERE message_id = ?
+					 ORDER BY datetime(created_at) DESC, id DESC
+					 LIMIT 1
+			  )
 	`, messageID)
-	if err != nil {
-		// NOTE: Silently tolerate errors due to schema differences (e.g., "no such column: comment").
-		// We deliberately do not propagate the error to keep the endpoint behavior idempotent across variants.
-		return nil
-	}
-	return nil
+	return err
 }

@@ -7,8 +7,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// uncommentMessage handles DELETE /messages/:id/comment
-// English notes:
+// uncommentMessage handles POST /messages/:id/uncomment
 // - All errors via rt.sendError; success via writeJSON.
 // - Logs internal DB failures via ctx.Logger.
 func (rt *_router) uncommentMessage(

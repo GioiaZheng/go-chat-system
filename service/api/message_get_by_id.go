@@ -7,10 +7,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// getMessageById handles GET /messages/:id
-// English notes:
-// - Use rt.sendError for all failures; log internal errors.
-// - Return consistent envelope on success.
 func (rt *_router) getMessageById(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -35,11 +31,12 @@ func (rt *_router) getMessageById(
 		return
 	}
 
+	// OpenAPI: MessageResourceEnvelope -> data.resource
 	resp := map[string]interface{}{
 		"code":    http.StatusOK,
-		"message": "Message fetched successfully",
+		"message": "Message details retrieved",
 		"data": map[string]interface{}{
-			"message": message,
+			"resource": message,
 		},
 	}
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {

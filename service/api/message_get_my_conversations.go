@@ -7,10 +7,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// getMyConversations handles GET /messages/conversations
-// English notes:
-// - Validate auth; use rt.sendError on errors.
-// - Return consistent envelopes with conversations list.
 func (rt *_router) getMyConversations(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -30,12 +26,11 @@ func (rt *_router) getMyConversations(
 		return
 	}
 
+	// OpenAPI: ConversationListEnvelope -> { code, message, items: [...] }
 	resp := map[string]interface{}{
 		"code":    http.StatusOK,
-		"message": "Conversations fetched successfully",
-		"data": map[string]interface{}{
-			"conversations": conversations,
-		},
+		"message": "Conversations list retrieved",
+		"items":   conversations,
 	}
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
 		ctx.Logger.WithError(err).Error("failed to encode conversations response")

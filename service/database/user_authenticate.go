@@ -1,21 +1,10 @@
 package database
 
 import (
-	"crypto/subtle"
 	"database/sql"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
-
-// VerifyPassword does a constant-time comparison between the provided plain text
-// and the stored value. NOTE: This is a classroom-safe baseline (no hashing).
-// In production, replace with a proper password hashing strategy (e.g., bcrypt/argon2).
-func VerifyPassword(plain, stored string) bool {
-	if len(plain) == 0 || len(stored) == 0 {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(plain), []byte(stored)) == 1
-}
 
 // AuthenticateUser authenticates a user by email and password.
 // It fetches the user by email, then verifies the provided password.

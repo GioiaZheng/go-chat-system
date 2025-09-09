@@ -1,117 +1,198 @@
 package api
 
 import (
-	"io"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
+    "io"
+    "mime/multipart"
+    "net/http"
+    "os"
+    "path/filepath"
+    "strings"
+    "time"
 
-	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
-	"github.com/julienschmidt/httprouter"
+    "github.com/GioiaZheng/Wasa_proj/service/reqcontext"
+    "github.com/julienschmidt/httprouter"
 )
 
-// setMyPhoto handles PUT /users/set_photo
-// Two modes supported:
-// 1) Preset (?preset=avatar6 -> "/uploads/photos/avatar6.jpg")
-// 2) Multipart upload (field name: "upload")
+
+// NOTE ON RESPONSE SHAPE (matches FileUploadEnvelope in api.yaml):
+// {
+//   "code": 200,
+//   "message": "User photo updated successfully",
+//   "data": {
+//     "file": {
+//       "filename": "<original-or-derived>",
+//       "url": "/uploads/photos/<stored-file>"
+//       // "size": <bytes>   // optional in schema
+//     }
+//   }
+// }
 //
-// English notes:
-// - Do NOT use http.Error / fmt.* / json.Encoder here; always use rt.sendError / writeJSON.
-// - Log internal errors with ctx.Logger.WithError(err).Error("...").
+// Modes supported:
+//   1) Preset mode:  PUT /users/set_photo?preset=avatar7
+//      -> uses /uploads/photos/avatar7.jpg
+//   2) Upload mode:  multipart/form-data with field "upload"
+//
+// IMPORTANT: Regardless of the mode, we ALWAYS return { data: { file: {...} } }.
+
+const (
+	maxUploadSizeBytes = 10 << 20 // 10 MiB (as in the OpenAPI schema)
+)
+
+// ---------- helpers ----------
+
+func allowedExt(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".jpg", ".jpeg", ".png":
+		return true
+	default:
+		return false
+	}
+}
+
+func detectContentType(f multipart.File) (string, error) {
+	const sniffLen = 512
+	buf := make([]byte, sniffLen)
+	n, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+	return http.DetectContentType(buf[:n]), nil
+}
+
+func (rt *_router) publicURL(rel string) string {
+	if !strings.HasPrefix(rel, "/") {
+		return "/" + rel
+	}
+	return rel
+}
+
+func ensureDir(dir string) error {
+	return os.MkdirAll(dir, 0o755)
+}
+
+// ---------- handler ----------
+
+// setMyPhoto handles: PUT /api/v1/users/set_photo
+// - Preset: ?preset=avatar7 -> /uploads/photos/avatar7.jpg
+// - Upload: multipart/form-data field "upload" (JPEG/PNG, <=10MB)
 func (rt *_router) setMyPhoto(
 	w http.ResponseWriter,
 	r *http.Request,
 	_ httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
-	if strings.TrimSpace(ctx.UserID) == "" {
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
 		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	// --- Preset mode (?preset=avatar6) ---
-	if raw := strings.TrimSpace(r.URL.Query().Get("preset")); raw != "" {
-		if !(strings.HasPrefix(raw, "avatar") || strings.HasPrefix(raw, "user")) {
-			rt.sendError(w, http.StatusBadRequest, "preset must be like avatar6 or user6")
+	// 1) PRESET MODE (uses /uploads/photos/avatarX.jpg)
+	if preset := strings.TrimSpace(r.URL.Query().Get("preset")); preset != "" {
+		// Defensive check: ensure the preset looks like "avatar<number>"
+		if !strings.HasPrefix(strings.ToLower(preset), "avatar") {
+			rt.sendError(w, http.StatusBadRequest, "invalid preset name")
 			return
 		}
-		url := "/uploads/photos/" + raw + ".jpg"
-		if err := rt.db.UpdateUserPhoto(ctx.UserID, url); err != nil {
-			ctx.Logger.WithError(err).Error("failed to update user photo (preset)")
-			rt.sendError(w, http.StatusInternalServerError, "Failed to update user photo")
+
+		derivedFilename := preset + ".jpg"
+		presetURL := rt.publicURL(filepath.ToSlash(filepath.Join("uploads", "photos", derivedFilename)))
+
+		// Persist via DB: UpdateUserPhoto(userID, url)
+		if err := rt.db.UpdateUserPhoto(userID, presetURL); err != nil {
+			ctx.Logger.WithError(err).Error("failed to set preset user photo")
+			rt.sendError(w, http.StatusInternalServerError, "Failed to update photo")
 			return
 		}
+
 		resp := map[string]interface{}{
 			"code":    http.StatusOK,
-			"message": "User photo updated successfully (preset)",
+			"message": "User photo updated successfully",
 			"data": map[string]interface{}{
-				"url": url,
+				"file": map[string]interface{}{
+					"filename": derivedFilename,
+					"url":      presetURL,
+				},
 			},
 		}
 		if err := writeJSON(w, http.StatusOK, resp); err != nil {
-			ctx.Logger.WithError(err).Error("failed to encode set photo preset response")
+			ctx.Logger.WithError(err).Error("failed to encode setMyPhoto (preset) response")
 		}
 		return
 	}
 
-	// --- Multipart upload mode ---
-	ct := strings.ToLower(r.Header.Get("Content-Type"))
-	if !strings.HasPrefix(ct, "multipart/form-data") {
-		rt.sendError(w, http.StatusBadRequest, "Provide ?preset=avatarN or multipart field 'upload'")
+	// 2) UPLOAD MODE (multipart/form-data, field name: "upload")
+	if err := r.ParseMultipartForm(maxUploadSizeBytes); err != nil {
+		rt.sendError(w, http.StatusBadRequest, "Invalid multipart form")
 		return
 	}
-
-	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10 MB
-		rt.sendError(w, http.StatusBadRequest, "Failed to parse form data")
-		return
-	}
-	file, handler, err := r.FormFile("upload")
+	file, header, err := r.FormFile("upload")
 	if err != nil {
-		rt.sendError(w, http.StatusBadRequest, "Field 'upload' is required (or use ?preset=avatarN)")
+		rt.sendError(w, http.StatusBadRequest, "Missing file field 'upload'")
 		return
 	}
 	defer file.Close()
 
-	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true}
-	ext := strings.ToLower(filepath.Ext(handler.Filename))
-	if !allowed[ext] {
-		rt.sendError(w, http.StatusBadRequest, "Unsupported file type. Allowed: jpg,jpeg,png,gif")
+	origName := header.Filename
+	if strings.TrimSpace(origName) == "" {
+		rt.sendError(w, http.StatusBadRequest, "Invalid filename")
 		return
 	}
-	if handler.Size > 10*1024*1024 {
-		rt.sendError(w, http.StatusBadRequest, "File size exceeds 10MB")
-		return
-	}
-
-	filename := "user_" + ctx.UserID + "_" + time.Now().Format("20060102150405") + ext
-	path := filepath.Join("uploads", "photos", filename)
-
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		ctx.Logger.WithError(err).Error("failed to create directory for user photo")
-		rt.sendError(w, http.StatusInternalServerError, "Failed to create directory")
+	if !allowedExt(origName) {
+		rt.sendError(w, http.StatusBadRequest, "Only JPEG/PNG are allowed")
 		return
 	}
 
-	out, err := os.Create(path)
+	if ctype, err := detectContentType(file); err == nil {
+		if !(strings.HasPrefix(ctype, "image/jpeg") || strings.HasPrefix(ctype, "image/png")) {
+			rt.sendError(w, http.StatusBadRequest, "Invalid content type, only JPEG/PNG are allowed")
+			return
+		}
+	}
+
+	baseDir := filepath.Join("uploads", "photos")
+	if err := ensureDir(baseDir); err != nil {
+		ctx.Logger.WithError(err).Error("failed to create uploads dir")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to store file")
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(origName))
+	safeUser := strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(userID)
+	newName := safeUser + "_" + time.Now().UTC().Format("20060102T150405Z") + ext
+	dstPath := filepath.Join(baseDir, newName)
+
+	dst, err := os.Create(dstPath)
 	if err != nil {
-		ctx.Logger.WithError(err).Error("failed to create file for user photo")
-		rt.sendError(w, http.StatusInternalServerError, "Failed to save photo")
+		ctx.Logger.WithError(err).Error("failed to create destination file")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to store file")
 		return
 	}
-	defer out.Close()
+	defer dst.Close()
 
-	if _, err := io.Copy(out, file); err != nil {
-		ctx.Logger.WithError(err).Error("failed to copy uploaded user photo")
-		rt.sendError(w, http.StatusInternalServerError, "Failed to save photo")
+	written, err := io.Copy(dst, io.LimitReader(file, maxUploadSizeBytes+1))
+	if err != nil {
+		ctx.Logger.WithError(err).Error("failed to write uploaded file")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to store file")
+		return
+	}
+	if written > maxUploadSizeBytes {
+		_ = os.Remove(dstPath)
+		rt.sendError(w, http.StatusBadRequest, "File too large (max 10MB)")
 		return
 	}
 
-	url := "/" + path
-	if err := rt.db.UpdateUserPhoto(ctx.UserID, url); err != nil {
-		ctx.Logger.WithError(err).Error("failed to update DB for uploaded user photo")
-		rt.sendError(w, http.StatusInternalServerError, "Failed to update user photo")
+	publicPath := rt.publicURL(filepath.ToSlash(dstPath))
+
+	// Persist the public URL via DB
+	if err := rt.db.UpdateUserPhoto(userID, publicPath); err != nil {
+		_ = os.Remove(dstPath) // cleanup on failure
+		ctx.Logger.WithError(err).Error("failed to persist user photo url")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to update photo")
 		return
 	}
 
@@ -120,13 +201,13 @@ func (rt *_router) setMyPhoto(
 		"message": "User photo updated successfully",
 		"data": map[string]interface{}{
 			"file": map[string]interface{}{
-				"filename": handler.Filename,
-				"size":     handler.Size,
-				"url":      url,
+				"filename": origName,   // original name returned to client
+				"size":     written,    // optional
+				"url":      publicPath, // final public URL
 			},
 		},
 	}
 	if err := writeJSON(w, http.StatusOK, resp); err != nil {
-		ctx.Logger.WithError(err).Error("failed to encode set photo response")
+		ctx.Logger.WithError(err).Error("failed to encode setMyPhoto response")
 	}
 }
