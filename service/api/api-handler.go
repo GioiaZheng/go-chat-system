@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"net/url"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -27,6 +26,17 @@ func (rt *_router) getConversationByPathParam(w http.ResponseWriter, r *http.Req
 		r.URL.RawQuery = q.Encode()
 	}
 	rt.getConversation(w, r, ps)
+}
+
+// Helper: map :conversationId to query (?conversation_id=...) for POST sendMessage
+// (Handler should prefer body.conversation_id and fall back to query when absent.)
+func (rt *_router) sendMessageByPathParam(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if cid := ps.ByName("conversationId"); cid != "" {
+		q := r.URL.Query()
+		q.Set("conversation_id", cid)
+		r.URL.RawQuery = q.Encode()
+	}
+	rt.sendMessage(w, r, ps)
 }
 
 // RegisterRoutes wires all HTTP endpoints to their handlers.
@@ -77,7 +87,9 @@ func (rt *_router) RegisterRoutes() {
 	// ---------------------- Compatibility aliases (no /api prefix) ----------------------
 	// Public
 	rt.router.POST("/session", rt.doLogin)
+	rt.router.POST("/register", rt.doRegister)
 	rt.router.GET("/liveness", rt.liveness)
+	rt.router.OPTIONS("/cors", rt.handleCorsPreflight) // compatibility alias
 
 	// Users
 	rt.router.PUT("/users/me/name", rt.wrap(rt.setMyUserName))
@@ -88,7 +100,7 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.GET("/conversations", rt.wrap(rt.getMyConversations))
 	rt.router.POST("/start-conversation", rt.wrap(rt.startConversation))
 	rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversationByPathParam))
-	rt.router.POST("/conversations/:conversationId/messages", rt.wrap(rt.sendMessage))
+	rt.router.POST("/conversations/:conversationId/messages", rt.wrap(rt.sendMessageByPathParam))
 
 	// Messages
 	rt.router.DELETE("/messages/:messageId", rt.wrap(rt.withParamAlias(rt.deleteMessage, "messageId", "id")))
