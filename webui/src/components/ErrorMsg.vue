@@ -3,6 +3,12 @@
     {{ text }}
   </div>
 </template>
+
 <script setup>
-const props = defineProps({ text: { type: String, default: "Error" } });
+const props = defineProps({
+  text: {
+    type: String,
+    default: "Error"
+  }
+});
 </script>

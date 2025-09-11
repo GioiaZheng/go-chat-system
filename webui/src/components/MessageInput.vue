@@ -1,3 +1,7 @@
+<!-- Notes:
+     - Simple input + send button; emits "send" with trimmed text.
+     - Keeps internal state minimal; styling is scoped to avoid bleed. -->
+
 <template>
   <form @submit.prevent="submit" class="flex gap-2">
     <input v-model="text" class="flex-1 input" placeholder="Type a message..." />
@@ -6,7 +10,6 @@
 </template>
 
 <script setup>
-// English: emit send(text)
 import { ref } from "vue";
 const emit = defineEmits(["send"]);
 const text = ref("");

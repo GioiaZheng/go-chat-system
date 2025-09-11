@@ -7,7 +7,7 @@ dist/
 
 # Yarn (classic and Berry)
 .yarn/
-.pnp.*
+.pnp.
 .yarnrc.yml
 
 # npm lock (we use Yarn)
