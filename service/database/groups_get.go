@@ -5,7 +5,6 @@ import (
 )
 
 // GetGroup retrieves a group by its ID and includes its members.
-// FIX: after rows iteration, always check rows.Err() to catch latent driver errors.
 func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 	var group models.Group
 
@@ -40,7 +39,7 @@ func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 		group.Members = append(group.Members, member)
 	}
 
-	// FIX: must check rows.Err() after iteration to catch any deferred scan/driver errors.
+	// FIX: must check rows.Err() after iteration
 	if err := rows.Err(); err != nil {
 		return models.Group{}, err
 	}

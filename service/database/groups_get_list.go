@@ -5,10 +5,6 @@ import (
 )
 
 // GetGroupsList returns all groups the user belongs to, including their members.
-// Implementation notes:
-// - Query joins groups with group_members on the given userID.
-// - For each group, it calls GetGroup() to fetch and attach the member list.
-// - FIX: after iterating rows.Next(), always check rows.Err() to catch driver errors.
 func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 	rows, err := db.c.Query(`
 		SELECT g.id, g.name
@@ -38,7 +34,7 @@ func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 		groups = append(groups, group)
 	}
 
-	// FIX: must check rows.Err() after iteration to catch any latent errors
+	// FIX: must check rows.Err() after iteration
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}

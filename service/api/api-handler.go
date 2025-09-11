@@ -6,15 +6,6 @@ import (
 	reqcontext "github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
-// withParamAlias renames a path param (e.g., :messageId -> :id) then calls the inner handler.
-func (rt *_router) withParamAlias(h httpRouterHandler, from, to string) httpRouterHandler {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-		if v := ps.ByName(from); v != "" {
-			ps = append(ps, httprouter.Param{Key: to, Value: v})
-		}
-		h(w, r, ps, ctx)
-	}
-}
 
 // GET /conversations/:conversationId -> reuse GET /messages?conversation_id=...
 func (rt *_router) getConversationByPathParam(
@@ -87,9 +78,8 @@ func (rt *_router) RegisterRoutes() {
 	// ------------- Compatibility aliases (only when path differs) -------------
 
 	// Users: keep different aliases only
-	rt.router.PUT("/users/me/name", rt.wrap(rt.setMyUserName))   // alias of set_username
-	rt.router.PUT("/users/me/photo", rt.wrap(rt.setMyPhoto))     // alias of set_photo
-	// (Do NOT re-register /users/search; it's identical to canonical one.)
+	rt.router.PUT("/users/me/name", rt.wrap(rt.setMyUserName)) // alias of set_username
+	rt.router.PUT("/users/me/photo", rt.wrap(rt.setMyPhoto))   // alias of set_photo
 
 	// Conversations: add only different paths
 	rt.router.POST("/start-conversation", rt.wrap(rt.startConversation))                          // extra alias
