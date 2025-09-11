@@ -1,5 +1,5 @@
 cat > .gitignore <<'EOF'
-# --- Build outputs ---
+# --- Build outputs (Go backend) ---
 webapi
 cmd/webapi/webapi
 *.exe
@@ -19,5 +19,12 @@ tmp/
 .vscode/
 .idea/
 *.iml
+
+# --- Node / frontend ---
+node_modules/
+dist/
+.yarn/
+.pnp.*
+.yarnrc.yml
+package-lock.json
 EOF
-node_modules
