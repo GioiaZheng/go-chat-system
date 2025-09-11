@@ -1,4 +1,3 @@
-// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import ConversationsView from '../views/ConversationsView.vue'
@@ -13,29 +12,46 @@ const routes = [
   },
   {
     path: '/login',
-    name: 'Login',
+    name: 'login',
     component: LoginView
   },
   {
     path: '/conversations',
-    name: 'Conversations',
-    component: ConversationsView
+    name: 'conversations',
+    component: ConversationsView,
+    meta: { requiresAuth: true }
   },
   {
     path: '/groups',
-    name: 'Groups',
-    component: GroupsView
+    name: 'groups',
+    component: GroupsView,
+    meta: { requiresAuth: true }
   },
   {
     path: '/me',
-    name: 'Profile',
-    component: ProfileView
+    name: 'profile',
+    component: ProfileView,
+    meta: { requiresAuth: true }
   },
   {
     path: '/chat/:type/:id',
-    name: 'Chat',
+    name: 'chat',
     component: ChatView,
-    props: true
+    props: true,
+    meta: { requiresAuth: true }
+  },
+  // --- Compatibility redirects (no new views required) ---
+  {
+    path: '/conversations/:id',
+    redirect: to => `/chat/conv/${to.params.id}`
+  },
+  {
+    path: '/new-conversation',
+    redirect: '/conversations'
+  },
+  {
+    path: '/new-group',
+    redirect: '/groups'
   }
 ]
 
@@ -44,10 +60,10 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫 - 检查认证
+// Global navigation guard: check requiresAuth meta
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
-  if (to.path !== '/login' && !token) {
+  if (to.meta.requiresAuth && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
     next('/conversations')

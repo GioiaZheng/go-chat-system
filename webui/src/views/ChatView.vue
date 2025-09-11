@@ -1,4 +1,4 @@
-<template>
+<template> 
   <div class="max-w-3xl mx-auto p-4 flex flex-col h-[90vh]">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-semibold">Chat ({{ type }} / {{ id }})</h2>
@@ -23,7 +23,7 @@
 
 <script setup>
 // English: messages via conversation_id (new) with legacy fallback
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import axios from "../services/axios";
 import MessageBubble from "../components/MessageBubble.vue";
@@ -61,7 +61,6 @@ async function load() {
       const res = await axios.get("/messages", { params: { chat_type: "private", target_id: id.value } });
       messages.value = res.data?.data?.messages || res.data?.messages || [];
     } else if (type.value === "group") {
-      // legacy group: backend may map target_id as conversation_id
       const res = await axios.get("/messages", { params: { chat_type: "group", target_id: id.value } });
       messages.value = res.data?.data?.messages || res.data?.messages || [];
     } else {

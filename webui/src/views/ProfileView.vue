@@ -74,7 +74,6 @@ async function setPhoto() {
     await axios.put("/users/set_photo", form, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    // refresh
     const res = await axios.get("/users/me");
     me.value = res.data?.data?.user || me.value;
     localStorage.setItem("me", JSON.stringify(me.value));

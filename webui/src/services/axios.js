@@ -1,8 +1,8 @@
-import axios from "./axios"
+import axios from 'axios';
 
 const instance = axios.create({
-  baseURL: __API_URL__,   // 由上面的 vite.config.js 注入
-  timeout: 10000
+  baseURL: __API_URL__,
+  timeout: 1000 * 5,
 });
 
 export default instance;

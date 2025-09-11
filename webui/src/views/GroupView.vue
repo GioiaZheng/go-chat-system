@@ -73,8 +73,7 @@ async function createGroup() {
   }
   loading.value = true;
   try {
-    const res = await axios.post("/groups", { name: groupName.value, member_ids });
-    // expect data.group or 201
+    await axios.post("/groups", { name: groupName.value, member_ids });
     await load();
     groupName.value = "";
     memberIdsRaw.value = "";
