@@ -9,6 +9,7 @@ import (
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
+	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -17,6 +18,8 @@ type sendMessageBody struct {
 	TargetID       string `json:"target_id"` // legacy
 	ChatType       string `json:"chat_type"` // legacy: private|group
 	Content        string `json:"content"`
+	Type           string `json:"type,omitempty"`   // optional, defaults to "text"
+	Status         string `json:"status,omitempty"` // optional, defaults to "sent"
 }
 
 func (rt *_router) sendMessage(
@@ -38,32 +41,43 @@ func (rt *_router) sendMessage(
 		return
 	}
 
-	// Trim all inputs
+	// Normalize inputs
 	body.ConversationID = strings.TrimSpace(body.ConversationID)
 	body.TargetID = strings.TrimSpace(body.TargetID)
 	body.ChatType = strings.ToLower(strings.TrimSpace(body.ChatType))
 	body.Content = strings.TrimSpace(body.Content)
-
 	if body.Content == "" {
 		rt.sendError(w, http.StatusBadRequest, "content is required")
 		return
 	}
 
-	var msg models.Message
+	msg := models.Message{
+		ID:             uuid.NewString(),
+		Content:        body.Content,
+		SenderID:       userID,
+		ConversationID: body.ConversationID,
+		ReceiverID:     "", // set below if needed
+		Type:           strings.TrimSpace(body.Type),
+		Status:         strings.TrimSpace(body.Status),
+		// CreatedAt:   optional; DB COALESCE will default to now()
+	}
+
 	var err error
-
 	switch {
-	// 1) Canonical: send to conversation
-	case body.ConversationID != "":
-		msg, err = rt.db.SendMessageToConversation(r.Context(), userID, body.ConversationID, body.Content)
+	// 1) Canonical: conversation message
+	case msg.ConversationID != "":
+		err = rt.db.SendMessageToConversation(msg)
 
-	// 2) Legacy: private chat
+	// 2) Legacy: private (chat_type=private + target_id)
 	case body.ChatType == "private" && body.TargetID != "":
-		msg, err = rt.db.SendPrivateMessage(r.Context(), userID, body.TargetID, body.Content)
+		msg.ReceiverID = body.TargetID
+		err = rt.db.SendPrivateMessage(msg)
 
-	// 3) Legacy: group chat
+	// 3) Legacy: group (chat_type=group + target_id)
 	case body.ChatType == "group" && body.TargetID != "":
-		msg, err = rt.db.SendMessageToGroup(r.Context(), userID, body.TargetID, body.Content)
+		// For backward compatibility we map "group target_id" as conversation_id.
+		msg.ConversationID = body.TargetID
+		err = rt.db.SendGroupMessage(msg)
 
 	default:
 		rt.sendError(w, http.StatusBadRequest, "Specify either conversation_id, or (chat_type + target_id)")
@@ -71,7 +85,7 @@ func (rt *_router) sendMessage(
 	}
 
 	if err != nil {
-		// Not found or membership errors should surface as 404 where possible
+		// Try to classify not-found
 		if errors.Is(err, sql.ErrNoRows) {
 			rt.sendError(w, http.StatusNotFound, "Conversation or target not found")
 			return
@@ -84,7 +98,7 @@ func (rt *_router) sendMessage(
 	resp := map[string]interface{}{
 		"code":    http.StatusCreated,
 		"message": "Message sent",
-		"data": map[string]any{
+		"data": map[string]interface{}{
 			"message": msg,
 		},
 	}

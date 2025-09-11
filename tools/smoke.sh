@@ -12,7 +12,6 @@
 set -euo pipefail
 
 BASE="${BASE:-}"
-PFX="${PFX:-/api/v1}"
 
 if [[ -z "$BASE" ]]; then
   if [[ -n "${SCHEME:-}" && -n "${HOST:-}" && -n "${PORT:-}" ]]; then

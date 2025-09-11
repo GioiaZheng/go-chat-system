@@ -89,7 +89,7 @@ curl -sS "${BASE}${PFX}/liveness"
 ## Authentication
 Login request:
 ```http
-POST /api/v1/session
+POST /session
 Content-Type: application/json
 
 { "name": "alice", "password": "passw0rd" }
@@ -118,16 +118,16 @@ curl -H "Authorization: Bearer <token>" ...
 
 ## API Routes
 ### Public Endpoints
-- `OPTIONS /api/v1/cors` - CORS preflight
-- `POST /api/v1/session` - Login
-- `POST /api/v1/register` - Register
-- `GET /api/v1/liveness` - Health check (also `GET /liveness`)
+- `OPTIONS /cors` - CORS preflight
+- `POST /session` - Login
+- `POST /register` - Register
+- `GET /liveness` - Health check (also `GET /liveness`)
 
 ### Protected Endpoints (require Bearer token)
-- Conversations: `POST /api/v1/conversations`, `GET /api/v1/conversations`
-- Users: `PUT /api/v1/users/set_username`, `GET /api/v1/users/me`, etc.
-- Groups: `POST /api/v1/groups`, `GET /api/v1/groups/:id`, etc.
-- Messages: `GET /api/v1/messages`, `POST /api/v1/messages`, etc.
+- Conversations: `POST /conversations`, `GET /conversations`
+- Users: `PUT /users/set_username`, `GET /users/me`, etc.
+- Groups: `POST /groups`, `GET /groups/:id`, etc.
+- Messages: `GET /messages`, `POST /messages`, etc.
 
 ---
 

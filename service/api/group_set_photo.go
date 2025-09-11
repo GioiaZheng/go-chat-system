@@ -14,8 +14,9 @@ import (
 
 // setGroupPhoto handles: PUT /api/v1/groups/:id/photo
 // Two modes:
-//   1) Preset: ?preset=avatar7  -> /uploads/photos/avatar7.jpg
-//   2) Upload: multipart/form-data field "upload"
+//  1. Preset: ?preset=avatar7  -> /uploads/photos/avatar7.jpg
+//  2. Upload: multipart/form-data field "upload"
+//
 // Response strictly follows FileUploadEnvelope.
 func (rt *_router) setGroupPhoto(
 	w http.ResponseWriter,

@@ -10,9 +10,12 @@ import (
 
 // ForwardRequest supports both official and legacy payloads.
 // Official (api.yaml):
-//   { "conversation_id": "<conv-id>" }
+//
+//	{ "conversation_id": "<conv-id>" }
+//
 // Legacy (existing):
-//   { "toUserId": "<uid>" } or { "toGroupId": "<gid>" }
+//
+//	{ "toUserId": "<uid>" } or { "toGroupId": "<gid>" }
 type ForwardRequest struct {
 	ConversationID string `json:"conversation_id,omitempty"` // official
 	ToUserID       string `json:"toUserId,omitempty"`        // legacy

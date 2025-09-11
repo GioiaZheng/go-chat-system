@@ -1,18 +1,17 @@
 package api
 
 import (
-    "io"
-    "mime/multipart"
-    "net/http"
-    "os"
-    "path/filepath"
-    "strings"
-    "time"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
-    "github.com/GioiaZheng/Wasa_proj/service/reqcontext"
-    "github.com/julienschmidt/httprouter"
+	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
+	"github.com/julienschmidt/httprouter"
 )
-
 
 // NOTE ON RESPONSE SHAPE (matches FileUploadEnvelope in api.yaml):
 // {

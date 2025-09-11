@@ -2,7 +2,6 @@
 set -euo pipefail
 
 BASE="${BASE:-}"
-PFX="${PFX:-/api/v1}"
 NAME="${NAME:-alice}"
 
 if [[ -z "$BASE" ]]; then

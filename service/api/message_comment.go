@@ -10,9 +10,12 @@ import (
 
 // CommentRequest supports both the official schema and legacy fields.
 // Official (api.yaml):
-//   { "type": "text"|"emoji", "content": "<text or emoji>" }
+//
+//	{ "type": "text"|"emoji", "content": "<text or emoji>" }
+//
 // Legacy (existing clients):
-//   { "comment": "<text>", "emoji": "😊" }
+//
+//	{ "comment": "<text>", "emoji": "😊" }
 type CommentRequest struct {
 	Type    string `json:"type,omitempty"`    // "text" or "emoji"
 	Content string `json:"content,omitempty"` // preferred content field

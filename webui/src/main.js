@@ -1,7 +1,7 @@
 // src/main.js
 import { createApp } from 'vue'
 import App from './App.vue'
-import router from './router' // 确保这行存在
+import router from './router'
 import axios from './services/axios.js'
 import ErrorMsg from './components/ErrorMsg.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'

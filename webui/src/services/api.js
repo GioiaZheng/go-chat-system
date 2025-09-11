@@ -1,7 +1,4 @@
-// src/services/api.js
-// Depends on: src/axios.js (make sure baseURL is set or use Vite proxy to http://localhost:3000)
-
-import axios from "../axios";
+import axios from "./axios";
 
 // Helper: read local token (assignment requires using userID as Bearer token)
 function getAuthHeader() {

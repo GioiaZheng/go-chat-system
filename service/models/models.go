@@ -7,10 +7,10 @@ type User struct {
 	Username  string `json:"username"`
 	Name      string `json:"name,omitempty"`
 	Email     string `json:"email"`
-	Password  string `json:"-"`                   // not exposed
-	AvatarUrl string `json:"avatar_url,omitempty"`// matches api.yaml
-	Photo     string `json:"-"`                   // internal storage path if any
-	Gender    string `json:"gender,omitempty"`    // "male" | "female" | "unspecified"
+	Password  string `json:"-"`                    // not exposed
+	AvatarUrl string `json:"avatar_url,omitempty"` // matches api.yaml
+	Photo     string `json:"-"`                    // internal storage path if any
+	Gender    string `json:"gender,omitempty"`     // "male" | "female" | "unspecified"
 }
 
 // --- Group ---
