@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 	"github.com/julienschmidt/httprouter"
 )
@@ -19,7 +18,7 @@ import (
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// setUsernameBody supports both { "username": "..." } and legacy { "name": "..." }.
+// setUsernameBody supports both { "username": "..." } and legacy { "name": "..."}.
 type setUsernameBody struct {
 	Username string `json:"username,omitempty"`
 	Name     string `json:"name,omitempty"`
@@ -44,10 +43,9 @@ func (rt *_router) getUserInfo(
 		return
 	}
 
-	// Prefer GetUser; fallback to GetUserByID.
-	var u models.User
-	var err error
-	if u, err = rt.db.GetUser(uid); err != nil {
+	// Prefer GetUser; fallback to GetUserByID for compatibility.
+	u, err := rt.db.GetUser(uid)
+	if err != nil {
 		u, err = rt.db.GetUserByID(uid)
 	}
 	if err != nil {
@@ -68,6 +66,7 @@ func (rt *_router) getUserInfo(
 //
 
 // getUserProfile loads another user's public profile.
+// Path params supported: :id (or :userId). Query fallback: username / name / id.
 func (rt *_router) getUserProfile(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -90,8 +89,7 @@ func (rt *_router) getUserProfile(
 
 	// If only username provided, resolve to ID.
 	if userID == "" && username != "" {
-		id, err := rt.db.GetUserIDFromIdentifier(username)
-		if err == nil && id != "" {
+		if id, err := rt.db.GetUserIDFromIdentifier(username); err == nil && id != "" {
 			userID = id
 		}
 	}
@@ -191,7 +189,7 @@ func (rt *_router) setMyUserName(
 //
 // ────────────────────────────────────────────────────────────────────────────────
 //  Update avatar/photo  (PUT /me/photo 或 /users/me/set-photo)
-//  支持两种模式：?preset=avatar7   或  multipart/form-data 字段 "upload"
+//  Two modes: ?preset=avatar7  OR  multipart/form-data field "upload"
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
@@ -209,7 +207,7 @@ func (rt *_router) setUserPhoto(
 
 	// --- 1) PRESET MODE via query param ---
 	if preset := strings.TrimSpace(r.URL.Query().Get("preset")); preset != "" {
-		// We only accept names like avatar1..avatarN.jpg kept under /uploads/photos/
+		// Accept names like avatar1..avatarN; kept under /uploads/photos/
 		if !strings.HasPrefix(strings.ToLower(preset), "avatar") {
 			rt.sendError(w, http.StatusBadRequest, "invalid preset name")
 			return
@@ -335,7 +333,7 @@ func (rt *_router) setMyPhoto(
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//  Search users  (GET /users/search?q=xxx)  —— 排除自己
+//  Search users  (GET /users/search?q=xxx)  —— exclude myself
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
