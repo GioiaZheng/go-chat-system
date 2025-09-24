@@ -93,3 +93,11 @@ body {
 	border-color: transparent;
 	box-shadow: 0 0 0 3px rgba(255 255 255 / 25%);
 }
+
+/* --- Chat bits (Dashboard theme) --- */
+.chat-scroll { background: #f7f7f8; overflow: auto; }
+.msg { display: flex; gap: .5rem; margin: .25rem 0; align-items: flex-end; }
+.msg.mine { flex-direction: row-reverse; }
+.bubble { max-width: 70ch; padding: .5rem .75rem; border-radius: .75rem; background: #fff; box-shadow: 0 1px 1px rgba(0,0,0,.06); word-break: break-word; }
+.msg.mine .bubble { background: #95ec69; }
+.meta { font-size: .75rem; color: #6b7280; margin: 0 .25rem; user-select: none; }

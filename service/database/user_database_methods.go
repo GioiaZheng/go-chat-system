@@ -31,11 +31,15 @@ func (db *appdbimpl) CreateUser(user models.User, password string) (models.User,
 		}
 	}
 
-	// Insert into users.
+	// FIX: include 'password' to satisfy NOT NULL constraint in the users table.
+	// Rationale: the schema defines users.password as NOT NULL; without providing it,
+	// SQLite fails with "NOT NULL constraint failed: users.password". We now pass the
+	// 'password' value (can be empty for simplified login).
 	_, err := db.c.Exec(`
-		INSERT INTO users (id, username, name, email, avatar_url, gender)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, user.ID, user.Username, user.Name, user.Email, user.AvatarUrl, user.Gender)
+		INSERT INTO users (id, username, name, email, password, avatar_url, gender)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, user.ID, user.Username, user.Name, user.Email, password, user.AvatarUrl, user.Gender)
+
 	if err != nil {
 		return models.User{}, err
 	}

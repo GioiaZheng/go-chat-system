@@ -1,32 +1,14 @@
-<!-- Notes:
-     - Chat message bubble with "mine" alignment.
-     - Props:
-       * mine: boolean (aligns to right when true)
-       * text: string (message content)
-       * meta: string (small metadata below, e.g., sender snippet / timestamp)
-     - Uses computed class for light/dark bubble variants. -->
-
 <template>
-  <div :class="['flex', mine ? 'justify-end' : 'justify-start']">
-    <div :class="bubbleCls">
-      <div class="text-sm whitespace-pre-wrap">{{ text }}</div>
-      <div class="text-[11px] opacity-70 mt-1">{{ meta }}</div>
-    </div>
+  <div class="msg" :class="{ mine }">
+    <div class="bubble">{{ text }}</div>
+    <div class="meta">{{ meta }}</div>
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
-
-const props = defineProps({
+defineProps({
   mine: { type: Boolean, default: false },
-  text: { type: String, default: "" },
-  meta: { type: String, default: "" },
-});
-
-const bubbleCls = computed(() =>
-  props.mine
-    ? "max-w-[80%] bg-blue-600 text-white p-2 rounded-lg"
-    : "max-w-[80%] bg-gray-200 text-gray-900 p-2 rounded-lg"
-);
+  text: { type: String, default: '' },
+  meta: { type: String, default: '' },
+})
 </script>

@@ -1,29 +1,44 @@
 <template>
-  <div class="max-w-3xl mx-auto p-4">
-    <h2 class="text-xl font-semibold mb-4">My Conversations</h2>
+  <div class="py-3">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="h5 mb-0">My Conversations</h2>
+      <button class="btn btn-outline-secondary btn-sm" @click="load">Refresh</button>
+    </div>
+
     <ErrorMsg v-if="err" :text="err" class="mb-3" />
     <LoadingSpinner v-if="loading" />
-    <ul v-else class="space-y-2">
-      <li v-for="c in items" :key="c.id" class="p-3 bg-white rounded border">
-        <div class="flex items-center justify-between">
+
+    <div v-else class="card shadow-sm">
+      <ul class="list-group list-group-flush">
+        <li
+          v-for="c in items"
+          :key="c.id"
+          class="list-group-item d-flex justify-content-between align-items-center"
+        >
           <div>
-            <div class="font-medium">{{ c.name || ('Conversation ' + c.id.slice(0,8)) }}</div>
-            <div class="text-sm text-gray-500">id: {{ c.id }}</div>
+            <div class="fw-semibold">{{ c.name || ('Conversation ' + c.id.slice(0,8)) }}</div>
+            <div class="text-muted small">id: {{ c.id }}</div>
           </div>
-          <router-link class="text-blue-600"
-            :to="{ name: 'chat', params: { type: 'conv', id: c.id } }">
+          <RouterLink
+            class="text-decoration-none"
+            :to="{ name: 'chat', params: { type: 'conv', id: c.id } }"
+          >
             Open
-          </router-link>
-        </div>
-      </li>
-    </ul>
+          </RouterLink>
+        </li>
+        <li v-if="!items.length" class="list-group-item text-muted small">
+          No conversations yet. Start a new chat from the Groups page.
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
 <script setup>
-// English: GET /conversations; route to /chat/conv/:id
 import { ref, onMounted } from "vue";
 import axios from "../services/axios";
+import LoadingSpinner from "../components/LoadingSpinner.vue";
+import ErrorMsg from "../components/ErrorMsg.vue";
 
 const items = ref([]);
 const loading = ref(false);
@@ -37,7 +52,7 @@ async function load() {
     const res = await axios.get("/conversations");
     items.value = res.data?.items || res.data?.data?.items || [];
   } catch (e) {
-    err.value = e?.response?.data?.message || "Failed to load conversations";
+    err.value = e?.response?.data?.message || "failed to fetch conversations";
   } finally {
     loading.value = false;
   }

@@ -6,11 +6,11 @@
   --panel: #0f172a;
   --muted: #94a3b8;
   --text: #e5e7eb;
-  --brand: #6366f1;
-  --brand-2: #8b5cf6;
-  --ring: rgba(99,102,241,.35);
-  --border: rgba(148,163,184,.15);
-  --shadow: 0 10px 30px rgba(2,8,23,.35);
+  --brand: #97f163;
+  --brand-2: #70c090;
+  --ring: rgba(99, 241, 137, 0.35);
+  --border: rgba(55, 83, 65, 0.15);
+  --shadow: 0 10px 30px rgba(109, 174, 114, 0.35);
 }
 
 *{ box-sizing: border-box; }

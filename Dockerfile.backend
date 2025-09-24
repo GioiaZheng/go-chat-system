@@ -1,46 +1,22 @@
-# ===== 1) Builder stage =====
-FROM golang:1.17-bullseye AS builder
-
-ENV CGO_ENABLED=1 \
-    GO111MODULE=on
-
-# Install deps for CGO (sqlite3 driver needs gcc)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential ca-certificates git && \
-    rm -rf /var/lib/apt/lists/*
-
-WORKDIR /src
-
-# Cache deps
+# Build with Go >= 1.19 (1.20 recommended)
+FROM golang:1.20-alpine AS build
+RUN apk add --no-cache build-base git
+ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
+WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
-
-# Copy source
 COPY . .
+RUN go build -ldflags="-s -w" -o /bin/wasatext ./cmd/webapi
 
-# Main entry is ./cmd/webapi/main.go
-RUN go build -trimpath -ldflags="-s -w" -o /out/app ./cmd/webapi
-
-# ===== 2) Runtime stage =====
-FROM debian:bullseye-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates tzdata curl && \
-    rm -rf /var/lib/apt/lists/*
-
-# Non-root user
-RUN useradd -m -u 10001 appuser
-
-WORKDIR /app
-COPY --from=builder /out/app /app/app
-
-# SQLite persistent data
-VOLUME ["/app/data"]
-
-# Healthcheck (adjust path if needed)
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:3000/health || exit 1
-
+# Slim runtime with sqlite libs and non-root user
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata sqlite-libs && adduser -D -H -u 10001 appuser
+WORKDIR /srv
+COPY --from=build /bin/wasatext /usr/local/bin/wasatext
+VOLUME ["/data"]
+ENV PORT=3000 DB_PATH=/data/wasatext.db DB_DSN="file:/data/wasatext.db?_fk=1&cache=shared" TZ=Europe/Rome
 EXPOSE 3000
 USER appuser
-CMD ["/app/app"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget -qO- "http://127.0.0.1:${PORT}/health" || exit 1
+ENTRYPOINT ["/usr/local/bin/wasatext"]
