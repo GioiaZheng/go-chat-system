@@ -1,0 +1,14 @@
+# Reviewer Notes (2025-09-11):
+# - Ignore package manager artifacts and build outputs.
+# - Keep the repo focused on source files.
+
+node_modules/
+dist/
+
+# Yarn (classic and Berry)
+.yarn/
+.pnp.
+.yarnrc.yml
+
+# npm lock (we use Yarn)
+package-lock.json
