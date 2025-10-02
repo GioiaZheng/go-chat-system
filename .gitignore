@@ -17,3 +17,7 @@ dist/
 # --- OS ---
 .DS_Store
 Thumbs.db
+SELECT
+open-node.sh
+restart_webapi.sh
+test.png
