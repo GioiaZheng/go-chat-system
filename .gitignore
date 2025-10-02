@@ -11,6 +11,9 @@ uploads/users/
 *.out
 *.tmp
 vet.log
+npm-debug.log*
+yarn-error.log*
+.eslintcache
 
 # --- OS junk ---
 .DS_Store
@@ -33,12 +36,14 @@ open-node.sh
 
 # --- Frontend build (Vite / Vue) ---
 /webui/dist/
-dist/
-/.vite/
-/*.local
+# 仅忽略根目录 dist，避免误伤子项目
+/dist/
+# Vite 缓存（选其一，推荐更精确的第一行）
+/webui/.vite/
+# 或者：**/.vite/
+**/*.local
 
 # --- Node / Yarn ---
-node_modules/
 **/node_modules/
 **/package-lock.json
 **/.pnp.*
@@ -50,5 +55,16 @@ node_modules/
 # --- Docker build noise (layer IDs accidentally committed) ---
 /*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
 
+# --- Common caches / coverage ---
+.turbo/
+.cache/
+coverage*/
+coverage.out
+
+# --- Data folders (keep sentinels) ---
 **/data/
 !**/data/.keep
+
+# --- Env files ---
+.env
+.env.*
