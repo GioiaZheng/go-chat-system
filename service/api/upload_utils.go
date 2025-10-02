@@ -47,7 +47,7 @@ func allowedExt(filename string) bool {
 func detectContentType(f multipart.File) (string, error) {
 	buf := make([]byte, 512)
 	n, err := f.Read(buf)
-	if err != nil && err != io.EOF && n == 0 {
+	if err != nil && !errors.Is(err, io.EOF) && n == 0 {
 		return "", err
 	}
 	// Rewind to the beginning for subsequent readers.

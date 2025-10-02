@@ -31,10 +31,8 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
       description: >
-        JWT authentication using the Bearer scheme.
-        Example: "Authorization: Bearer {token}"
+        Bearer authentication using the **user identifier** returned by /session as the token. Example: "Authorization: Bearer {identifier}".
   responses:
     BadRequest:
       description: >
@@ -53,7 +51,6 @@ components:
                 error: "validation.failed"
                 errors:
                   - "username: Must be between 3-50 characters"
-                  - "email: Invalid email format"
 
     Unauthorized:
       description: >
@@ -103,10 +100,18 @@ components:
                 error: "auth.forbidden"
                 errors: []
   schemas:
+    LoginIdentifier:
+      type: object
+      required: [identifier]
+      properties:
+        identifier:
+          type: string
+          example: "abcdef012345"
+
     RegisterUserRequest:
       type: object
       description: User registration request model for creating new user accounts
-      required: [username, email, password]
+      required: [username, password]
       properties:
         username:
           type: string
@@ -120,24 +125,12 @@ components:
           minLength: 1
           maxLength: 100
           pattern: ^[a-zA-Z0-9\s'-]+$
-        email:
-          type: string
-          description: User's email address
-          format: email
-          minLength: 5
-          maxLength: 255
-          pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
         password:
           type: string
           description: User's password
           minLength: 6
           maxLength: 100
           pattern: ^[a-zA-Z0-9!@#$%^&*()_+]+$
-        gender:
-          type: string
-          description: User's gender
-          enum: [male, female, unspecified]
-          default: unspecified
     BaseSuccessResponse:
       type: object
       description: Base structure for all success responses
@@ -180,7 +173,7 @@ components:
     User:
       type: object
       description: User information model
-      required: [id, username, avatarUri, email, gender]
+      required: [id, username, avatarUri]
       properties:
         id:
           type: string
@@ -200,13 +193,6 @@ components:
           minLength: 1
           maxLength: 100
           pattern: ^[a-zA-Z0-9\s'-]+$
-        email:
-          type: string
-          description: User's email address
-          format: email
-          minLength: 5
-          maxLength: 255
-          pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
         avatarUri:
           type: string
           description: URL of user's avatar
@@ -214,11 +200,6 @@ components:
           maxLength: 255
           minLength: 1
           pattern: ^https?://[^\s/$.?#].[^\s]*$
-        gender:
-          type: string
-          description: User's gender
-          enum: [male, female, unspecified]
-          default: unspecified
 
     UserEnvelope:
       allOf:
@@ -854,10 +835,14 @@ paths:
                   user:
                     id: usr-999
                     username: maria
-                    email: maria@example.com
                     avatarUri: https://example.com/avatars/maria.jpg
-                    gender: unspecified
                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        '200':
+          description: Existing user logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginIdentifier'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -889,9 +874,7 @@ paths:
                   user:
                     id: usr-123456
                     username: john_doe
-                    email: john@example.com
                     avatarUri: https://example.com/avatars/john_doe.jpg
-                    gender: male
                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -899,7 +882,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   /users/set_username:
-    put:
+    put: 
       tags: [users]
       operationId: setMyUserName
       summary: Change username
@@ -988,12 +971,21 @@ paths:
     get:
       tags: [users]
       summary: Search users by keyword
-      description: Search users by partial name, username or email
+      description: Search users by partial name or username
       operationId: searchUsers
       parameters:
         - name: q
           in: query
           required: true
+          description: Search query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+            pattern: ^[a-zA-Z0-9\s@.-]+$
+        - name: user_id
+          in: query
+          required: false
           description: Search query
           schema:
             type: string
@@ -1016,8 +1008,6 @@ paths:
                     - id: usr-1
                       username: alice
                       avatarUri: https://example.com/avatars/alice.jpg
-                      email: alice@example.com
-                      gender: female
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -1047,9 +1037,7 @@ paths:
                     id: usr-123456
                     username: john_doe
                     name: John Doe
-                    email: john@example.com
                     avatarUri: https://example.com/avatars/john_doe.jpg
-                    gender: male
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -1288,7 +1276,7 @@ paths:
       tags: [messages]
       operationId: getConversation
       summary: Get conversation messages
-      description: Retrieve messages from a specific conversation
+       description: Retrieve messages from a specific conversation **in reverse chronological order**.
       security: [ { BearerAuth: [] } ]
       parameters:
         - name: conversationId

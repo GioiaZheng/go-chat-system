@@ -113,6 +113,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@popperjs/core@npm:^2":
+  version: 2.11.8
+  resolution: "@popperjs/core@npm:2.11.8"
+  checksum: e5c69fdebf52a4012f6a1f14817ca8e9599cb1be73dd1387e1785e2ed5e5f0862ff817f420a87c7fc532add1f88a12e25aeb010ffcbdc98eace3d55ce2139cf0
+  languageName: node
+  linkType: hard
+
 "@vitejs/plugin-vue@npm:^3.2.0":
   version: 3.2.0
   resolution: "@vitejs/plugin-vue@npm:3.2.0"
@@ -1509,6 +1516,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "teapot@workspace:."
   dependencies:
+    "@popperjs/core": ^2
     "@vitejs/plugin-vue": ^3.2.0
     axios: 0.28.0
     bootstrap: ^5.3.0

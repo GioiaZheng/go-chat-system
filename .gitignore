@@ -26,6 +26,21 @@ test.png
 /SELECT
 /Using
 /test.png
+
+# --- Go build artifacts ---
+/webapi
+/cmd/webapi/webapi
+/bin/
+/build/
+/dist-webapi/
+*.exe
+*.out
+
+# --- Frontend build ---
+/webui/dist/
+dist/
+
+
 # docker layer ID 型误加文件（具体文件已清理，后续如再出现手动 rm；glob不支持正则长度判断）
 /*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
 
