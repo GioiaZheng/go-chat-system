@@ -61,3 +61,18 @@ vet.log
 /SELECT
 /Using
 /test.png
+
+# --- Local junk / temp ---
+test.png
+SELECT
+Using
+vet.log
+restart_webapi.sh
+open-node.sh
+
+# --- Databases ---
+*.db
+*.db.bak.*
+
+# --- Node / Yarn ---
+**/package-lock.json
