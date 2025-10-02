@@ -1,31 +1,27 @@
-# --- runtime ---
+# --- Runtime data ---
 data/
 uploads/users/
-*.db
 
-# --- logs / temps ---
+# --- Databases ---
+*.db
+*.db.bak.*
+
+# --- Logs / temp files ---
 *.log
 *.out
 *.tmp
+vet.log
 
-# --- Node / Vite ---
-node_modules/
-dist/
-.vite/
-*.local
-
-# --- OS ---
+# --- OS junk ---
 .DS_Store
 Thumbs.db
-SELECT
-open-node.sh
-restart_webapi.sh
-test.png
 
-# --- local junk / build noise ---
-/SELECT
-/Using
-/test.png
+# --- Local junk / mis-added files ---
+SELECT
+Using
+test.png
+restart_webapi.sh
+open-node.sh
 
 # --- Go build artifacts ---
 /webapi
@@ -34,45 +30,22 @@ test.png
 /build/
 /dist-webapi/
 *.exe
-*.out
 
-# --- Frontend build ---
+# --- Frontend build (Vite / Vue) ---
 /webui/dist/
 dist/
+/.vite/
+/*.local
 
-
-# docker layer ID 型误加文件（具体文件已清理，后续如再出现手动 rm；glob不支持正则长度判断）
-/*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
-
-# --- Node/Yarn (webui 专用) ---
+# --- Node / Yarn ---
+node_modules/
 **/node_modules/
+**/package-lock.json
 **/.pnp.*
 **/.yarn/cache/
 **/.yarn/unplugged/
 **/.yarn/build-state.yml
 **/.yarn/install-state.gz
-**/package-lock.json
 
-# --- Logs & 临时 ---
-*.log
-vet.log
-
-# --- 本地无关文件 ---
-/SELECT
-/Using
-/test.png
-
-# --- Local junk / temp ---
-test.png
-SELECT
-Using
-vet.log
-restart_webapi.sh
-open-node.sh
-
-# --- Databases ---
-*.db
-*.db.bak.*
-
-# --- Node / Yarn ---
-**/package-lock.json
+# --- Docker build noise (layer IDs accidentally committed) ---
+/*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
