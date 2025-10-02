@@ -1,0 +1,10 @@
+.git
+**/.git
+**/node_modules
+**/.yarn/cache
+**/.yarn/unplugged
+**/.pnp.*
+*.log
+SELECT
+Using
+test.png
