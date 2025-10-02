@@ -28,3 +28,21 @@ test.png
 /test.png
 # docker layer ID 型误加文件（具体文件已清理，后续如再出现手动 rm；glob不支持正则长度判断）
 /*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
+
+# --- Node/Yarn (webui 专用) ---
+**/node_modules/
+**/.pnp.*
+**/.yarn/cache/
+**/.yarn/unplugged/
+**/.yarn/build-state.yml
+**/.yarn/install-state.gz
+**/package-lock.json
+
+# --- Logs & 临时 ---
+*.log
+vet.log
+
+# --- 本地无关文件 ---
+/SELECT
+/Using
+/test.png
