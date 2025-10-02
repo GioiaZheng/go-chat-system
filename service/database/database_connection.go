@@ -33,49 +33,50 @@ func New(db *sql.DB) (*appdbimpl, error) {
 
 func initializeTables(db *sql.DB) error {
 	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			username TEXT NOT NULL UNIQUE,
-			email TEXT NOT NULL UNIQUE,
-			password TEXT NOT NULL,
-			name TEXT,
-			avatar_url TEXT,
-			photo TEXT,
-			gender TEXT DEFAULT 'unspecified'
-		);
-		
-		CREATE TABLE IF NOT EXISTS messages (
-			id TEXT PRIMARY KEY,
-			content TEXT NOT NULL,
-			sender_id TEXT NOT NULL,
-			receiver_id TEXT,
-			group_id TEXT,
-			conversation_id TEXT,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY(sender_id) REFERENCES users(id),
-			FOREIGN KEY(receiver_id) REFERENCES users(id),
-			FOREIGN KEY(group_id) REFERENCES groups(id)
-		);
+		-- 已在 New() 里开了 foreign_keys，这里留着也无妨
+		PRAGMA foreign_keys = ON;
 
+		CREATE TABLE IF NOT EXISTS users (
+			id         TEXT PRIMARY KEY,
+			username   TEXT NOT NULL UNIQUE,
+			password   TEXT,          -- 允许空串/NULL，兼容你的“简化登录”
+			name       TEXT,
+			avatar_url TEXT,
+			photo      TEXT
+		);
 
 		CREATE TABLE IF NOT EXISTS groups (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
+			id         TEXT PRIMARY KEY,
+			name       TEXT NOT NULL,
 			avatar_url TEXT,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE TABLE IF NOT EXISTS group_members (
 			group_id TEXT,
-			user_id TEXT,
-			role TEXT,
+			user_id  TEXT,
+			role     TEXT,
 			PRIMARY KEY (group_id, user_id),
 			FOREIGN KEY(group_id) REFERENCES groups(id),
-			FOREIGN KEY(user_id) REFERENCES users(id)
+			FOREIGN KEY(user_id)  REFERENCES users(id)
+		);
+
+		CREATE TABLE IF NOT EXISTS messages (
+			id              TEXT PRIMARY KEY,
+			content         TEXT NOT NULL,
+			sender_id       TEXT NOT NULL,
+			receiver_id     TEXT,
+			group_id        TEXT,
+			conversation_id TEXT,
+			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(sender_id)   REFERENCES users(id),
+			FOREIGN KEY(receiver_id) REFERENCES users(id),
+			FOREIGN KEY(group_id)    REFERENCES groups(id)
 		);
 	`)
 	return err
 }
+
 
 func (db *appdbimpl) Close() error {
 	return db.c.Close()
@@ -87,33 +88,28 @@ func (db *appdbimpl) Ping() error {
 
 func (db *appdbimpl) GetUserByID(userID string) (models.User, error) {
 	var user models.User
-	var name, email, avatarUrl, photo, gender sql.NullString
+	var name, avatarUrl, photo sql.NullString
 
 	err := db.c.QueryRow(`
-		SELECT id, username, name, email, avatar_url, photo, gender
-		FROM users WHERE id = ?
+		SELECT id, username, name, avatar_url, photo
+		FROM users
+		WHERE id = ?
 	`, userID).Scan(
 		&user.ID,
 		&user.Username,
 		&name,
-		&email,
 		&avatarUrl,
 		&photo,
-		&gender,
 	)
-
 	if err != nil {
 		return models.User{}, err
 	}
-
 	user.Name = name.String
-	user.Email = email.String
 	user.AvatarUrl = avatarUrl.String
 	user.Photo = photo.String
-	user.Gender = gender.String
-
 	return user, nil
 }
+
 
 // Check if user exists by username
 func (db *appdbimpl) CheckUserExists(username string) (bool, error) {

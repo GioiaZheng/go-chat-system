@@ -4,216 +4,197 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
 
-// NOTE (English):
-// This file consolidates "user" DB methods that are NOT already implemented
-// in other files (e.g., database_connection.go). We intentionally AVOID
-// redefining CheckUserExists and GetUserByID here if they exist elsewhere.
-// We DO provide GetUser as a thin alias to GetUserByID, because the interface
-// requires GetUser and some projects don't implement it elsewhere.
+// 生成简单唯一ID（如需 UUID 可替换）
+func newID() string {
+	return fmt.Sprintf("u_%d", time.Now().UnixNano())
+}
 
-// CreateUser inserts a new user record and its credentials.
-// The incoming user may not have an ID; we generate one when missing.
-func (db *appdbimpl) CreateUser(user models.User, password string) (models.User, error) {
-	user.Username = strings.TrimSpace(user.Username)
-	user.Email = strings.TrimSpace(user.Email)
-	user.Name = strings.TrimSpace(user.Name)
-	user.Gender = strings.TrimSpace(user.Gender)
+// GetUserByCredentials：支持简化登录 password==""（仅匹配存储为 NULL/"" 的用户）
+func (db *appdbimpl) GetUserByCredentials(username, password string) (models.User, error) {
+	var u models.User
 
-	// Generate ID if empty (TEXT PK).
-	if strings.TrimSpace(user.ID) == "" {
-		if err := db.c.QueryRow(`SELECT lower(hex(randomblob(16)))`).Scan(&user.ID); err != nil {
+	if password == "" {
+		// 简化登录：只匹配空密码用户
+		err := db.c.QueryRow(`
+			SELECT id, username, name, COALESCE(avatar_url, ''), COALESCE(photo, '')
+			FROM users
+			WHERE username = ?
+			  AND COALESCE(password, '') = ''
+			LIMIT 1
+		`, username).Scan(&u.ID, &u.Username, &u.Name, &u.AvatarUrl, &u.Photo)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return models.User{}, sql.ErrNoRows
+			}
 			return models.User{}, err
 		}
-	}
-
-	// FIX: include 'password' to satisfy NOT NULL constraint in the users table.
-	// Rationale: the schema defines users.password as NOT NULL; without providing it,
-	// SQLite fails with "NOT NULL constraint failed: users.password". We now pass the
-	// 'password' value (can be empty for simplified login).
-	_, err := db.c.Exec(`
-		INSERT INTO users (id, username, name, email, password, avatar_url, gender)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, user.ID, user.Username, user.Name, user.Email, password, user.AvatarUrl, user.Gender)
-
-	if err != nil {
-		return models.User{}, err
-	}
-
-	// Insert credentials if the table exists; ignore if schema doesn't have it.
-	// We keep both "user_id + username" mapping to cover different schemas.
-	if _, err := db.c.Exec(`
-		INSERT OR REPLACE INTO user_credentials (user_id, username, password)
-		VALUES (?, ?, ?)
-	`, user.ID, user.Username, password); err != nil {
-		// Fallback: legacy inline password column on users (if present).
-		_, _ = db.c.Exec(`UPDATE users SET password = ? WHERE id = ?`, password, user.ID)
-	}
-
-	return user, nil
-}
-
-// AuthenticateUser checks credentials by email + password and returns the user.
-// We accept both credential storage models (user_credentials or users.password).
-func (db *appdbimpl) AuthenticateUser(email, password string) (models.User, error) {
-	email = strings.TrimSpace(email)
-	password = strings.TrimSpace(password)
-
-	// Resolve user by email.
-	var u models.User
-	if err := db.c.QueryRow(`
-		SELECT id, username, name, email, avatar_url, gender
-		FROM users WHERE email = ?
-	`, email).Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.AvatarUrl, &u.Gender); err != nil {
-		return models.User{}, err
-	}
-
-	// Check user_credentials first.
-	var cnt int
-	if err := db.c.QueryRow(`
-		SELECT COUNT(1) FROM user_credentials
-		WHERE user_id = ? AND password = ?
-	`, u.ID, password).Scan(&cnt); err == nil && cnt > 0 {
 		return u, nil
 	}
 
-	// Fallback: inline password column on users (legacy).
-	if err := db.c.QueryRow(`
-		SELECT COUNT(1) FROM users WHERE id = ? AND password = ?
-	`, u.ID, password).Scan(&cnt); err == nil && cnt > 0 {
-		return u, nil
-	}
-
-	return models.User{}, errors.New("invalid credentials")
-}
-
-// GetUserIDFromIdentifier resolves a username or an email to a user ID.
-func (db *appdbimpl) GetUserIDFromIdentifier(identifier string) (string, error) {
-	identifier = strings.TrimSpace(identifier)
-	var id string
+	// 正常登录：明文匹配（如有 hash，自行替换）
 	err := db.c.QueryRow(`
-		SELECT id FROM users
-		WHERE lower(username) = lower(?)
-		   OR lower(email)    = lower(?)
+		SELECT id, username, name, COALESCE(avatar_url, ''), COALESCE(photo, '')
+		FROM users
+		WHERE username = ?
+		  AND password = ?
 		LIMIT 1
-	`, identifier, identifier).Scan(&id)
-	return id, err
-}
-
-// GetUser is a thin alias to GetUserByID (required by AppDatabase).
-// We keep it here so the concrete type *appdbimpl* satisfies the interface,
-// even if another file doesn't provide GetUser.
-func (db *appdbimpl) GetUser(userID string) (models.User, error) {
-	return db.GetUserByID(userID)
-}
-
-// GetUserByCredentials fetches a user by (username,password).
-// We check user_credentials first, then fall back to users.password (legacy).
-func (db *appdbimpl) GetUserByCredentials(name, password string) (models.User, error) {
-	name = strings.TrimSpace(name)
-	password = strings.TrimSpace(password)
-
-	// Try user_credentials (username + password).
-	var u models.User
-	err := db.c.QueryRow(`
-		SELECT u.id, u.username, u.name, u.email, u.avatar_url, u.gender
-		  FROM users u
-		  JOIN user_credentials uc ON uc.user_id = u.id
-		 WHERE lower(uc.username) = lower(?) AND uc.password = ?
-		 LIMIT 1
-	`, name, password).Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.AvatarUrl, &u.Gender)
-	if err == nil {
-		return u, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return models.User{}, err
-	}
-
-	// Fallback: users table has password column (legacy).
-	err = db.c.QueryRow(`
-		SELECT id, username, name, email, avatar_url, gender
-		  FROM users
-		 WHERE lower(username) = lower(?) AND password = ?
-		 LIMIT 1
-	`, name, password).Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.AvatarUrl, &u.Gender)
+	`, username, password).Scan(&u.ID, &u.Username, &u.Name, &u.AvatarUrl, &u.Photo)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.User{}, sql.ErrNoRows
+		}
 		return models.User{}, err
 	}
 	return u, nil
 }
 
-// UpdateUserName updates the user's username (handle).
-// If you intended to change display name, adjust SQL accordingly.
-func (db *appdbimpl) UpdateUserName(userID, name string) error {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return errors.New("empty username")
+// CreateUser：按当前 users 表写入（含 password、avatar_url、photo）
+// password 可为 ""（简化登录），AvatarUrl/Photo 可空
+func (db *appdbimpl) CreateUser(u models.User, password string) (models.User, error) {
+	if u.Username == "" {
+		return models.User{}, errors.New("empty username")
+	}
+	if u.Name == "" {
+		u.Name = u.Username
+	}
+	if u.ID == "" {
+		u.ID = newID()
 	}
 
-	// Ensure uniqueness.
-	var cnt int
-	if err := db.c.QueryRow(`
-		SELECT COUNT(1) FROM users
-		WHERE lower(username) = lower(?) AND id <> ?
-	`, name, userID).Scan(&cnt); err != nil {
-		return err
-	}
-	if cnt > 0 {
-		return errors.New("username already taken")
+	_, err := db.c.Exec(`
+		INSERT INTO users (id, username, password, name, avatar_url, photo)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, u.ID, u.Username, password, u.Name, u.AvatarUrl, u.Photo)
+	if err != nil {
+		return models.User{}, err
 	}
 
-	// Update users.username.
-	if _, err := db.c.Exec(`UPDATE users SET username = ? WHERE id = ?`, name, userID); err != nil {
-		return err
-	}
-
-	// Keep user_credentials in sync if table exists.
-	_, _ = db.c.Exec(`UPDATE user_credentials SET username = ? WHERE user_id = ?`, name, userID)
-	return nil
+	// 返回创建后的完整用户
+	return db.GetUserByID(u.ID)
 }
 
-// UpdateUserPhoto updates the avatar_url for a user.
-func (db *appdbimpl) UpdateUserPhoto(userID, photoPath string) error {
-	photoPath = strings.TrimSpace(photoPath)
-	_, err := db.c.Exec(`UPDATE users SET avatar_url = ? WHERE id = ?`, photoPath, userID)
-	return err
+// AuthenticateUser：实现接口，委托到 GetUserByCredentials
+func (db *appdbimpl) AuthenticateUser(username, password string) (models.User, error) {
+	return db.GetUserByCredentials(username, password)
 }
 
-// SearchUsers returns users matching the query (by username/name/email), excluding self.
+// GetUser：实现接口，委托到 GetUserByID（若接口其实带 context，会有编译提示，我再给你 context 版）
+func (db *appdbimpl) GetUser(userID string) (models.User, error) {
+	return db.GetUserByID(userID)
+}
+
+// GetUserIDFromIdentifier：把“标识符”解析成用户ID
+// 规则：
+// 1) 先按 id 直接查（精确匹配 users.id）；
+// 2) 不存在则按用户名（不区分大小写）查其 id；
+func (db *appdbimpl) GetUserIDFromIdentifier(identifier string) (string, error) {
+	ident := strings.TrimSpace(identifier)
+	if ident == "" {
+		return "", errors.New("empty identifier")
+	}
+
+	// 尝试把 ident 当成 id
+	var id string
+	err := db.c.QueryRow(`
+		SELECT id FROM users WHERE id = ? LIMIT 1
+	`, ident).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return "", err
+	}
+
+	// 回退：按用户名（不区分大小写）查 id
+	err = db.c.QueryRow(`
+		SELECT id FROM users WHERE lower(username) = lower(?) LIMIT 1
+	`, ident).Scan(&id)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+// SearchUsers 在 users 表中按用户名或昵称模糊搜索（不区分大小写）。
+// - ctx:      上下文取消/超时
+// - userID:   调用者自身ID（用于从结果中过滤自己）
+// - query:    搜索关键词
+// 返回最多 50 条，按 username 排序。
 func (db *appdbimpl) SearchUsers(ctx context.Context, userID string, query string) ([]models.User, error) {
 	q := strings.TrimSpace(query)
-	args := []interface{}{userID}
-	where := `WHERE id <> ?`
-
-	if q != "" {
-		qLike := "%" + strings.ToLower(q) + "%"
-		where += ` AND (lower(username) LIKE ? OR lower(name) LIKE ? OR lower(email) LIKE ?)`
-		args = append(args, qLike, qLike, qLike)
+	if q == "" {
+		return []models.User{}, nil
 	}
 
 	rows, err := db.c.QueryContext(ctx, `
-		SELECT id, username, name, email, avatar_url, gender
-		  FROM users
-		`+where+`
-		  ORDER BY username COLLATE NOCASE ASC
-		  LIMIT 50
-	`, args...)
+		SELECT id, username, name, COALESCE(avatar_url, ''), COALESCE(photo, '')
+		FROM users
+		WHERE (username LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\')
+		  AND id <> ?
+		ORDER BY username COLLATE NOCASE ASC
+		LIMIT 50
+	`, "%"+q+"%", "%"+q+"%", userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []models.User
+	var users []models.User
 	for rows.Next() {
 		var u models.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.AvatarUrl, &u.Gender); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.AvatarUrl, &u.Photo); err != nil {
 			return nil, err
 		}
-		out = append(out, u)
+		users = append(users, u)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+// UpdateUserName 更新用户的显示名称（无 context 版，匹配 AppDatabase 接口）
+func (db *appdbimpl) UpdateUserName(userID string, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("empty name")
+	}
+
+	res, err := db.c.Exec(`
+		UPDATE users SET name = ?
+		WHERE id = ?
+	`, name, userID)
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+// UpdateUserPhoto：同时写入 photo 与 avatar_url，便于前端直接使用
+func (db *appdbimpl) UpdateUserPhoto(userID string, photoPath string) error {
+	photoPath = strings.TrimSpace(photoPath)
+	if photoPath == "" {
+		return errors.New("empty photo path")
+	}
+
+	res, err := db.c.Exec(`
+		UPDATE users SET photo = ?, avatar_url = ?
+		WHERE id = ?
+	`, photoPath, photoPath, userID)
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

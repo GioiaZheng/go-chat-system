@@ -64,7 +64,7 @@ func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 // Matches interface: GetGroupMembers(groupID string) ([]models.User, error)
 func (db *appdbimpl) GetGroupMembers(groupID string) ([]models.User, error) {
 	rows, err := db.c.Query(`
-		SELECT u.id, u.username, u.name, u.email, u.avatar_url, u.gender
+		SELECT u.id, u.username, u.name, u.avatar_url
 		FROM users u
 		JOIN group_members gm ON u.id = gm.user_id
 		WHERE gm.group_id = ?
@@ -78,7 +78,7 @@ func (db *appdbimpl) GetGroupMembers(groupID string) ([]models.User, error) {
 	var members []models.User
 	for rows.Next() {
 		var u models.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.AvatarUrl, &u.Gender); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.AvatarUrl); err != nil {
 			return nil, err
 		}
 		members = append(members, u)

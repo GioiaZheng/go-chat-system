@@ -13,13 +13,11 @@ import (
 )
 
 // Flexible request: supports both {"name","password"} (legacy) and
-// {"username","email","password","gender"} (OpenAPI).
+// {"username","password"} (OpenAPI).
 type registerFlexibleReq struct {
 	Name     string `json:"name,omitempty"`
 	Password string `json:"password,omitempty"`
 	Username string `json:"username,omitempty"`
-	Email    string `json:"email,omitempty"`
-	Gender   string `json:"gender,omitempty"`
 }
 
 // Response format matching OpenAPI: {code,message,data:{user,token}}
@@ -35,8 +33,8 @@ type registerDataObject struct {
 }
 
 // doRegister handles POST /register.
-// - Legacy: {"name","password"} → username=name, email=auto.
-// - OpenAPI: {"username","email","password"} → used directly.
+// - Legacy: {"name","password"} → username=name
+// - OpenAPI: {"username","password"} → used directly.
 // - If name missing, fallback to username.
 func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var req registerFlexibleReq
@@ -46,10 +44,8 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 	}
 
 	username := strings.TrimSpace(req.Username)
-	email := strings.TrimSpace(req.Email)
 	password := strings.TrimSpace(req.Password)
 	displayName := strings.TrimSpace(req.Name)
-	gender := strings.TrimSpace(req.Gender)
 
 	// Legacy compatibility
 	if username == "" && req.Name != "" {
@@ -58,19 +54,13 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 	if password == "" && req.Password != "" {
 		password = strings.TrimSpace(req.Password)
 	}
-	if email == "" && username != "" {
-		email = username + "@example.com"
-	}
 	if displayName == "" && username != "" {
 		displayName = username
 	}
-	if gender == "" {
-		gender = "unspecified"
-	}
 
 	// Minimal validation
-	if username == "" || email == "" || password == "" {
-		rt.writeErrorResponse(w, http.StatusBadRequest, "Username, email and password are required")
+	if username == "" || password == "" {
+		rt.writeErrorResponse(w, http.StatusBadRequest, "Username and password are required")
 		return
 	}
 
@@ -93,9 +83,7 @@ func (rt *_router) doRegister(w http.ResponseWriter, r *http.Request, _ httprout
 	// Create user
 	user := models.User{
 		Username:  username,
-		Email:     email,
 		Name:      displayName,
-		Gender:    gender,
 		AvatarUrl: avatarURL,
 	}
 	created, err := rt.db.CreateUser(user, password)

@@ -1,8 +1,8 @@
-# Build with Go >= 1.19 (1.20 recommended)
+# ===== Build stage =====
 FROM golang:1.20-alpine AS build
 RUN apk add --no-cache build-base git sqlite-dev
 ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
-WORKDIR /app
+WORKDIR /src
 
 # 先拉依赖，最大化缓存
 COPY go.mod go.sum ./
@@ -10,26 +10,38 @@ RUN go mod download
 
 # 再拷源码并构建
 COPY . .
-RUN go build -ldflags="-s -w" -o /bin/wasatext ./cmd/webapi
+# 缓存 go build，可选：去掉也行
+# RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg/mod \
+RUN go build -trimpath -ldflags="-s -w" -o /out/wasatext ./cmd/webapi
 
-# ---- Runtime ----
+# ===== Runtime =====
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata sqlite-libs && adduser -D -H -u 10001 appuser
+RUN apk add --no-cache ca-certificates tzdata sqlite-libs curl
 WORKDIR /srv
-COPY --from=build /bin/wasatext /usr/local/bin/wasatext
 
-# 数据库落到可挂载目录
+# 创建运行用户与可写目录（/data, /srv/uploads），避免“failed to prepare upload dir”
+RUN adduser -D -H -u 10001 appuser \
+  && mkdir -p /data /srv/uploads/users \
+  && chown -R appuser:appuser /data /srv/uploads \
+  && chmod -R 775 /data /srv/uploads
+
+COPY --from=build /out/wasatext /usr/local/bin/wasatext
+
+# DB 放到可挂载目录
 VOLUME ["/data"]
+
+# 注意：你的程序读取的是 WEBAPI_DB_FILENAME/DB_FILENAME/或 --db-filename
+# 统一给到 /data/wasatext.db，运行时也可以用 CLI 覆盖
 ENV PORT=3000 \
-    DB_PATH=/data/wasatext.db \
-    DB_DSN="file:/data/wasatext.db?_fk=1&cache=shared" \
+    WEBAPI_DB_FILENAME=/data/wasatext.db \
+    DB_FILENAME=/data/wasatext.db \
     TZ=Europe/Rome
 
 EXPOSE 3000
 USER appuser
 
-# 注意：health 路径请改成你服务实际的存活探针，比如 /liveness
+# /liveness 是你项目里已有的探针
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget -qO- "http://127.0.0.1:${PORT}/liveness" || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT}/liveness" >/dev/null || exit 1
 
 ENTRYPOINT ["/usr/local/bin/wasatext"]
