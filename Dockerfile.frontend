@@ -2,22 +2,24 @@
 FROM node:20-alpine AS build
 WORKDIR /app/webui
 
-# 先只拷贝 webui 的包清单，最大化缓存
-COPY webui/package*.json ./
-RUN npm ci
+# 与老师环境一致：启用 Corepack + 固定 Yarn 3.2.1
+RUN corepack enable && corepack prepare yarn@3.2.1 --activate
 
-# 再拷贝 webui 源码并构建
+# 先拷依赖清单，最大化缓存
+COPY webui/package*.json ./
+# 如有 yarn.lock：也拷进去（没有则忽略）
+# COPY webui/yarn.lock ./
+
+# 安装依赖
+RUN yarn install
+
+# 拷源码并打包
 COPY webui/ ./
-RUN npm run build
+RUN yarn build
 
 # ===== Serve with Nginx =====
 FROM nginx:alpine
-
-# 单页应用路由配置（你已有 nginx.conf 就用这个）
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# 拷贝打包产物
 COPY --from=build /app/webui/dist/ /usr/share/nginx/html
-
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

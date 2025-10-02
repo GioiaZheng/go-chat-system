@@ -333,4 +333,3 @@ func (db *appdbimpl) DeleteMessage(userID, messageID string) error {
 	_, err = db.c.Exec(`DELETE FROM messages WHERE id = ?`, messageID)
 	return err
 }
-

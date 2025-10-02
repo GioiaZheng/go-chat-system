@@ -179,6 +179,7 @@ func (db *appdbimpl) UpdateUserName(userID string, name string) error {
 	}
 	return nil
 }
+
 // UpdateUserPhoto：同时写入 photo 与 avatar_url，便于前端直接使用
 func (db *appdbimpl) UpdateUserPhoto(userID string, photoPath string) error {
 	photoPath = strings.TrimSpace(photoPath)

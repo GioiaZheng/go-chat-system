@@ -77,7 +77,6 @@ func initializeTables(db *sql.DB) error {
 	return err
 }
 
-
 func (db *appdbimpl) Close() error {
 	return db.c.Close()
 }
@@ -109,7 +108,6 @@ func (db *appdbimpl) GetUserByID(userID string) (models.User, error) {
 	user.Photo = photo.String
 	return user, nil
 }
-
 
 // Check if user exists by username
 func (db *appdbimpl) CheckUserExists(username string) (bool, error) {

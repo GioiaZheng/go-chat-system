@@ -37,8 +37,8 @@ type sendMessageBody struct {
 	ToUserID       string `json:"to_user_id,omitempty"`      // for private messages
 	GroupID        string `json:"group_id,omitempty"`        // (legacy) if needed
 	ConversationID string `json:"conversation_id,omitempty"` // for conversation messages
-	Type           string `json:"type,omitempty"`             // "text" by default
-	Status         string `json:"status,omitempty"`           // "sent" by default
+	Type           string `json:"type,omitempty"`            // "text" by default
+	Status         string `json:"status,omitempty"`          // "sent" by default
 }
 
 //
