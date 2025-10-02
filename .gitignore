@@ -21,3 +21,10 @@ SELECT
 open-node.sh
 restart_webapi.sh
 test.png
+
+# --- local junk / build noise ---
+/SELECT
+/Using
+/test.png
+# docker layer ID 型误加文件（具体文件已清理，后续如再出现手动 rm；glob不支持正则长度判断）
+/*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
