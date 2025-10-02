@@ -1,21 +1,30 @@
-# Dockerfile.frontend（在仓库根目录）
+# --- build stage ---
 FROM node:20-alpine AS build
 WORKDIR /app/webui
-
-# Yarn 3.2.1 + 禁用 PnP 所需文件
+    
+# Corepack + Yarn v3.2.1
 RUN corepack enable && corepack prepare yarn@3.2.1 --activate
+    
+# 只复制依赖相关文件，提升缓存利用率
 COPY webui/package.json webui/yarn.lock webui/.yarnrc.yml ./
-
-# 安装依赖（严格遵守 lock）
+COPY webui/.yarn ./.yarn
+    
+# 安装依赖
 RUN yarn install --immutable
-
-# 复制源码并构建
+    
+# 再复制整个源码
 COPY webui/ ./
+    
+# 确认 index.html 存在（避免 entry module 报错）
+RUN test -f index.html
+    
+# 构建产物
 RUN yarn build
-
-# 运行期：Nginx 托管静态文件
+    
+# --- run stage ---
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/webui/dist/ /usr/share/nginx/html
+COPY --from=build /app/webui/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+    
