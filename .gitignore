@@ -49,3 +49,6 @@ node_modules/
 
 # --- Docker build noise (layer IDs accidentally committed) ---
 /*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
+
+**/data/
+!**/data/.keep
