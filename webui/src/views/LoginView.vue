@@ -1,86 +1,156 @@
+<!-- src/views/LoginView.vue -->
 <template>
-  <main class="login-bg min-vh-100 d-flex align-items-center">
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-11 col-sm-9 col-md-7 col-lg-5">
-          <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="card-body p-4 p-sm-5">
-              <!-- 品牌 + 标题 -->
-              <div class="text-center mb-4">
-                <div class="brand mb-1">
-                  WASA <span class="text-gradient">Chat</span>
-                </div>
-                <h1 class="h5 text-secondary fw-semibold m-0">Sign in</h1>
-              </div>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand">WASA <span class="grad">Chat</span></div>
+      <h1 class="subtitle">Sign in</h1>
 
-              <ErrorMsg v-if="err" :text="err" class="mb-3" />
+      <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
-              <form @submit.prevent="login" novalidate>
-                <label class="form-label fw-medium">Name</label>
-                <input
-                  v-model.trim="name"
-                  type="text"
-                  class="form-control form-control-lg"
-                  placeholder="alice"
-                  autocomplete="username"
-                  required
-                  minlength="3"
-                  maxlength="16"
-                  autofocus
-                />
+      <form @submit.prevent="login" novalidate>
+        <label class="form-label fw-medium">Name</label>
+        <input
+          v-model.trim="name"
+          type="text"
+          class="form-control form-control-lg"
+          placeholder="Type your name"
+          autocomplete="username"
+          required
+          minlength="1"
+          maxlength="16"
+          autofocus
+        />
 
-                <button
-                  class="btn btn-gradient btn-lg w-100 mt-3"
-                  :disabled="busy || (name?.length ?? 0) < 3"
-                >
-                  <span
-                    v-if="busy"
-                    class="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  {{ busy ? 'Signing in…' : 'Login' }}
-                </button>
-              </form>
+        <button
+          type="submit"
+          class="btn btn-gradient btn-lg w-100 mt-3"
+          :disabled="busy || (name?.length ?? 0) < 1"
+        >
+          <span
+            v-if="busy"
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          {{ busy ? 'Signing in…' : 'Login' }}
+        </button>
+      </form>
 
-              <p class="text-center text-muted small mt-3 mb-0">
-                Press <kbd>Enter</kbd> to login
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <p class="text-center text-muted small mt-3 mb-0">
+        Press <kbd>Enter</kbd> to login
+      </p>
     </div>
-  </main>
+  </div>
 </template>
 
-<style scoped>
-.login-bg{
+<script setup>
+import { onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import ErrorMsg from '../components/ErrorMsg.vue'
+import { doLogin } from '../services/api'
+
+const router = useRouter()
+const name = ref('')
+const err = ref('')
+const busy = ref(false)
+
+onMounted(() => {
+  // 页面级：把 body 改成浅色背景
+  document.body.classList.add('theme-light-login')
+
+  const token = localStorage.getItem('token')
+  if (token) router.replace('/conversations')
+})
+
+onUnmounted(() => {
+  document.body.classList.remove('theme-light-login')
+})
+
+async function login () {
+  err.value = ''
+  if (!name.value) return
+  busy.value = true
+  try {
+    const token = await doLogin(name.value)
+    localStorage.setItem('name', name.value || '')
+    localStorage.setItem('token', token)
+    router.replace('/conversations')
+  } catch (e) {
+    err.value = e?.response?.data?.error || e?.message || 'Login failed'
+  } finally {
+    busy.value = false
+  }
+}
+</script>
+
+<!-- 这段样式不加 scoped，用来覆盖 body 的深色背景 -->
+<style>
+body.theme-light-login{
   background:
-    radial-gradient(1200px 1200px at 10% 10%, #f3f8ff 0, transparent 60%),
-    radial-gradient(1000px 1000px at 90% 20%, #f7f7ff 0, transparent 60%),
-    linear-gradient(180deg, #f8fafc, #f4f6f9);
+    radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
+    radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
+    linear-gradient(180deg, #ffffff, #f7fafe) !important;
+  color: #0f172a;
+}
+</style>
+
+<!-- 组件内样式（浅色卡片） -->
+<style scoped>
+.auth-wrap{
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.auth-card{
+  width: 100%;
+  max-width: 460px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(2,6,23,.08);
+  padding: 28px 24px;
+  color: #0f172a;
 }
 
 .brand{
-  font-size: 1.65rem;
   font-weight: 800;
+  font-size: 28px;
   letter-spacing: .5px;
+  text-align: center;
 }
-
-.text-gradient{
+.brand .grad{
   background: linear-gradient(90deg, #22c55e, #3b82f6);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
+.subtitle{
+  text-align: center;
+  color: #475569;
+  font-weight: 700;
+  margin: 6px 0 18px;
+}
+
+.form-label{ color:#334155 }
+.form-control{
+  background:#fff;
+  border-color: #cbd5e1;
+  color:#0f172a;
+}
+.form-control::placeholder{ color:#94a3b8 }
+.form-control:focus{
+  border-color:#22c55e;
+  box-shadow: 0 0 0 .25rem rgba(34,197,94,.15);
+}
 
 .btn-gradient{
   background-image: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #3b82f6 120%);
-  color: #fff;
-  border: 0;
-  box-shadow: 0 .5rem 1.25rem rgba(16,185,129,.25);
+  color:#fff;
+  border:0;
+  box-shadow:0 .6rem 1.4rem rgba(34,197,94,.25);
 }
 .btn-gradient:disabled{ opacity:.6 }
-.card{ backdrop-filter: blur(6px); }
 </style>

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// imports are from src/router/ -> back to src/
+// views
 import LoginView from '../views/LoginView.vue'
 import ConversationsView from '../views/ConversationsView.vue'
 import ChatView from '../views/ChatView.vue'
@@ -8,40 +8,55 @@ import GroupView from '../views/GroupView.vue'
 import ProfileView from '../views/ProfileView.vue'
 
 const routes = [
-  // Root -> login or conversations
+  // 根路径：按是否登录进行动态重定向
   { path: '/', redirect: () => (localStorage.getItem('token') ? '/conversations' : '/login') },
 
-  // Quick check route: if you see this text, router/app mounted OK
+  // 快速自检页（上线前删掉即可）
   { path: '/__check', component: { template: '<div style="padding:12px">Router OK ✅</div>' } },
 
+  // 公开页
   { path: '/login', name: 'login', component: LoginView },
-  { path: '/conversations', name: 'conversations', component: ConversationsView, meta: { requiresAuth: true } },
-  { path: '/groups', name: 'groups', component: GroupView, meta: { requiresAuth: true } },
-  { path: '/profile', name: 'profile', component: ProfileView, meta: { requiresAuth: true } },
 
-  // Chat route (conv | private | group)
+  // 受保护页
+  { path: '/conversations', name: 'conversations', component: ConversationsView, meta: { requiresAuth: true } },
+  { path: '/groups',        name: 'groups',        component: GroupView,        meta: { requiresAuth: true } },
+  { path: '/profile',       name: 'profile',       component: ProfileView,      meta: { requiresAuth: true } },
+
+  // 聊天页（会话 / 私聊 / 群聊）
   { path: '/chat/:type/:id', name: 'chat', component: ChatView, props: true, meta: { requiresAuth: true } },
 
-  // Compatibility redirects
+  // 兼容跳转
   { path: '/conversations/:id', redirect: to => ({ name: 'chat', params: { type: 'conv', id: to.params.id } }) },
   { path: '/new-conversation', redirect: '/conversations' },
-  { path: '/new-group', redirect: '/groups' },
-  { path: '/me', redirect: '/profile' },
+  { path: '/new-group',        redirect: '/groups' },
+  { path: '/me',               redirect: '/profile' },
 
-  // Fallback
+  // 兜底
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+  scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem('token')
-  if (to.meta?.requiresAuth && !token) return next('/login')
-  if (to.name === 'login' && token)    return next('/conversations')
-  next()
+const isAuthed = () => !!localStorage.getItem('token')
+
+router.beforeEach((to) => {
+  const needsAuth = to.matched.some(r => r.meta?.requiresAuth)
+
+  // 受保护：未登录 -> 登录页，并附带回跳地址
+  if (needsAuth && !isAuthed()) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  // 已登录：不允许再进登录页
+  if (to.name === 'login' && isAuthed()) {
+    return { name: 'conversations' }
+  }
+
+  return true
 })
 
 export default router

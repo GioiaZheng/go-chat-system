@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "@ibm-cloud/openapi-ruleset": "^1.33.1",
+    "@ibm-cloud/openapi-ruleset-utilities": "^1.9.0",
+    "@stoplight/spectral-cli": "^6.15.0"
+  }
+}

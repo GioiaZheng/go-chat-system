@@ -68,3 +68,19 @@ coverage.out
 # --- Env files ---
 .env
 .env.*
+
+# webui 本地/构建
+/webui/dist/
+webui/.vite/
+/webui/data/
+webui/*.local
+/webui/node_modules/
+webui/.yarn/cache/
+webui/.yarn/unplugged/
+webui/.yarn/build-state.yml
+webui/.yarn/install-state.gz
+
+# IDE
+.vscode/
+.idea/
+*.iml

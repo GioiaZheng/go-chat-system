@@ -31,13 +31,15 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
+      bearerFormat: JWT
       description: >
-        Bearer authentication using the **user identifier** returned by /session as the token. Example: "Authorization: Bearer {identifier}".
+        JWT authentication using the Bearer scheme.
+        Example: "Authorization: Bearer {token}"
+  
   responses:
     BadRequest:
       description: >
         The request was malformed or contained invalid parameters.
-        Check the error details for specific validation issues.
       content:
         application/json:
           schema:
@@ -55,7 +57,6 @@ components:
     Unauthorized:
       description: >
         Authentication failed or user lacks proper permissions.
-        Include a valid JWT token in the Authorization header.
       content:
         application/json:
           schema:
@@ -99,15 +100,8 @@ components:
                 trace: "req-abcdef"
                 error: "auth.forbidden"
                 errors: []
+  
   schemas:
-    LoginIdentifier:
-      type: object
-      required: [identifier]
-      properties:
-        identifier:
-          type: string
-          example: "abcdef012345"
-
     RegisterUserRequest:
       type: object
       description: User registration request model for creating new user accounts
@@ -118,19 +112,20 @@ components:
           description: User's desired username
           minLength: 3
           maxLength: 50
-          pattern: ^[a-zA-Z0-9_-]+$
+          pattern: '^[a-zA-Z0-9_-]+$'
         name:
           type: string
-          description: User's full name
+          description: Display name
           minLength: 1
           maxLength: 100
-          pattern: ^[a-zA-Z0-9\s'-]+$
+          pattern: '^[a-zA-Z0-9\s''-]+$'
         password:
           type: string
           description: User's password
           minLength: 6
           maxLength: 100
           pattern: ^[a-zA-Z0-9!@#$%^&*()_+]+$
+
     BaseSuccessResponse:
       type: object
       description: Base structure for all success responses
@@ -147,7 +142,7 @@ components:
           description: Human-readable success message
           minLength: 1
           maxLength: 255
-          pattern: ^[\s\S]{1,255}$ 
+          pattern: '^[\s\S]{1,255}$'
           example: "Operation succeeded"
 
     AuthEnvelope:
@@ -178,28 +173,28 @@ components:
         id:
           type: string
           description: Unique identifier for the user
-          pattern: ^[a-zA-Z0-9-]+$
+          pattern: '^[a-zA-Z0-9-]+$'
           minLength: 1
           maxLength: 64
         username:
           type: string
-          description: User's display name
+          description: Username
           minLength: 1
           maxLength: 50
-          pattern: ^[a-zA-Z0-9_-]+$
+          pattern: '^[a-zA-Z0-9_-]+$'
         name:
           type: string
           description: User's full name
           minLength: 1
           maxLength: 100
-          pattern: ^[a-zA-Z0-9\s'-]+$
+          pattern: '^[a-zA-Z0-9\s''-]+$'
         avatarUri:
           type: string
           description: URL of user's avatar
           format: uri
           maxLength: 255
           minLength: 1
-          pattern: ^https?://[^\s/$.?#].[^\s]*$
+
 
     UserEnvelope:
       allOf:
@@ -262,7 +257,7 @@ components:
         id:
           type: string
           description: Unique identifier for the conversation
-          pattern: ^[a-zA-Z0-9-]+$
+          pattern: '^[a-zA-Z0-9-]+$'
           minLength: 1
           maxLength: 64
         name:
@@ -270,7 +265,7 @@ components:
           description: Conversation display name
           minLength: 1
           maxLength: 100
-          pattern: ^[a-zA-Z0-9\s'-]+$
+          pattern: '^[a-zA-Z0-9\s''-]+$'
         type:
           type: string
           enum: [private, group]
@@ -283,7 +278,7 @@ components:
           uniqueItems: true
           items:
             type: string
-            pattern: ^[a-zA-Z0-9-]+$
+            pattern: '^[a-zA-Z0-9-]+$'
             minLength: 1
             maxLength: 64
         avatarUri:
@@ -292,7 +287,7 @@ components:
           format: uri
           minLength: 1
           maxLength: 255
-          pattern: ^https?://[^\s/$.?#].[^\s]*$
+
         lastMessage:
           $ref: '#/components/schemas/Message'
         createdAt:
@@ -301,7 +296,7 @@ components:
           format: date-time
           minLength: 1
           maxLength: 64
-          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
 
     ConversationEnvelope:
       allOf:
@@ -366,7 +361,7 @@ components:
           description: Original filename
           minLength: 1
           maxLength: 255
-          pattern: ^[a-zA-Z0-9_\-. ]+$
+          pattern: '^[a-zA-Z0-9_\-. ]+$'
         size:
           type: integer
           format: int64
@@ -379,7 +374,6 @@ components:
           format: uri
           minLength: 1
           maxLength: 255
-          pattern: ^https?://[^\s/$.?#].[^\s]*$
 
     FileUploadEnvelope:
       allOf:
@@ -403,7 +397,7 @@ components:
         id:
           type: string
           description: Unique identifier for the message
-          pattern: ^[a-zA-Z0-9-]+$
+          pattern: '^[a-zA-Z0-9-]+$'
           minLength: 1
           maxLength: 64
         content:
@@ -411,17 +405,17 @@ components:
           description: Message content text
           minLength: 1
           maxLength: 1000
-          pattern: ^[\s\S]{1,1000}$
+          pattern: '^[\s\S]{1,1000}$'
         senderId:
           type: string
           description: ID of the message sender
-          pattern: ^[a-zA-Z0-9-]+$
+          pattern: '^[a-zA-Z0-9-]+$'
           minLength: 1
           maxLength: 64
         conversationId:
           type: string
           description: ID of the present conversation
-          pattern: ^[a-zA-Z0-9-]+$
+          pattern: '^[a-zA-Z0-9-]+$'
           minLength: 1
           maxLength: 64
         createdAt:
@@ -430,7 +424,7 @@ components:
           format: date-time
           minLength: 1
           maxLength: 64
-          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
         type:
           type: string
           description: Type of message content
@@ -442,18 +436,27 @@ components:
 
     MessageCollection:
       type: object
-      description: Paginated collection of messages with metadata.
-      required: [messages, pagination]
+      description: Cursor-based collection of messages.
+      required: [messages]
       properties:
         messages:
           type: array
-          description: Messages on this page.
+          description: Messages on this slice.
           minItems: 0
           maxItems: 100
           items:
             $ref: '#/components/schemas/Message'
+        nextCursor:
+          type: string
+          nullable: true
+          description: Opaque cursor to fetch older messages (for infinite scroll up).
+        prevCursor:
+          type: string
+          nullable: true
+          description: Opaque cursor to fetch newer messages (for pull-to-refresh).
         pagination:
           type: object
+          deprecated: true
           description: Pagination metadata.
           properties:
             total:
@@ -496,6 +499,76 @@ components:
               properties:
                 resource:
                   $ref: '#/components/schemas/Message'
+    
+    ForwardMessageRequest:
+      type: object
+      required: [conversationId]
+      properties:
+        conversationId:
+          type: string
+          description: Target conversation ID
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-zA-Z0-9-]+$'
+
+    CommentMessageRequest:
+      type: object
+      required: [type, content]
+      properties:
+        type:
+          type: string
+          description: Type of comment
+          enum: [text, emoji]
+        content:
+          type: string
+          description: Comment content or emoji code
+          minLength: 1
+          maxLength: 1000
+          pattern: '^[\s\S]{1,1000}$'
+
+    Comment:
+      type: object
+      description: Comment/reaction object for a message.
+      required: [id, authorId, content, createdAt]
+      properties:
+        id:
+          type: string
+          description: Comment ID
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        authorId:
+          type: string
+          description: Author user ID
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        content:
+          type: string
+          description: Comment content or emoji code
+          minLength: 1
+          maxLength: 1000
+          pattern: '^[\s\S]{1,1000}$'
+        createdAt:
+          type: string
+          description: ISO 8601 timestamp
+          format: date-time
+          minLength: 1
+          maxLength: 64
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
+
+    CommentsListResponse:
+      type: object
+      description: Comments list response.
+      required: [comments]
+      properties:
+        comments:
+          type: array
+          description: List of comments or reactions for the message.
+          minItems: 0
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/Comment'
 
     Group:
       type: object
@@ -507,17 +580,17 @@ components:
           description: Unique identifier for the group
           minLength: 1
           maxLength: 64
-          pattern: ^[a-zA-Z0-9-]+$
+          pattern: '^[a-zA-Z0-9-]+$'
         name:
           type: string
           description: Group display name
           minLength: 1
           maxLength: 100
-          pattern: ^[a-zA-Z0-9\s'-]+$
+          pattern: '^[a-zA-Z0-9\s''-]+$'
         conversationId:
           type: string
           description: ID of the present conversation
-          pattern: ^[a-zA-Z0-9-]+$
+          pattern: '^[a-zA-Z0-9-]+$'
           minLength: 1
           maxLength: 64
         members:
@@ -535,7 +608,7 @@ components:
                 description: User ID of the member
                 minLength: 1
                 maxLength: 64
-                pattern: ^[a-zA-Z0-9-]+$
+                pattern: '^[a-zA-Z0-9-]+$'
               role:
                 type: string
                 description: Member's role in the group
@@ -609,7 +682,7 @@ components:
           items:
             type: string
             description: User ID to add to the group
-            pattern: ^[a-zA-Z0-9-]+$
+            pattern: '^[a-zA-Z0-9-]+$'
             minLength: 1
             maxLength: 64
 
@@ -622,7 +695,7 @@ components:
           type: string
           minLength: 1
           maxLength: 100
-          pattern: ^[a-zA-Z0-9\s_-]+$
+          pattern: '^[a-zA-Z0-9\s_-]+$'
           description: New name for the group
 
     Error:
@@ -641,11 +714,11 @@ components:
           description: Human-readable error message
           minLength: 1
           maxLength: 255
-          pattern: ^[\s\S]{1,255}$
+          pattern: '^[\s\S]{1,255}$'
         trace:
           type: string
           description: Error trace ID for debugging purposes
-          pattern: ^[a-zA-Z0-9\s.,!?-]+$
+          pattern: '^[a-zA-Z0-9\s.,!?-]+$'
           minLength: 1
           maxLength: 1000
         error:
@@ -653,7 +726,7 @@ components:
           description: Machine-readable error key
           minLength: 1
           maxLength: 100
-          pattern: ^[a-z0-9_.:-]+$
+          pattern: '^[a-z0-9_.:-]+$'
           example: auth.invalid_token
         errors:
           type: array
@@ -662,7 +735,7 @@ components:
             type: string
             minLength: 1
             maxLength: 255
-            pattern: ^[\s\S]{1,255}$
+            pattern: '^[\s\S]{1,255}$'
           minItems: 0
           maxItems: 100
 
@@ -674,7 +747,7 @@ components:
       description: ID of the user
       schema:
         type: string
-        pattern: ^[a-zA-Z0-9-]+$
+        pattern: '^[a-zA-Z0-9-]+$'
         minLength: 1
         maxLength: 64
         description: unique identifier of user
@@ -685,59 +758,12 @@ components:
       description: ID of the resource
       schema:
         type: string
-        pattern: ^[a-zA-Z0-9-]+$
+        pattern: '^[a-zA-Z0-9-]+$'
         minLength: 1
         maxLength: 64
         description: unique identifier
 
 paths:
-  /cors:
-    options:
-      operationId: handleCorsPreflight
-      tags: [health]
-      summary: CORS preflight for all endpoints
-      description: Handles CORS preflight requests for all API endpoints
-      responses:
-        '200':
-          description: CORS allowed
-          headers:
-            Access-Control-Allow-Origin:
-              schema:
-                type: string
-                example: '*'
-                pattern: ^\*|https?://[^\s/$.?#].[^\s]*$
-                minLength: 1
-                maxLength: 255
-                description: Allowed origin domains for CORS requests, use '*' for all origins
-            Access-Control-Allow-Methods:
-              schema:
-                type: string
-                example: GET,POST,PUT,DELETE,OPTIONS
-                pattern: ^[A-Z,]+$
-                minLength: 1
-                maxLength: 255
-                description: Comma-separated list of HTTP methods allowed for CORS requests
-            Access-Control-Allow-Headers:
-              schema:
-                type: string
-                example: Content-Type, Authorization
-                pattern: ^[a-zA-Z0-9\s,-]+$
-                minLength: 1
-                maxLength: 255
-                description: Comma-separated list of HTTP headers allowed in CORS requests
-            Access-Control-Max-Age:
-              schema:
-                type: integer
-                format: int64
-                minimum: 0
-                maximum: 86400
-                example: 1
-                description: Maximum time in seconds to cache CORS preflight response
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-
   /conversations:
     post:
       tags: [conversations]
@@ -758,7 +784,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    pattern: ^[a-zA-Z0-9-]+$
+                    pattern: '^[a-zA-Z0-9-]+$'
                     minLength: 1
                     maxLength: 64
                   minItems: 1
@@ -769,7 +795,7 @@ paths:
                   description: Name for the new conversation
                   minLength: 1
                   maxLength: 100
-                  pattern: ^[a-zA-Z0-9\s'-]+$
+                  pattern: '^[a-zA-Z0-9\s''-]+$'
       responses:
         '201':
           description: Conversation created
@@ -822,14 +848,14 @@ paths:
                   pattern: ^[a-zA-Z0-9\s'-]+$
                   example: Maria
       responses:
-        '201':
+        '200':
           description: Login successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthEnvelope'
               example:
-                code: 201
+                code: 200
                 message: Login successful
                 data:
                   user:
@@ -837,12 +863,6 @@ paths:
                     username: maria
                     avatarUri: https://example.com/avatars/maria.jpg
                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
-        '200':
-          description: Existing user logged in
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginIdentifier'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -882,7 +902,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   /users/set_username:
-    put: 
+    put:
       tags: [users]
       operationId: setMyUserName
       summary: Change username
@@ -901,7 +921,7 @@ paths:
                   description: New username
                   minLength: 1
                   maxLength: 50
-                  pattern: ^[a-zA-Z0-9_-]+$
+                  pattern: '^[a-zA-Z0-9_-]+$'
       responses:
         '200':
           description: Username updated successfully
@@ -934,8 +954,6 @@ paths:
                   type: string
                   format: binary
                   description: Image file (JPEG/PNG)
-                  minLength: 1
-                  maxLength: 10485760
       responses:
         '200':
           description: Profile photo updated successfully
@@ -971,7 +989,7 @@ paths:
     get:
       tags: [users]
       summary: Search users by keyword
-      description: Search users by partial name or username
+      description: Search users by partial name, username or email
       operationId: searchUsers
       parameters:
         - name: q
@@ -982,16 +1000,7 @@ paths:
             type: string
             minLength: 1
             maxLength: 255
-            pattern: ^[a-zA-Z0-9\s@.-]+$
-        - name: user_id
-          in: query
-          required: false
-          description: Search query
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 255
-            pattern: ^[a-zA-Z0-9\s@.-]+$
+            pattern: '^[a-zA-Z0-9\s@.-]+$'
       security: [ { BearerAuth: [] } ]
       responses:
         '200':
@@ -1207,8 +1216,6 @@ paths:
                   type: string
                   format: binary
                   description: Group photo file
-                  minLength: 1
-                  maxLength: 10485760
       responses:
         '200':
           description: Group photo updated successfully
@@ -1276,7 +1283,7 @@ paths:
       tags: [messages]
       operationId: getConversation
       summary: Get conversation messages
-       description: Retrieve messages from a specific conversation **in reverse chronological order**.
+      description: Retrieve messages from a specific conversation
       security: [ { BearerAuth: [] } ]
       parameters:
         - name: conversationId
@@ -1285,7 +1292,7 @@ paths:
           description: ID of the conversation
           schema:
             type: string
-            pattern: ^[a-zA-Z0-9-]+$
+            pattern: '^[a-zA-Z0-9-]+$'
             minLength: 1
             maxLength: 64
         - name: limit
@@ -1298,14 +1305,18 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
-        - name: before
+        - name: beforeCursor
           in: query
-          description: Get messages before this timestamp (ISO 8601 format)
+          required: false
+          description: Return messages older than this cursor
           schema:
             type: string
-            format: date-time
-            minLength: 20
-            maxLength: 35
+        - name: afterCursor
+          in: query
+          required: false
+          description: Return messages newer than this cursor
+          schema:
+            type: string
       responses:
         '200':
           description: Messages retrieved successfully
@@ -1325,10 +1336,8 @@ paths:
                       createdAt: '2023-10-01T12:00:00Z'
                       type: text
                       status: delivered
-                  pagination:
-                    total: 120
-                    limit: 20
-                    offset: 0
+                  nextCursor: "opaque-next-abc123"
+                  prevCursor: "opaque-prev-def456"
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -1352,7 +1361,7 @@ paths:
                 conversationId:
                   type: string
                   description: ID of the target conversation
-                  pattern: ^[a-zA-Z0-9-]+$
+                  pattern: '^[a-zA-Z0-9-]+$'
                   minLength: 1
                   maxLength: 64
                 content:
@@ -1457,16 +1466,7 @@ paths:
         content:
           application/json:
             schema:
-              description: Request payload for forwarding a message
-              type: object
-              required: [conversationId]
-              properties:
-                conversationId:
-                  type: string
-                  description: Target conversation ID
-                  pattern: '^[a-zA-Z0-9-]+$'
-                  minLength: 1
-                  maxLength: 64
+              $ref: '#/components/schemas/ForwardMessageRequest'
       responses:
         '200':
           description: Message forwarded successfully
@@ -1496,20 +1496,7 @@ paths:
         content:
           application/json:
             schema:
-              description: Request payload for adding a comment to a message
-              type: object
-              required: [type, content]
-              properties:
-                type:
-                  type: string
-                  enum: [text, emoji]
-                  description: Type of comment
-                content:
-                  type: string
-                  description: Comment content or emoji code
-                  minLength: 1
-                  maxLength: 1000
-                  pattern: ^[\s\S]{1,1000}$
+              $ref: '#/components/schemas/CommentMessageRequest'
       responses:
         '201':
           description: Comment added successfully
@@ -1536,45 +1523,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Comments list response.
-                required: [comments]
-                properties:
-                  comments:
-                    type: array
-                    description: List of comments or reactions for the message.
-                    minItems: 0
-                    maxItems: 1000
-                    items:
-                      type: object
-                      description: Comment/reaction object for a message.
-                      required: [id, authorId, content, createdAt]
-                      properties:
-                        id:
-                          type: string
-                          description: Comment ID
-                          pattern: ^[a-zA-Z0-9-]+$
-                          minLength: 1
-                          maxLength: 64
-                        authorId:
-                          type: string
-                          description: Author user ID
-                          pattern: ^[a-zA-Z0-9-]+$
-                          minLength: 1
-                          maxLength: 64
-                        content:
-                          type: string
-                          description: Comment content or emoji code
-                          minLength: 1
-                          maxLength: 1000
-                          pattern: ^[\s\S]{1,1000}$
-                        createdAt:
-                          type: string
-                          description: ISO 8601 timestamp
-                          format: date-time
-                          minLength: 1
-                          maxLength: 64
-                          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$
+                $ref: '#/components/schemas/CommentsListResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1583,6 +1532,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  
   /messages/{id}/uncomment:
     post:
       tags:
@@ -1612,10 +1562,10 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  
   /liveness:
     get:
-      tags:
-      - health
+      tags: [health]
       operationId: liveness
       summary: Health check
       description: Check if the service is alive

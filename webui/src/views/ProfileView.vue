@@ -1,58 +1,67 @@
 <template>
-  <div class="max-w-xl mx-auto p-4">
-    <h2 class="text-xl font-semibold mb-4">My Profile</h2>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">WASA <span class="grad">Chat</span></div>
+      <router-link class="nav" to="/conversations">Conversations</router-link>
+    </header>
 
-    <!-- Error -->
-    <ErrorMsg v-if="err" :text="err" class="mb-3" />
+    <main class="wrap">
+      <h2 class="title">My Profile</h2>
 
-    <!-- Profile card -->
-    <div v-if="me" class="space-y-3 bg-white p-4 rounded border">
-      <div class="flex items-center gap-3">
-        <img
-          v-if="me.photo_url"
-          :src="me.photo_url"
-          alt="avatar"
-          class="w-12 h-12 rounded object-cover border"
-        />
-        <div class="text-sm text-gray-500">Logged in as:</div>
-      </div>
+      <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
-      <div><span class="font-medium">id:</span> {{ me.id }}</div>
-      <div><span class="font-medium">username:</span> {{ me.username }}</div>
-      <div><span class="font-medium">name:</span> {{ me.name }}</div>
-      <div><span class="font-medium">email:</span> {{ me.email }}</div>
-      <div><span class="font-medium">gender:</span> {{ me.gender }}</div>
+      <section v-if="me" class="card">
+        <div class="head">
+          <img
+            v-if="me.photo_url"
+            :src="me.photo_url"
+            alt="avatar"
+            class="avatar"
+          />
+          <div v-else class="avatar placeholder">{{ initials }}</div>
 
-      <!-- Change username -->
-      <div class="mt-2">
-        <label class="block mb-1 text-sm">Change username</label>
-        <input v-model="newName" class="input w-full" placeholder="new username" />
-        <button class="btn mt-2" @click="setUsername" :disabled="loading || !newName">
-          Save
-        </button>
-      </div>
+          <div class="idblock">
+            <div class="row"><span class="key">id:</span><span class="val">{{ me.id }}</span></div>
+            <div class="row"><span class="key">username:</span><span class="val">{{ me.username }}</span></div>
+            <div class="row"><span class="key">name:</span><span class="val">{{ me.name }}</span></div>
+            <div class="row"><span class="key">email:</span><span class="val">{{ me.email }}</span></div>
+            <div class="row"><span class="key">gender:</span><span class="val">{{ me.gender }}</span></div>
+          </div>
+        </div>
 
-      <!-- Set photo (multipart upload) -->
-      <div class="mt-2">
-        <label class="block mb-1 text-sm">Set photo</label>
-        <input type="file" @change="onFile" />
-        <button class="btn mt-2" @click="setPhoto" :disabled="loading || !file">
-          Upload
-        </button>
-        <p class="text-xs text-gray-500 mt-1">
-          Tip: you can also use preset mode via backend (e.g., <code>?preset=avatar7</code>) if enabled.
-        </p>
-      </div>
-    </div>
+        <div class="grid">
+          <!-- Change username -->
+          <div class="field">
+            <label class="label">Change username</label>
+            <div class="hstack">
+              <input v-model.trim="newName" class="input" placeholder="new username" />
+              <button class="btn" :disabled="loading || !newName" @click="setUsername">
+                <span v-if="loading && savingKind==='name'" class="spinner"></span>
+                Save
+              </button>
+            </div>
+          </div>
+
+          <!-- Set photo -->
+          <div class="field">
+            <label class="label">Set photo</label>
+            <div class="hstack">
+              <input type="file" @change="onFile" />
+              <button class="btn" :disabled="loading || !file" @click="setPhoto">
+                <span v-if="loading && savingKind==='photo'" class="spinner"></span>
+                Upload
+              </button>
+            </div>
+            <p class="hint">You can also use preset mode via backend (e.g., <code>?preset=avatar7</code>), if enabled.</p>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 </template>
 
 <script setup>
-// English-only UI and comments.
-// This component uses axios directly, without changing axios.js.
-// It injects Authorization header per request and unwraps both {code,data} and plain payloads.
-
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '../services/axios'
 import ErrorMsg from '../components/ErrorMsg.vue'
@@ -63,27 +72,36 @@ const me = ref(null)
 const newName = ref('')
 const file = ref(null)
 const loading = ref(false)
+const savingKind = ref('') // 'name' | 'photo'
 const err = ref('')
 
-/** Attach Authorization header (token was stored at login). */
-function getAuthHeaders() {
-  const token = localStorage.getItem('token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
+function auth() {
+  const t = localStorage.getItem('token')
+  return t ? { Authorization: `Bearer ${t}` } : {}
 }
-
-/** Unwrap both { code, data } and plain payloads. */
 function unwrap(res) {
   const d = res?.data
-  if (d && typeof d === 'object' && 'data' in d) return d.data
-  return d
+  return (d && typeof d === 'object' && 'data' in d) ? d.data : d
 }
+const initials = computed(() => {
+  const s = (me.value?.username || me.value?.name || 'U').toString().trim()
+  const parts = s.split(/\s+/)
+  return (parts[0]?.[0] || 'U').toUpperCase() + (parts[1]?.[0] || '')
+})
 
-/** Load current profile and cache it in localStorage('me'). */
+onMounted(() => {
+  if (!localStorage.getItem('token')) {
+    router.replace('/login')
+    return
+  }
+  loadProfile()
+})
+
 async function loadProfile() {
+  err.value = ''
   try {
-    const res = await axios.get('/users/me', { headers: { ...getAuthHeaders() } })
+    const res = await axios.get('/users/me', { headers: auth() })
     const payload = unwrap(res)
-    // Accept shapes: { user: {...} } or direct object
     me.value = payload?.user || payload || null
     if (me.value) localStorage.setItem('me', JSON.stringify(me.value))
   } catch (e) {
@@ -96,68 +114,118 @@ async function loadProfile() {
   }
 }
 
-onMounted(loadProfile)
+function onFile(e) { file.value = e.target.files?.[0] || null }
 
-function onFile(e) {
-  file.value = e.target.files?.[0] || null
-}
-
-/** PUT /users/set_username { username } */
 async function setUsername() {
   if (!newName.value) return
   loading.value = true
+  savingKind.value = 'name'
   err.value = ''
   try {
-    await axios.put(
-      '/users/set_username',
-      { username: newName.value },
-      { headers: { ...getAuthHeaders() } }
-    )
-    await loadProfile()
+    await axios.put('/users/set_username', { username: newName.value }, { headers: auth() })
     newName.value = ''
+    await loadProfile()
   } catch (e) {
     if (e?.response?.status === 401) {
-      err.value = 'Unauthorized. Please login again.'
-      router.push('/login')
+      err.value = 'Unauthorized. Please login again.'; router.push('/login')
     } else {
       err.value = e?.response?.data?.message || e?.message || 'Failed to set username'
     }
   } finally {
     loading.value = false
+    savingKind.value = ''
   }
 }
 
-/** PUT /users/set_photo (multipart, field "upload") */
 async function setPhoto() {
   if (!file.value) return
   loading.value = true
+  savingKind.value = 'photo'
   err.value = ''
   try {
     const form = new FormData()
     form.append('upload', file.value, file.value.name)
-
     await axios.put('/users/set_photo', form, {
-      headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      headers: { ...auth(), 'Content-Type': 'multipart/form-data' }
     })
-
-    await loadProfile()
     file.value = null
+    await loadProfile()
   } catch (e) {
     if (e?.response?.status === 401) {
-      err.value = 'Unauthorized. Please login again.'
-      router.push('/login')
+      err.value = 'Unauthorized. Please login again.'; router.push('/login')
     } else {
       err.value = e?.response?.data?.message || e?.message || 'Failed to set photo'
     }
   } finally {
     loading.value = false
+    savingKind.value = ''
   }
 }
 </script>
 
 <style scoped>
-.input { border:1px solid #ddd; padding:.5rem .75rem; border-radius:.375rem; outline: none; }
-.input:focus { border-color:#a5b4fc; box-shadow:0 0 0 3px rgba(99,102,241,.2); }
-.btn { background:#111827; color:#fff; padding:.5rem .75rem; border-radius:.375rem; }
-.btn:disabled { opacity:.6; cursor:not-allowed; }
+/* Page scaffold (white / green / blue) */
+.page{
+  min-height:100vh;
+  background:
+    radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
+    radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
+    linear-gradient(180deg, #ffffff, #f7fafe);
+  color:#0f172a;
+}
+.topbar{
+  height:56px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px; border-bottom:1px solid rgba(20,100,60,.08); background:#fff8; backdrop-filter: blur(6px);
+}
+.brand{ font-weight:800; letter-spacing:.4px; }
+.grad{ background: linear-gradient(90deg,#22c55e,#3b82f6); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.nav{ color:#2563eb; text-decoration:none; }
+.nav:hover{ text-decoration:underline; }
+
+.wrap{ max-width:900px; margin:0 auto; padding:18px; }
+.title{ font-size:1.5rem; font-weight:800; color:#334155; margin:10px 0 14px; }
+
+.card{
+  background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:16px;
+  box-shadow:0 6px 18px rgba(2,6,23,.06);
+}
+
+.head{ display:flex; align-items:center; gap:14px; padding-bottom:12px; border-bottom:1px solid #e2e8f0; margin-bottom:12px; }
+.avatar{ width:64px; height:64px; border-radius:50%; object-fit:cover; border:1px solid #e2e8f0; }
+.avatar.placeholder{
+  width:64px; height:64px; border-radius:50%; display:grid; place-items:center;
+  background:#e0f7ee; border:1px solid #a7f3d0; color:#0f766e; font-weight:800;
+}
+.idblock .row{ display:flex; gap:8px; line-height:1.8; }
+.key{ color:#64748b; width:100px; }
+.val{ color:#0f172a; word-break:break-all; }
+
+.grid{ display:grid; grid-template-columns: 1fr; gap:14px; }
+@media (min-width: 720px){ .grid{ grid-template-columns: 1fr 1fr; } }
+
+.field{ display:flex; flex-direction:column; gap:8px; }
+.label{ font-weight:600; color:#334155; }
+.hstack{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+.input{
+  flex:1 1 220px; min-width: 0;
+  border:1px solid #cbd5e1; border-radius:10px; padding:.55rem .75rem; outline:none;
+}
+.input:focus{ border-color:#22c55e; box-shadow:0 0 0 .2rem rgba(34,197,94,.15); }
+
+.btn{
+  border:0; border-radius:10px; color:#fff; padding:.55rem .9rem; white-space:nowrap;
+  background-image: linear-gradient(135deg,#22c55e 0%, #16a34a 45%, #3b82f6 120%);
+  box-shadow:0 .6rem 1.4rem rgba(34,197,94,.25);
+}
+.btn:disabled{ opacity:.65; cursor:not-allowed; }
+
+.hint{ margin:.25rem 0 0; color:#64748b; font-size:.85rem; }
+
+.spinner{
+  display:inline-block; width:1em; height:1em; margin-right:.4em;
+  border:2px solid rgba(255,255,255,.6); border-top-color:transparent; border-radius:50%;
+  animation: spin .7s linear infinite; vertical-align:-2px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
