@@ -1,16 +1,21 @@
-// webui/static-resources.go
+//go:build webui
+// +build webui
+
 package webui
 
 import (
 	"embed"
-	"io/fs"
+	"net/http"
 )
 
-// 将整个 dist 目录打包进二进制
-//go:embed dist/* dist/assets/*
+//go:embed dist/*
 var distFS embed.FS
 
-// FS 返回以 dist 为根的只读文件系统
-func FS() (fs.FS, error) {
-	return fs.Sub(distFS, "dist")
+// Register wraps the API handler with a file server for the SPA assets.
+func Register(api http.Handler) (http.Handler, error) {
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.FS(distFS)))
+	// 如果想把 /api/* 代理到原 API，可以把下一行打开
+	// mux.Handle("/api/", http.StripPrefix("/api", api))
+	return mux, nil
 }

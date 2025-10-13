@@ -2,7 +2,10 @@ package api
 
 import (
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
@@ -12,11 +15,60 @@ import (
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
+//  DTOs (match OpenAPI JSON shapes; keep models.* as internal)
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
+// MessageDTO is the public JSON shape for a message (camelCase, per OpenAPI).
+type MessageDTO struct {
+	ID             string `json:"id"`
+	Content        string `json:"content"`
+	SenderID       string `json:"senderId"`
+	ConversationID string `json:"conversationId,omitempty"`
+	CreatedAt      string `json:"createdAt"`
+	Type           string `json:"type,omitempty"`
+	Status         string `json:"status,omitempty"`
+}
+
+// toMessageDTO maps internal models.Message (snake_case tags) to public MessageDTO.
+func toMessageDTO(m models.Message) MessageDTO {
+	return MessageDTO{
+		ID:             m.ID,
+		Content:        m.Content,
+		SenderID:       m.SenderID,
+		ConversationID: m.ConversationID,
+		CreatedAt:      m.CreatedAt,
+		Type:           m.Type,
+		Status:         m.Status,
+	}
+}
+
+// CommentDTO matches OpenAPI Comment: id, authorId, content, createdAt.
+type CommentDTO struct {
+	ID        string `json:"id"`
+	AuthorID  string `json:"authorId"`
+	Content   string `json:"content"`
+	CreatedAt string `json:"createdAt"`
+}
+
+// messageRowToCommentDTO converts an internal models.Message row used as a comment
+// into the outward-facing CommentDTO.
+func messageRowToCommentDTO(m models.Message) CommentDTO {
+	return CommentDTO{
+		ID:        m.ID,
+		AuthorID:  m.SenderID,
+		Content:   m.Content,
+		CreatedAt: m.CreatedAt,
+	}
+}
+
+//
+// ────────────────────────────────────────────────────────────────────────────────
 //  Helpers
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// newMsgID generates a random message ID (TEXT). DB schema should accept TEXT PKs.
+// newMsgID generates a random message ID (TEXT).
 func newMsgID() (string, error) {
 	id, err := uuid.NewV4()
 	if err != nil {
@@ -25,532 +77,441 @@ func newMsgID() (string, error) {
 	return id.String(), nil
 }
 
-// readCommentBody parses a minimal body with a "comment" field.
-type commentBody struct {
-	Comment string `json:"comment"`
+// parseLimit converts a query string into a safe page size.
+func parseLimit(raw string, dflt, min, max int) int {
+	if raw == "" {
+		return dflt
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return dflt
+	}
+	if n < min {
+		return min
+	}
+	if n > max {
+		return max
+	}
+	return n
 }
 
-// sendMessageBody is a flexible payload used by multiple send handlers.
-// Fields are optional; each handler validates what it needs.
-type sendMessageBody struct {
+// timeBefore reports a < b assuming RFC3339 timestamps (lex compare is OK for full RFC3339Z).
+func timeBefore(a, b string) bool { return a < b }
+func timeAfter(a, b string) bool  { return a > b }
+
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//  POST /messages  -> sendMessage (OpenAPI)
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
+// sendMessageRequest matches the OpenAPI request body for sending a message.
+type sendMessageRequest struct {
+	ConversationID string `json:"conversationId"`
 	Content        string `json:"content"`
-	ToUserID       string `json:"to_user_id,omitempty"`      // for private messages
-	GroupID        string `json:"group_id,omitempty"`        // (legacy) if needed
-	ConversationID string `json:"conversation_id,omitempty"` // for conversation messages
-	Type           string `json:"type,omitempty"`            // "text" by default
-	Status         string `json:"status,omitempty"`          // "sent" by default
+	Type           string `json:"type,omitempty"` // default: text
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  SEND
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// sendPrivateMessage handles POST /messages/private
-// Body: { "content": "...", "to_user_id": "..." }
-func (rt *_router) sendPrivateMessage(
-	w http.ResponseWriter,
-	r *http.Request,
-	_ httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	sender := strings.TrimSpace(ctx.UserID)
-	if sender == "" {
-		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-
-	var body sendMessageBody
-	if err := readJSON(r, &body); err != nil {
-		rt.sendError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-	body.Content = strings.TrimSpace(body.Content)
-	body.ToUserID = strings.TrimSpace(body.ToUserID)
-	if body.Content == "" || body.ToUserID == "" {
-		rt.sendError(w, http.StatusBadRequest, "content and to_user_id are required")
-		return
-	}
-	if body.Type == "" {
-		body.Type = "text"
-	}
-	if body.Status == "" {
-		body.Status = "sent"
-	}
-
-	id, err := newMsgID()
-	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "cannot generate message id")
-		return
-	}
-
-	msg := models.Message{
-		ID:         id,
-		Content:    body.Content,
-		SenderID:   sender,
-		ReceiverID: body.ToUserID,
-		Type:       body.Type,
-		Status:     body.Status,
-	}
-	if err := rt.db.SendPrivateMessage(msg); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to send private message")
-		return
-	}
-
-	_ = writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"code":    http.StatusCreated,
-		"message": "private message sent",
-		"data":    msg,
-	})
-}
-
-// sendMessageToConversation handles POST /conversations/:id/messages
-// Body: { "content": "..." }
-// Path: :id is the conversation ID.
-func (rt *_router) sendMessageToConversation(
-	w http.ResponseWriter,
-	r *http.Request,
-	ps httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	sender := strings.TrimSpace(ctx.UserID)
-	if sender == "" {
-		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-
-	convID := strings.TrimSpace(ps.ByName("id"))
-	if convID == "" {
-		// fallback: allow body to provide conversation_id
-		var peek sendMessageBody
-		_ = readJSON(r, &peek)
-		convID = strings.TrimSpace(peek.ConversationID)
-	}
-	if convID == "" {
-		rt.sendError(w, http.StatusBadRequest, "conversation id is required")
-		return
-	}
-
-	var body sendMessageBody
-	if err := readJSON(r, &body); err != nil {
-		rt.sendError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-	body.Content = strings.TrimSpace(body.Content)
-	if body.Content == "" {
-		rt.sendError(w, http.StatusBadRequest, "content is required")
-		return
-	}
-	if body.Type == "" {
-		body.Type = "text"
-	}
-	if body.Status == "" {
-		body.Status = "sent"
-	}
-
-	id, err := newMsgID()
-	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "cannot generate message id")
-		return
-	}
-
-	msg := models.Message{
-		ID:             id,
-		Content:        body.Content,
-		SenderID:       sender,
-		ConversationID: convID,
-		Type:           body.Type,
-		Status:         body.Status,
-	}
-	if err := rt.db.SendMessageToConversation(msg); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to send message to conversation")
-		return
-	}
-
-	_ = writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"code":    http.StatusCreated,
-		"message": "message sent to conversation",
-		"data":    msg,
-	})
-}
-
-// sendGroupMessage is kept as a compatibility alias that delegates to sendMessageToConversation.
-// Some legacy routes may post to a group but actually rely on conversation_id in DB.
-func (rt *_router) sendGroupMessage(
-	w http.ResponseWriter,
-	r *http.Request,
-	ps httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	rt.sendMessageToConversation(w, r, ps, ctx)
-}
-
-// sendMessage is a generic alias for "send to conversation".
+// sendMessage sends a message to a conversation and returns MessageResourceEnvelope.
 func (rt *_router) sendMessage(
 	w http.ResponseWriter,
 	r *http.Request,
-	ps httprouter.Params,
+	_ httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
-	rt.sendMessageToConversation(w, r, ps, ctx)
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req sendMessageRequest
+	if err := readJSON(r, &req); err != nil {
+		rt.sendError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+	req.ConversationID = strings.TrimSpace(req.ConversationID)
+	req.Content = strings.TrimSpace(req.Content)
+	if req.ConversationID == "" || req.Content == "" {
+		rt.sendError(w, http.StatusBadRequest, "conversationId and content are required")
+		return
+	}
+	if req.Type == "" {
+		req.Type = "text"
+	}
+
+	id, err := newMsgID()
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to generate message ID")
+		return
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	msg := models.Message{
+		ID:             id,
+		Content:        req.Content,
+		SenderID:       userID,
+		ConversationID: req.ConversationID,
+		CreatedAt:      now,
+		Type:           req.Type,
+		Status:         "sent",
+	}
+	if err := rt.db.SendMessageToConversation(msg); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to send message")
+		return
+	}
+
+	// MessageResourceEnvelope
+	resp := map[string]interface{}{
+		"code":    http.StatusCreated,
+		"message": "Message sent successfully",
+		"data": map[string]interface{}{
+			"resource": toMessageDTO(msg),
+		},
+	}
+	_ = writeJSON(w, http.StatusCreated, resp)
 }
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//  READ
+//  GET /messages  -> getConversation (OpenAPI)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// getMessages handles GET /messages (admin/test helper)
-// Returns all messages using db.GetAllMessages() if available.
+// getMessages returns a cursor-paginated slice for a conversation.
+// NOTE: DB does not expose a query-by-conversation method yet; we filter in memory.
+// Cursors are simple RFC3339 timestamps (opaque to clients).
 func (rt *_router) getMessages(
 	w http.ResponseWriter,
-	_ *http.Request,
+	r *http.Request,
 	_ httprouter.Params,
 	_ reqcontext.RequestContext,
 ) {
-	msgs, err := rt.db.GetAllMessages()
+	q := r.URL.Query()
+	convID := strings.TrimSpace(q.Get("conversationId"))
+	if convID == "" {
+		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
+		return
+	}
+	limit := parseLimit(q.Get("limit"), 20, 1, 100)
+	before := strings.TrimSpace(q.Get("beforeCursor"))
+	after := strings.TrimSpace(q.Get("afterCursor"))
+
+	// Fallback: get all, then filter/sort page in API.
+	all, err := rt.db.GetAllMessages()
 	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to fetch messages")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to fetch messages")
 		return
 	}
-	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
-		"code": http.StatusOK,
-		"data": msgs,
+
+	// Filter by conversationId.
+	buf := make([]models.Message, 0, len(all))
+	for _, m := range all {
+		if strings.TrimSpace(m.ConversationID) == convID {
+			buf = append(buf, m)
+		}
+	}
+
+	// Sort by createdAt DESC (newest first) for UX; spec doesn't mandate order.
+	sort.Slice(buf, func(i, j int) bool {
+		return buf[i].CreatedAt > buf[j].CreatedAt
 	})
+
+	// Apply cursors.
+	filtered := buf[:0]
+	for _, m := range buf {
+		if before != "" && !timeBefore(m.CreatedAt, before) {
+			continue
+		}
+		if after != "" && !timeAfter(m.CreatedAt, after) {
+			continue
+		}
+		filtered = append(filtered, m)
+	}
+
+	// Page slice.
+	page := filtered
+	if len(page) > limit {
+		page = page[:limit]
+	}
+
+	// Compute cursors (opaque timestamps).
+	var nextCursor, prevCursor *string
+	if len(filtered) > len(page) {
+		// There are more older items beyond the page -> nextCursor = oldest on page
+		nc := page[len(page)-1].CreatedAt
+		nextCursor = &nc
+	}
+	if after != "" && len(page) > 0 {
+		// If client asked "after", expose prevCursor = newest on page
+		pc := page[0].CreatedAt
+		prevCursor = &pc
+	}
+
+	// Build DTOs.
+	items := make([]MessageDTO, 0, len(page))
+	for _, m := range page {
+		items = append(items, toMessageDTO(m))
+	}
+
+	// MessageResourceEnvelopeCollection -> data: MessageCollection
+	data := map[string]interface{}{
+		"messages":   items,
+		"nextCursor": nextCursor,
+		"prevCursor": prevCursor,
+		// "pagination" deprecated in our spec; omit.
+	}
+	resp := map[string]interface{}{
+		"code":    http.StatusOK,
+		"message": "Messages retrieved successfully",
+		"data":    data,
+	}
+	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-// getPrivateConversation handles GET /messages/private/:userId
-// Returns ordered messages between current user and the specified user.
-func (rt *_router) getPrivateConversation(
-	w http.ResponseWriter,
-	r *http.Request,
-	ps httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	me := strings.TrimSpace(ctx.UserID)
-	if me == "" {
-		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-	other := strings.TrimSpace(ps.ByName("userId"))
-	if other == "" {
-		other = strings.TrimSpace(ps.ByName("id")) // fallback param name
-	}
-	if other == "" {
-		rt.sendError(w, http.StatusBadRequest, "user id required")
-		return
-	}
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//  GET /messages/{id}  -> getMessageById (OpenAPI)
+// ────────────────────────────────────────────────────────────────────────────────
+//
 
-	msgs, err := rt.db.GetPrivateConversation(me, other)
-	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to fetch private conversation")
-		return
-	}
-	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
-		"code": http.StatusOK,
-		"data": msgs,
-	})
-}
-
-// getGroupConversation handles GET /groups/:id/messages (or legacy path)
-// Returns ordered messages in a group conversation (DB side may map by conversation).
-func (rt *_router) getGroupConversation(
-	w http.ResponseWriter,
-	r *http.Request,
-	ps httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	groupID := strings.TrimSpace(ps.ByName("groupId"))
-	if groupID == "" {
-		groupID = strings.TrimSpace(ps.ByName("id"))
-	}
-	if groupID == "" {
-		rt.sendError(w, http.StatusBadRequest, "group id required")
-		return
-	}
-
-	msgs, err := rt.db.GetGroupConversation(groupID)
-	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to fetch group conversation")
-		return
-	}
-	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
-		"code": http.StatusOK,
-		"data": msgs,
-	})
-}
-
-// getConversation / getConversationMessages
-// If your router expects a "getConversation" handler for /conversations/:id/messages,
-// you can wire to this function name. Here we only return 501 when no DB method exists.
-func (rt *_router) getConversation(
-	w http.ResponseWriter,
-	_ *http.Request,
-	_ httprouter.Params,
-	_ reqcontext.RequestContext,
-) {
-	_ = writeJSON(w, http.StatusNotImplemented, map[string]interface{}{
-		"code":    http.StatusNotImplemented,
-		"message": "Get conversation by conversation_id is not implemented in DB interface",
-	})
-}
-func (rt *_router) getConversationMessages(
-	w http.ResponseWriter,
-	r *http.Request,
-	ps httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	rt.getConversation(w, r, ps, ctx)
-}
-
-// getMyConversations handles GET /me/conversations
-func (rt *_router) getMyConversations(
-	w http.ResponseWriter,
-	_ *http.Request,
-	_ httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	me := strings.TrimSpace(ctx.UserID)
-	if me == "" {
-		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-	convs, err := rt.db.GetMyConversations(me)
-	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to fetch conversations")
-		return
-	}
-	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
-		"code": http.StatusOK,
-		"data": convs,
-	})
-}
-
-// getMessageByID handles GET /messages/:id
-func (rt *_router) getMessageByID(
-	w http.ResponseWriter,
-	_ *http.Request,
-	ps httprouter.Params,
-	_ reqcontext.RequestContext,
-) {
-	id := strings.TrimSpace(ps.ByName("messageId"))
-	if id == "" {
-		id = strings.TrimSpace(ps.ByName("id"))
-	}
-	if id == "" {
-		rt.sendError(w, http.StatusBadRequest, "message id required")
-		return
-	}
-	msg, err := rt.db.GetMessageByID(id)
-	if err != nil {
-		rt.sendError(w, http.StatusNotFound, "message not found")
-		return
-	}
-	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
-		"code": http.StatusOK,
-		"data": msg,
-	})
-}
-
-// getMessageById is a compatibility alias (lowercase 'd').
 func (rt *_router) getMessageById(
 	w http.ResponseWriter,
-	r *http.Request,
-	ps httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	rt.getMessageByID(w, r, ps, ctx)
-}
-
-// getMessageComments handles GET /messages/:id/comments
-func (rt *_router) getMessageComments(
-	w http.ResponseWriter,
 	_ *http.Request,
 	ps httprouter.Params,
 	_ reqcontext.RequestContext,
 ) {
-	id := strings.TrimSpace(ps.ByName("messageId"))
+	id := strings.TrimSpace(ps.ByName("id"))
 	if id == "" {
-		id = strings.TrimSpace(ps.ByName("id"))
-	}
-	if id == "" {
-		rt.sendError(w, http.StatusBadRequest, "message id required")
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
-	items, err := rt.db.GetMessageComments(id)
+	m, err := rt.db.GetMessageByID(id)
 	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to fetch message comments")
+		rt.sendError(w, http.StatusNotFound, "Message not found")
 		return
 	}
-	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
+	resp := map[string]interface{}{
 		"code": http.StatusOK,
-		"data": items,
-	})
+		"data": map[string]interface{}{
+			"resource": toMessageDTO(m),
+		},
+	}
+	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  UPDATE / COMMENT / FORWARD / DELETE
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// commentMessage handles POST /messages/:id/comments
-func (rt *_router) commentMessage(
+// Keep a compatibility alias if router still refers to getMessageByID (different case).
+func (rt *_router) getMessageByID(
 	w http.ResponseWriter,
 	r *http.Request,
 	ps httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
-	uid := strings.TrimSpace(ctx.UserID)
-	if uid == "" {
-		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-	id := strings.TrimSpace(ps.ByName("messageId"))
-	if id == "" {
-		id = strings.TrimSpace(ps.ByName("id"))
-	}
-	if id == "" {
-		rt.sendError(w, http.StatusBadRequest, "message id required")
-		return
-	}
-
-	var body commentBody
-	if err := readJSON(r, &body); err != nil {
-		rt.sendError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-	body.Comment = strings.TrimSpace(body.Comment)
-	if body.Comment == "" {
-		rt.sendError(w, http.StatusBadRequest, "comment is required")
-		return
-	}
-
-	if err := rt.db.CommentMessage(id, uid, body.Comment); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to comment the message")
-		return
-	}
-	_ = writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"code":    http.StatusCreated,
-		"message": "comment added",
-	})
+	rt.getMessageById(w, r, ps, ctx)
 }
 
-// uncommentMessage handles DELETE /messages/:id/comments
-func (rt *_router) uncommentMessage(
-	w http.ResponseWriter,
-	_ *http.Request,
-	ps httprouter.Params,
-	_ reqcontext.RequestContext,
-) {
-	id := strings.TrimSpace(ps.ByName("messageId"))
-	if id == "" {
-		id = strings.TrimSpace(ps.ByName("id"))
-	}
-	if id == "" {
-		rt.sendError(w, http.StatusBadRequest, "message id required")
-		return
-	}
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//  POST /messages/{id}/forward  -> forwardMessage (OpenAPI)
+// ────────────────────────────────────────────────────────────────────────────────
+//
 
-	if err := rt.db.UncommentMessage(id); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to delete comment(s)")
-		return
-	}
-	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
-		"code":    http.StatusOK,
-		"message": "comment(s) removed",
-	})
+// forwardRequest matches OpenAPI: target conversationId only.
+type forwardRequest struct {
+	ConversationID string `json:"conversationId"`
 }
 
-// forwardMessage handles POST /messages/:id/forward
-// Body: { "to_user_id": "...", "to_group_id": "..." }  (provide exactly one)
-type forwardBody struct {
-	ToUserID  string `json:"to_user_id,omitempty"`
-	ToGroupID string `json:"to_group_id,omitempty"`
-}
-
+// forwardMessage copies/forwards an existing message into another conversation.
+// NOTE: DB expects (toUserID, toGroupID). Here we map conversationId => toGroupID.
+// If you support private-conversation IDs, extend the mapping logic accordingly.
 func (rt *_router) forwardMessage(
 	w http.ResponseWriter,
 	r *http.Request,
 	ps httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
-	uid := strings.TrimSpace(ctx.UserID)
-	if uid == "" {
-		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	id := strings.TrimSpace(ps.ByName("messageId"))
-	if id == "" {
-		id = strings.TrimSpace(ps.ByName("id"))
-	}
-	if id == "" {
-		rt.sendError(w, http.StatusBadRequest, "message id required")
+	msgID := strings.TrimSpace(ps.ByName("id"))
+	if msgID == "" {
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
 
-	var body forwardBody
-	if err := readJSON(r, &body); err != nil {
-		rt.sendError(w, http.StatusBadRequest, "invalid request body")
+	var req forwardRequest
+	if err := readJSON(r, &req); err != nil {
+		rt.sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	body.ToUserID = strings.TrimSpace(body.ToUserID)
-	body.ToGroupID = strings.TrimSpace(body.ToGroupID)
-	if (body.ToUserID == "" && body.ToGroupID == "") || (body.ToUserID != "" && body.ToGroupID != "") {
-		rt.sendError(w, http.StatusBadRequest, "provide either to_user_id or to_group_id")
+	req.ConversationID = strings.TrimSpace(req.ConversationID)
+	if req.ConversationID == "" {
+		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
 		return
 	}
 
-	if err := rt.db.ForwardMessage(uid, id, body.ToUserID, body.ToGroupID); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to forward message")
+	// Map to existing DB API: treat target conversation as a "group" sink.
+	// (If you have a real conversation->group lookup, add it here.)
+	if err := rt.db.ForwardMessage(userID, msgID, /*toUserID*/ "", /*toGroupID*/ req.ConversationID); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to forward message")
 		return
 	}
-	_ = writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"code":    http.StatusCreated,
-		"message": "message forwarded",
-	})
+
+	resp := map[string]interface{}{
+		"code":    http.StatusOK,
+		"message": "Message forwarded successfully",
+	}
+	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-// deleteMessage handles DELETE /messages/:id
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//  COMMENTS
+//  GET /messages/{id}/comment    -> list
+//  POST /messages/{id}/comment   -> add
+//  POST /messages/{id}/uncomment -> remove
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
+// commentAddRequest matches OpenAPI CommentMessageRequest.
+type commentAddRequest struct {
+	Type    string `json:"type"`    // "text" or "emoji"
+	Content string `json:"content"` // required
+}
+
+// getMessageComments returns the list of comments for a message.
+// OpenAPI requires a plain object: { "comments": [...] } (no envelope).
+func (rt *_router) getMessageComments(
+	w http.ResponseWriter,
+	_ *http.Request,
+	ps httprouter.Params,
+	_ reqcontext.RequestContext,
+) {
+	msgID := strings.TrimSpace(ps.ByName("id"))
+	if msgID == "" {
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
+		return
+	}
+	rows, err := rt.db.GetMessageComments(msgID)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to fetch message comments")
+		return
+	}
+	out := make([]CommentDTO, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, messageRowToCommentDTO(m))
+	}
+
+	resp := map[string]interface{}{
+		"comments": out,
+	}
+	_ = writeJSON(w, http.StatusOK, resp)
+}
+
+func (rt *_router) commentMessage(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	msgID := strings.TrimSpace(ps.ByName("id"))
+	if msgID == "" {
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
+		return
+	}
+
+	var req commentAddRequest
+	if err := readJSON(r, &req); err != nil {
+		rt.sendError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+	req.Content = strings.TrimSpace(req.Content)
+	if req.Content == "" {
+		rt.sendError(w, http.StatusBadRequest, "content is required")
+		return
+	}
+
+	if err := rt.db.CommentMessage(msgID, userID, req.Content); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to add comment")
+		return
+	}
+	resp := map[string]interface{}{
+		"code":    http.StatusCreated,
+		"message": "Comment added successfully",
+	}
+	_ = writeJSON(w, http.StatusCreated, resp)
+}
+
+func (rt *_router) uncommentMessage(
+	w http.ResponseWriter,
+	_ *http.Request,
+	ps httprouter.Params,
+	_ reqcontext.RequestContext,
+) {
+	msgID := strings.TrimSpace(ps.ByName("id"))
+	if msgID == "" {
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
+		return
+	}
+	if err := rt.db.UncommentMessage(msgID); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to remove comment(s)")
+		return
+	}
+	resp := map[string]interface{}{
+		"code":    http.StatusOK,
+		"message": "Comment removed successfully",
+	}
+	_ = writeJSON(w, http.StatusOK, resp)
+}
+
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//  DELETE /messages/{id}  -> deleteMessage (OpenAPI)
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
 func (rt *_router) deleteMessage(
 	w http.ResponseWriter,
 	_ *http.Request,
 	ps httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
-	uid := strings.TrimSpace(ctx.UserID)
-	if uid == "" {
-		rt.sendError(w, http.StatusUnauthorized, "unauthorized")
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	id := strings.TrimSpace(ps.ByName("messageId"))
-	if id == "" {
-		id = strings.TrimSpace(ps.ByName("id"))
-	}
-	if id == "" {
-		rt.sendError(w, http.StatusBadRequest, "message id required")
+	msgID := strings.TrimSpace(ps.ByName("id"))
+	if msgID == "" {
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
 
-	// Optional: double-check ownership in API before hitting DB.
-	ok, err := rt.db.IsMessageOwner(uid, id)
+	// Optional: verify ownership before DB call.
+	ok, err := rt.db.IsMessageOwner(userID, msgID)
 	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to verify ownership")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify ownership")
 		return
 	}
 	if !ok {
-		rt.sendError(w, http.StatusForbidden, "you are not the owner of this message")
+		rt.sendError(w, http.StatusForbidden, "You are not the owner of this message")
 		return
 	}
 
-	if err := rt.db.DeleteMessage(uid, id); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "failed to delete message")
+	if err := rt.db.DeleteMessage(userID, msgID); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to delete message")
 		return
 	}
-	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
+	resp := map[string]interface{}{
 		"code":    http.StatusOK,
-		"message": "message deleted",
-	})
+		"message": "Message deleted successfully",
+	}
+	_ = writeJSON(w, http.StatusOK, resp)
 }

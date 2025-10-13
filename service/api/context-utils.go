@@ -3,13 +3,11 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-
-	reqcontext "github.com/GioiaZheng/Wasa_proj/service/reqcontext"
 )
 
-// readJSON decodes request body into dst, rejecting unknown fields.
+// readJSON decodes the request body into dst and rejects unknown fields.
 func readJSON(r *http.Request, dst interface{}) error {
-	if r.Header.Get("Content-Type") != "" && r.Header.Get("Content-Type") != "application/json" {
+	if ct := r.Header.Get("Content-Type"); ct != "" && ct != "application/json" {
 		return http.ErrNotSupported
 	}
 	dec := json.NewDecoder(r.Body)
@@ -17,14 +15,14 @@ func readJSON(r *http.Request, dst interface{}) error {
 	return dec.Decode(dst)
 }
 
-// writeJSON encodes v as JSON with the given status code.
+// writeJSON writes value v as JSON with the given HTTP status code.
 func writeJSON(w http.ResponseWriter, status int, v interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(v)
 }
 
-// writeErrorResponse writes {code,message} as JSON.
+// writeErrorResponse writes a minimal {code, message} JSON error payload.
 func (rt *_router) writeErrorResponse(w http.ResponseWriter, status int, msg string) {
 	resp := map[string]interface{}{
 		"code":    status,
@@ -35,8 +33,8 @@ func (rt *_router) writeErrorResponse(w http.ResponseWriter, status int, msg str
 	}
 }
 
-// sendError is a compatibility wrapper.
-// It accepts an optional RequestContext (ignored if not provided).
-func (rt *_router) sendError(w http.ResponseWriter, status int, msg string, _ ...reqcontext.RequestContext) {
+// sendError is a compatibility wrapper over writeErrorResponse.
+// The variadic parameter keeps call sites flexible; it is intentionally unused.
+func (rt *_router) sendError(w http.ResponseWriter, status int, msg string, _ ...interface{}) {
 	rt.writeErrorResponse(w, status, msg)
 }

@@ -1,101 +1,101 @@
 package api
 
-import (
-	"net/http"
+import "net/http"
 
-	reqcontext "github.com/GioiaZheng/Wasa_proj/service/reqcontext"
-	"github.com/julienschmidt/httprouter"
-)
+/*
+RegisterRoutes wires all HTTP endpoints to their handlers.
 
-// GET /conversations/:conversationId -> reuse GET /messages?conversation_id=...
-func (rt *_router) getConversationByPathParam(
-	w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext,
-) {
-	if cid := ps.ByName("conversationId"); cid != "" {
-		q := r.URL.Query()
-		q.Set("conversation_id", cid)
-		r.URL.RawQuery = q.Encode()
-	}
-	// Reuse the canonical messages fetch handler
-	rt.getMessages(w, r, ps, ctx)
-}
-
-// POST /conversations/:conversationId/messages -> reuse POST /messages (via query)
-func (rt *_router) sendMessageByPathParam(
-	w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext,
-) {
-	if cid := ps.ByName("conversationId"); cid != "" {
-		q := r.URL.Query()
-		q.Set("conversation_id", cid)
-		r.URL.RawQuery = q.Encode()
-	}
-	rt.sendMessage(w, r, ps, ctx)
-}
-
-// RegisterRoutes wires all endpoints to handlers.
-// Keep it simple (no /api prefix), and avoid duplicate registrations.
-// Only add compatibility aliases when the path is actually different.
+This router is kept 1:1 aligned with the OpenAPI spec:
+- No global "/api" prefix.
+- No CORS preflight helper endpoint (the spec removed /cors).
+- Only the endpoints required by the assignment are exposed here.
+  (If you need dev-only helpers, put them in a separate file.)
+*/
 func (rt *_router) RegisterRoutes() {
-	// ------------- Public (no auth) -------------
+	// -------------------- Public (no auth) --------------------
+
+	// POST /session -> doLogin (returns 201 on success per spec text; our handler returns 201)
 	rt.router.POST("/session", rt.doLogin)
+
+	// POST /register -> doRegister (returns 201 on success)
 	rt.router.POST("/register", rt.doRegister)
+
+	// GET /liveness -> simple service liveness check
 	rt.router.GET("/liveness", rt.liveness)
-	rt.router.OPTIONS("/cors", rt.handleCorsPreflight)
-	rt.router.POST("/shutdown", rt.shutdown) // dev-only helper
 
-	// ------------- Protected (auth required) -------------
+	// -------------------- Protected (auth required) --------------------
+	// All handlers registered below must use rt.wrap(...) to inject auth / context.
 
-	// Conversations (canonical)
+	// Conversations
+	// POST /conversations -> startConversation
 	rt.router.POST("/conversations", rt.wrap(rt.startConversation))
+	// GET /conversations -> getMyConversations
 	rt.router.GET("/conversations", rt.wrap(rt.getMyConversations))
 
-	// Users (canonical)
+	// Users
+	// PUT /users/set_username -> setMyUserName
 	rt.router.PUT("/users/set_username", rt.wrap(rt.setMyUserName))
+	// PUT /users/set_photo -> setMyPhoto (multipart/form-data)
 	rt.router.PUT("/users/set_photo", rt.wrap(rt.setMyPhoto))
+	// GET /users/me -> getUserInfo
 	rt.router.GET("/users/me", rt.wrap(rt.getUserInfo))
+	// GET /users/search?q=... -> searchUsers
 	rt.router.GET("/users/search", rt.wrap(rt.searchUsers))
-	rt.router.GET("/users/profile/:user_id", rt.wrap(rt.getUserProfile))
+	// GET /users/profile/{userId} -> getUserProfile
+	// NOTE: path param name must be "userId" to match the spec.
+	rt.router.GET("/users/profile/:userId", rt.wrap(rt.getUserProfile))
 
-	// Groups (canonical)
+	// Groups
+	// POST /groups -> createGroup
 	rt.router.POST("/groups", rt.wrap(rt.createGroup))
+	// GET /groups -> getGroupsList
 	rt.router.GET("/groups", rt.wrap(rt.getGroupsList))
+	// GET /groups/{id} -> getGroupDetail
 	rt.router.GET("/groups/:id", rt.wrap(rt.getGroupDetail))
+	// PUT /groups/{id}/name -> setGroupName
 	rt.router.PUT("/groups/:id/name", rt.wrap(rt.setGroupName))
+	// PUT /groups/{id}/photo -> setGroupPhoto (multipart/form-data)
 	rt.router.PUT("/groups/:id/photo", rt.wrap(rt.setGroupPhoto))
+	// POST /groups/{id}/members -> addToGroup
 	rt.router.POST("/groups/:id/members", rt.wrap(rt.addToGroup))
+	// DELETE /groups/{id}/members -> leaveGroup
 	rt.router.DELETE("/groups/:id/members", rt.wrap(rt.leaveGroup))
 
-	// Messages (canonical)
+	// Messages
+	// GET /messages?conversationId=...&limit=...&beforeCursor=...&afterCursor=... -> getConversation
+	// IMPORTANT: the query key is "conversationId" (camelCase) to match the spec.
 	rt.router.GET("/messages", rt.wrap(rt.getMessages))
+	// POST /messages -> sendMessage
 	rt.router.POST("/messages", rt.wrap(rt.sendMessage))
+	// GET /messages/{id} -> getMessageById
 	rt.router.GET("/messages/:id", rt.wrap(rt.getMessageById))
+	// DELETE /messages/{id} -> deleteMessage
 	rt.router.DELETE("/messages/:id", rt.wrap(rt.deleteMessage))
+	// POST /messages/{id}/forward -> forwardMessage
 	rt.router.POST("/messages/:id/forward", rt.wrap(rt.forwardMessage))
+	// GET /messages/{id}/comment -> getMessageComments
 	rt.router.GET("/messages/:id/comment", rt.wrap(rt.getMessageComments))
+	// POST /messages/{id}/comment -> commentMessage
 	rt.router.POST("/messages/:id/comment", rt.wrap(rt.commentMessage))
+	// POST /messages/{id}/uncomment -> uncommentMessage
 	rt.router.POST("/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
 
-	// ------------- Compatibility aliases (only when path differs) -------------
-
-	// Users: keep different aliases only
-	rt.router.PUT("/users/me/name", rt.wrap(rt.setMyUserName)) // alias of set_username
-	rt.router.PUT("/users/me/photo", rt.wrap(rt.setMyPhoto))   // alias of set_photo
-
-	// Conversations: add only different paths
-	rt.router.POST("/start-conversation", rt.wrap(rt.startConversation))                          // extra alias
-	rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversationByPathParam))       // maps to /messages?conversation_id=...
-	rt.router.POST("/conversations/:conversationId/messages", rt.wrap(rt.sendMessageByPathParam)) // maps to POST /messages
-
-	// Static files
-	rt.router.ServeFiles("/photos/*filepath", http.Dir("data/photos"))
+	// -------------------- Static files --------------------
+	// Serve uploaded files from the local "uploads" directory.
+	// This matches the public URLs generated by publicURL(...), e.g. /uploads/users/...
+	rt.router.ServeFiles("/uploads/*filepath", http.Dir("uploads"))
 }
 
-// CORS preflight handler for manual OPTIONS checks.
-func (rt *_router) handleCorsPreflight(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-	w.Header().Set("Access-Control-Max-Age", "1")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-}
+/*
+NOTE about compatibility aliases:
+
+We intentionally DO NOT register any alias routes here
+(e.g., /users/me/name, /users/me/photo, /start-conversation,
+ /conversations/:conversationId, etc.), because they are not
+declared in the OpenAPI and would drift the implementation.
+
+If you ever need them for dev/testing, create a separate file
+(e.g., api_aliases_dev.go) and protect their registration behind
+a build tag or environment flag. When adding such aliases, ensure
+they set query keys using "conversationId" (camelCase), not "conversation_id".
+*/

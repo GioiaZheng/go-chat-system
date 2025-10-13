@@ -13,21 +13,17 @@ import (
 )
 
 //
-// ────────────────────────────────────────────────────────────────────────────────
-//  Helpers (request bodies)
-// ────────────────────────────────────────────────────────────────────────────────
+// Helpers (request bodies)
 //
 
-// setUsernameBody supports both { "username": "..." } and legacy { "name": "..."}.
+// setUsernameBody supports both { "username": "..." } and legacy { "name": "..." }.
 type setUsernameBody struct {
 	Username string `json:"username,omitempty"`
 	Name     string `json:"name,omitempty"`
 }
 
 //
-// ────────────────────────────────────────────────────────────────────────────────
-//  Get my info  (GET /me or /users/me)
-// ────────────────────────────────────────────────────────────────────────────────
+// Get my info  (GET /users/me)
 //
 
 // getUserInfo returns the current authenticated user profile (from ctx.UserID).
@@ -60,13 +56,12 @@ func (rt *_router) getUserInfo(
 }
 
 //
-// ────────────────────────────────────────────────────────────────────────────────
-//  Get user profile by id/name  (GET /users/:id 或 /users/profile?username=xxx)
-// ────────────────────────────────────────────────────────────────────────────────
+// Get user profile by id/name  (GET /users/profile/{userId})
 //
 
 // getUserProfile loads another user's public profile.
-// Path params supported: :id (or :userId). Query fallback: username / name / id.
+// Path params supported: :userId (preferred) or :id.
+// Query fallback: ?id=... or ?username=/name=... (best-effort).
 func (rt *_router) getUserProfile(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -74,9 +69,9 @@ func (rt *_router) getUserProfile(
 	_ reqcontext.RequestContext,
 ) {
 	// Path params first
-	userID := strings.TrimSpace(ps.ByName("id"))
+	userID := strings.TrimSpace(ps.ByName("userId"))
 	if userID == "" {
-		userID = strings.TrimSpace(ps.ByName("userId"))
+		userID = strings.TrimSpace(ps.ByName("id"))
 	}
 	// Query fallbacks
 	if userID == "" {
@@ -87,7 +82,7 @@ func (rt *_router) getUserProfile(
 		username = strings.TrimSpace(r.URL.Query().Get("name"))
 	}
 
-	// If only username provided, resolve to ID.
+	// If only username is provided, try to resolve to an ID.
 	if userID == "" && username != "" {
 		if id, err := rt.db.GetUserIDFromIdentifier(username); err == nil && id != "" {
 			userID = id
@@ -122,9 +117,7 @@ func (rt *_router) getUser(
 }
 
 //
-// ────────────────────────────────────────────────────────────────────────────────
-//  Update username  (PUT /me/username 或 /users/me/set-username)
-// ────────────────────────────────────────────────────────────────────────────────
+// Update username  (PUT /users/set_username)
 //
 
 // setUserUsername changes the current user's username (handle).
@@ -187,10 +180,8 @@ func (rt *_router) setMyUserName(
 }
 
 //
-// ────────────────────────────────────────────────────────────────────────────────
-//  Update avatar/photo  (PUT /me/photo 或 /users/me/set-photo)
-//  Two modes: ?preset=avatar7  OR  multipart/form-data field "upload"
-// ────────────────────────────────────────────────────────────────────────────────
+// Update avatar/photo  (PUT /users/set_photo)
+// Two modes: ?preset=avatar7  OR  multipart/form-data field "upload"
 //
 
 func (rt *_router) setUserPhoto(
@@ -205,7 +196,7 @@ func (rt *_router) setUserPhoto(
 		return
 	}
 
-	// --- 1) PRESET MODE via query param ---
+	// 1) PRESET MODE via query param
 	if preset := strings.TrimSpace(r.URL.Query().Get("preset")); preset != "" {
 		// Accept names like avatar1..avatarN; kept under /uploads/photos/
 		if !strings.HasPrefix(strings.ToLower(preset), "avatar") {
@@ -232,7 +223,7 @@ func (rt *_router) setUserPhoto(
 		return
 	}
 
-	// --- 2) UPLOAD MODE ---
+	// 2) UPLOAD MODE
 	const maxUploadSizeBytes = 10 << 20 // 10 MiB
 	if err := r.ParseMultipartForm(maxUploadSizeBytes); err != nil {
 		rt.sendError(w, http.StatusBadRequest, "invalid multipart form")
@@ -332,9 +323,7 @@ func (rt *_router) setMyPhoto(
 }
 
 //
-// ────────────────────────────────────────────────────────────────────────────────
-//  Search users  (GET /users/search?q=xxx)  —— exclude myself
-// ────────────────────────────────────────────────────────────────────────────────
+// Search users  (GET /users/search?q=xxx)  — exclude myself
 //
 
 func (rt *_router) searchUsers(

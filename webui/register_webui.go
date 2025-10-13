@@ -1,59 +1,53 @@
-// cmd/webapi/register_webui.go
-package main
+// Package webui provides the optional Web UI wrapper for the API handler.
+// It is referenced by cmd/webapi/register-web-ui.go when built with the "webui" build tag.
+package webui
 
 import (
-	"errors"
-	"io"
+	"embed"
 	"io/fs"
 	"net/http"
 	"path"
 	"strings"
-
-	"github.com/GioiaZheng/Wasa_proj/webui"
 )
 
-func registerWebUI(router http.Handler) (http.Handler, error) {
-	dist, err := webui.FS()
+//go:embed dist/*
+var distFS embed.FS
+
+// Wrap mounts the embedded SPA under "/" and falls back to index.html for non-file paths.
+// It returns a handler that first serves the SPA, then falls back to the given api handler.
+func Wrap(api http.Handler) (http.Handler, error) {
+	// Sub-FS rooted at "dist"
+	sub, err := fs.Sub(distFS, "dist")
 	if err != nil {
 		return nil, err
 	}
+	spa := http.FileServer(http.FS(sub))
 
-	// 静态文件 server（/assets/* /favicon.* /index.html 等）
-	fileServer := http.FileServer(http.FS(dist))
-
-	// SPA fallback：所有非静态命中路径，返回 dist/index.html
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 规范化路径
-		up := path.Clean("/" + strings.TrimPrefix(r.URL.Path, "/"))
-
-		// 明显的静态资源直接走 FileServer
-		if up == "/index.html" || strings.HasPrefix(up, "/assets/") ||
-			strings.HasSuffix(up, ".js") || strings.HasSuffix(up, ".css") ||
-			strings.HasSuffix(up, ".ico") || strings.HasSuffix(up, ".png") ||
-			strings.HasSuffix(up, ".svg") || strings.HasSuffix(up, ".txt") {
-			r.URL.Path = up
-			fileServer.ServeHTTP(w, r)
+		// If the request looks like a static asset (has an extension), try to serve it from /dist.
+		if hasExt(r.URL.Path) {
+			spa.ServeHTTP(w, r)
 			return
 		}
 
-		// 尝试打开该文件（如果真实存在就直接返回）
-		if f, err := dist.Open(strings.TrimPrefix(up, "/")); err == nil {
-			_ = f.Close()
-			r.URL.Path = up
-			fileServer.ServeHTTP(w, r)
-			return
+		// For SPA routes (no extension), try index.html
+		if r.Method == http.MethodGet {
+			index, err := sub.Open("index.html")
+			if err == nil {
+				// Serve index.html content
+				stat, _ := index.Stat()
+				http.ServeContent(w, r, "index.html", stat.ModTime(), index)
+				_ = index.Close()
+				return
+			}
 		}
 
-		// 回退到 index.html（单页应用前端路由）
-		f, err := dist.Open("index.html")
-		if err != nil {
-			http.Error(w, "index.html not found", http.StatusInternalServerError)
-			return
-		}
-		defer f.Close()
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if _, err := io.Copy(w, f); err != nil && !errors.Is(err, io.EOF) {
-			// 静默处理
-		}
+		// Otherwise fallback to API
+		api.ServeHTTP(w, r)
 	}), nil
+}
+
+func hasExt(p string) bool {
+	ext := path.Ext(p)
+	return ext != "" && strings.ContainsAny(ext, ".")
 }
