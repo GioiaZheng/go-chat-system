@@ -199,3 +199,13 @@ func (db *appdbimpl) UpdateUserPhoto(userID string, photoPath string) error {
 	}
 	return nil
 }
+
+// CheckUserExists returns true if a user with the given username exists.
+func (db *appdbimpl) CheckUserExists(username string) (bool, error) {
+	var count int
+	err := db.c.QueryRow(`SELECT COUNT(1) FROM users WHERE username = ?`, username).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
