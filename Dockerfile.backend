@@ -1,47 +1,46 @@
-# ===== Build stage =====
-FROM golang:1.20-alpine AS build
-RUN apk add --no-cache build-base git sqlite-dev
-ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
+# =========================
+#  Build stage
+# =========================
+FROM golang:1.22-alpine AS build
+
+# go-sqlite3 需要 CGO
+RUN apk add --no-cache build-base sqlite-dev
+
 WORKDIR /src
 
-# 先拉依赖，最大化缓存
+# 仅复制依赖清单，先走缓存
 COPY go.mod go.sum ./
 RUN go mod download
 
-# 再拷源码并构建
+# 复制源码
 COPY . .
-# 缓存 go build，可选：去掉也行
-# RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg/mod \
-RUN go build -trimpath -ldflags="-s -w" -o /out/wasatext ./cmd/webapi
 
-# ===== Runtime =====
+# 可选构建标签（为空表示纯后端；传 webui 则同时内置静态前端路由）
+ARG BUILD_TAGS=""
+ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
+
+RUN go build -tags "$BUILD_TAGS" -ldflags "-s -w" -o /out/webapi ./cmd/webapi
+
+# =========================
+#  Runtime stage
+# =========================
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata sqlite-libs curl
-WORKDIR /srv
 
-# 创建运行用户与可写目录（/data, /srv/uploads），避免“failed to prepare upload dir”
-RUN adduser -D -H -u 10001 appuser \
-  && mkdir -p /data /srv/uploads/users \
-  && chown -R appuser:appuser /data /srv/uploads \
-  && chmod -R 775 /data /srv/uploads
+# 运行期只需要 sqlite-libs + 时区/证书
+RUN apk add --no-cache sqlite-libs tzdata ca-certificates \
+ && adduser -D -H -s /sbin/nologin app
 
-COPY --from=build /out/wasatext /usr/local/bin/wasatext
+WORKDIR /app
+COPY --from=build /out/webapi /app/webapi
 
-# DB 放到可挂载目录
-VOLUME ["/data"]
+# 数据目录（挂载卷）
+RUN mkdir -p /data && chown -R app:app /data /app
+USER app
 
-# 注意：你的程序读取的是 WEBAPI_DB_FILENAME/DB_FILENAME/或 --db-filename
-# 统一给到 /data/wasatext.db，运行时也可以用 CLI 覆盖
-ENV PORT=3000 \
-    WEBAPI_DB_FILENAME=/data/wasatext.db \
-    DB_FILENAME=/data/wasatext.db \
-    TZ=Europe/Rome
+# 缺省使用 /data/app.sqlite，可通过环境变量覆盖
+ENV WASA_DB_FILENAME=/data/app.sqlite \
+    GIN_MODE=release
 
 EXPOSE 3000
-USER appuser
-
-# /liveness 是你项目里已有的探针
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -fsS "http://127.0.0.1:${PORT}/liveness" >/dev/null || exit 1
-
-ENTRYPOINT ["/usr/local/bin/wasatext"]
+ENTRYPOINT ["/app/webapi"]
+# 例如使用：docker run ... --db-filename /data/app.sqlite

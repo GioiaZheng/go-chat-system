@@ -1,227 +1,235 @@
-# Wasa Project – Backend (grader-compliant)
+---
 
-This repository contains the backend for the [Web and Software Architecture](http://gamificationlab.uniroma1.it/en/wasa/) homework project.  
-It follows the course template and adds a few **grader-oriented** improvements:
-- Routes aligned with the OpenAPI spec, including a root `/liveness` alias.
-- **No hardcoded absolute URLs** in Go or scripts (only `webui/vite.config.js` keeps a localhost default, as allowed).
-- Database safety: `rows.Err()` checks after iterations; `tx.Rollback` error explicitly ignored per linters.
-- Auth flow clarified (login with `{name,password}`; token at `data[0].token`).
-- Helper smoke scripts under `tools/` for quick verification.
+# WASA Text — Chat API & WebUI
 
-> “Fantastic coffee (decaffeinated)” is a simplified version for the WASA course, not suitable for production.  
-> For a production-ready reference, see the full “Fantastic Coffee” repository.
+A lightweight chat platform built with **Go**, **SQLite**, and an optional **embedded WebUI**.
+It supports users, private and group conversations, messages with pagination, forwarding, comments, and more — all via clean RESTful APIs.
 
 ---
 
-## Project structure
+## Features
 
-```
-.
-├── cmd/                    # Executables
-│   ├── healthcheck/       # HTTP health probe daemon
-│   └── webapi/           # Main web API server
-├── doc/                   # Documentation
-│   └── api.yaml          # OpenAPI specification
-├── service/              # Project packages
-│   ├── api/              # HTTP handlers and routing
-│   ├── globaltime/       # Time wrapper for testing
-│   └── database/         # Database accessors
-├── tools/                # Developer tooling
-│   ├── smoke.sh          # Unauthenticated smoke test
-│   ├── smoke_auth.sh     # Authenticated smoke test
-│   └── curl_test.sh      # Parametric curl helper
-├── webui/                # Vue/Vite frontend
-│   ├── src/
-│   ├── public/
-│   └── vite.config.js
-└── vendor/               # Go vendoring (optional)
-```
+✅ RESTful backend written in Go
+✅ SQLite-based persistent storage
+✅ JWT-style lightweight session auth
+✅ Supports private & group conversations
+✅ Message features: pagination, forward, comment, delete
+✅ WebUI embeddable in backend (with `-tags webui`)
+✅ Fully containerized — ready for Docker deployment
 
 ---
 
-## Quick Start
+## Project Structure
 
-### Prerequisites
-- Go 1.18+
-- Node.js 20+ (for WebUI development)
-- Yarn package manager
-
-### Build (Backend only)
-```bash
-go build ./cmd/webapi/
 ```
-
-### Build with WebUI embedded
-```bash
-./open-node.sh
-# Inside the container:
-yarn run build-embed
-exit
-# Back on the host:
-go build -tags webui ./cmd/webapi/
-```
-
-### Run (Development)
-Start the backend:
-```bash
-go run ./cmd/webapi/
-# Server listens on 0.0.0.0:3000 by default
-```
-
-Start the WebUI in another shell:
-```bash
-./open-node.sh
-# Inside the container:
-yarn run dev
+Wasa_proj/
+├── cmd/webapi/             # Main backend entrypoint
+├── service/api/            # HTTP handlers (users, messages, groups, etc.)
+├── service/database/       # SQLite database layer
+├── service/models/         # Shared data models
+├── webui/                  # Optional frontend (Vue/Vite)
+├── data/                   # SQLite storage (mounted in Docker)
+├── uploads/                # Uploaded files (avatars, images)
+├── Dockerfile.backend      # Backend image (multi-stage build)
+├── Dockerfile.frontend     # Frontend (optional, Nginx-based)
+├── nginx.conf              # Frontend proxy config
+├── go.mod / go.sum         # Dependencies
+└── README.md               # You're here
 ```
 
 ---
 
-## Health Checks
-Public endpoints (no auth required):
+## Quick Start (Local Development)
+
+### Install dependencies
+
 ```bash
-curl -sS "${BASE}/liveness"
-curl -sS "${BASE}${PFX}/liveness"
+go mod tidy
+```
+
+### Run backend
+
+```bash
+go run ./cmd/webapi --db-filename ./data/app.sqlite
+```
+
+### Test API
+
+```bash
+# Check health
+curl -s http://localhost:3000/liveness | jq
+
+# Register/login (creates token)
+TOKEN=$(curl -s -X POST http://localhost:3000/session \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"alice"}' | jq -r '.data.token')
+
+# Create a conversation
+CID=$(curl -s -X POST http://localhost:3000/conversations \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"demo","member_ids":[]}' | jq -r '.data.conversation.id')
+
+# Send a message
+curl -s -X POST http://localhost:3000/messages \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"conversationId\":\"$CID\",\"content\":\"hello from API\"}" | jq
+
+# Retrieve messages
+curl -s "http://localhost:3000/messages?conversationId=$CID&limit=10" \
+  -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 ---
 
-## Authentication
-Login request:
-```http
-POST /session
-Content-Type: application/json
+## Run with Docker (Backend only)
 
-{ "name": "alice", "password": "passw0rd" }
+### Build image
+
+```bash
+docker build -f Dockerfile.backend -t wasa-backend:latest .
 ```
 
-Login response excerpt:
-```json
+### Run container
+
+```bash
+mkdir -p ./data
+
+docker run -d --name wasa-backend \
+  -p 3000:3000 \
+  -v $(pwd)/data:/data \
+  -e WASA_DB_FILENAME=/data/app.sqlite \
+  wasa-backend:latest
+```
+
+### Verify
+
+```bash
+curl -s http://localhost:3000/liveness | jq
+```
+
+---
+
+## Build Backend + Embedded WebUI
+
+If you want your backend binary to also serve the WebUI (no need for Nginx):
+
+```bash
+docker build -f Dockerfile.backend -t wasa-backend:webui \
+  --build-arg BUILD_TAGS=webui .
+docker run -d --name wasa-backend-webui \
+  -p 3000:3000 \
+  -v $(pwd)/data:/data \
+  wasa-backend:webui
+```
+
+Then open:
+👉 [http://localhost:3000](http://localhost:3000)
+
+---
+
+## Frontend (Optional, standalone)
+
+You can also deploy the `webui` separately using Nginx:
+
+```bash
+docker build -f Dockerfile.frontend -t wasa-frontend:latest .
+docker run -d --name wasa-frontend -p 8080:80 wasa-frontend:latest
+```
+
+Then visit [http://localhost:8080](http://localhost:8080)
+(Default Nginx proxy config will forward `/api/` to backend.)
+
+---
+
+## API Overview
+
+| Endpoint                   | Method     | Description                      |
+| -------------------------- | ---------- | -------------------------------- |
+| `/liveness`                | GET        | Health check                     |
+| `/session`                 | POST       | Login or register user           |
+| `/users/me`                | GET        | Get own profile                  |
+| `/conversations`           | GET/POST   | List or create conversations     |
+| `/messages`                | GET/POST   | Retrieve or send messages        |
+| `/messages/{id}`           | GET/DELETE | Get or delete a specific message |
+| `/messages/{id}/forward`   | POST       | Forward a message                |
+| `/messages/{id}/comment`   | POST       | Add a comment                    |
+| `/messages/{id}/comment`   | GET        | Get comments                     |
+| `/messages/{id}/uncomment` | POST       | Remove all comments              |
+
+---
+
+## Environment Variables
+
+| Variable           | Default            | Description                   |
+| ------------------ | ------------------ | ----------------------------- |
+| `WASA_DB_FILENAME` | `/data/app.sqlite` | SQLite database path          |
+| `GIN_MODE`         | `release`          | Run mode                      |
+| `PORT`             | `3000`             | Server port                   |
+| `WITH_WEBUI`       | optional           | Build tag for embedded web UI |
+
+---
+
+## Housekeeping
+
+To clean local environment:
+
+```bash
+docker stop wasa-backend && docker rm wasa-backend
+docker image prune -f
+docker builder prune -f
+```
+
+---
+
+## Author & Credits
+
+**Project Maintainer:** Gioia Zheng
+**Backend Language:** Go 1.22
+**Database:** SQLite3
+**Frontend:** Vue + Vite
+**License:** MIT
+
+---
+
+## Example Output
+
+```bash
+$ curl -s http://localhost:3000/liveness | jq
 {
   "code": 200,
-  "message": "Login successful",
-  "data": [
-    {
-      "user": { /* ... */ },
-      "token": "<userID>"
-    }
-  ]
+  "message": "Service is alive"
+}
+
+$ curl -s http://localhost:3000/messages?conversationId=$CID | jq
+{
+  "code": 200,
+  "message": "Messages retrieved successfully",
+  "data": {
+    "messages": [
+      {
+        "id": "d7b...",
+        "content": "hello from API",
+        "senderId": "u_1760...",
+        "conversationId": "a4d5...",
+        "createdAt": "2025-10-14T14:10:33Z"
+      }
+    ]
+  }
 }
 ```
 
-Use the token as a Bearer token:
-```bash
-curl -H "Authorization: Bearer <token>" ...
-```
-
 ---
 
-## API Routes
-### Public Endpoints
-- `OPTIONS /cors` - CORS preflight
-- `POST /session` - Login
-- `POST /register` - Register
-- `GET /liveness` - Health check (also `GET /liveness`)
+## Final Notes
 
-### Protected Endpoints (require Bearer token)
-- Conversations: `POST /conversations`, `GET /conversations`
-- Users: `PUT /users/set_username`, `GET /users/me`, etc.
-- Groups: `POST /groups`, `GET /groups/:id`, etc.
-- Messages: `GET /messages`, `POST /messages`, etc.
+* You can run the backend **alone** or **embed** the frontend using `-tags webui`.
+* SQLite keeps all data in `/data/app.sqlite`. Mount it in Docker to persist.
+* Code structure follows clean layering:
+  `api → service/database → models`
+* For debugging, use:
 
----
-
-## Testing
-### Smoke Tests
-Unauthenticated test:
-```bash
-./tools/smoke.sh
-```
-
-Authenticated test (register → login → key endpoints):
-```bash
-# Optional env: BASE, PFX, NAME, PASSWORD
-./tools/smoke_auth.sh
-```
-
-### curl Helper
-```bash
-# No token
-SCHEME=http HOST=localhost PORT=3000 API_PREFIX=/api/v1 tools/curl_test.sh
-
-# With token
-TOKEN="<your_token>" tools/curl_test.sh
-```
-
----
-
-## Configuration
-### CORS Settings
-```bash
-export ALLOWED_ORIGINS="https://example.com,https://staging.example.com"
-```
-
-### Script Configuration
-Use environment variables to configure targets:
-- `BASE`/`PFX` or 
-- `SCHEME`/`HOST`/`PORT`/`API_PREFIX`
-
----
-
-## Development Notes
-- All database loops include `rows.Err()` checks after iteration
-- Transaction rollbacks use `_ = tx.Rollback()` (linter-compliant)
-- Messages API accepts tolerant payloads with multiple field name variations
-- Conversation creation gracefully handles missing tables for grading compatibility
-
-### Local Checks
-```bash
-go vet ./...
-go build ./cmd/webapi && go run ./cmd/webapi
-./tools/smoke.sh
-./tools/smoke_auth.sh
-```
-
----
-
-## Go Vendoring
-When changing dependencies:
-```bash
-go mod vendor
-git add vendor/
-```
-
-More info:
-- [Go Vendoring Reference](https://go.dev/ref/mod#vendoring)
-- [Ardan Labs Blog](https://www.ardanlabs.com/blog/2020/04/modules-06-vendoring.html)
-
----
-
-## Node/YARN Vendoring
-The repository uses yarn with an "Offline mirror". Commit files under the `.yarn` directory for offline CI/grading builds.
-
----
-
-## Setting Up New Project
-1. Change Go module path in `go.mod`, `go.sum`, and import statements
-2. Rewrite API documentation (`doc/api.yaml`)
-3. Remove `webui/` and `cmd/webapi/register-webui.go` if no WebUI needed
-4. Update package comments in `cmd/webapi/main.go`
-5. Update `run()` in `cmd/webapi/main.go` for your DB/external resources
-6. Implement service logic under `service/`
-
----
-
-## Known Issues
-If experiencing "Works with yarn run dev but crashes in production/grading", preview production build:
-```bash
-./open-node.sh
-# Inside the container:
-yarn run build-prod
-yarn run preview
-```
-
----
-
-## License
-See [LICENSE](LICENSE) file for details.
+  ```bash
+  go run ./cmd/webapi --db-filename ./data/app.sqlite --verbose
+  ```

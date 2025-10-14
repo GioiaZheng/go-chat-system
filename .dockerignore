@@ -1,10 +1,17 @@
+# VCS
 .git
-**/.git
-**/node_modules
-**/.yarn/cache
-**/.yarn/unplugged
-**/.pnp.*
+.gitignore
+
+# Node / Frontend caches
+node_modules
+webui/node_modules
+webui/.cache
+webui/dist
+
+# Local data & artifacts
+data/*
+uploads/*
+dev.sqlite
 *.log
-SELECT
-Using
-test.png
+*.tmp
+.DS_Store
