@@ -66,77 +66,59 @@ func (db *appdbimpl) SendGroupMessage(message models.Message) error {
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// GetMessagesByConversation returns messages by conversation with optional before/after cursors.
-// 关键点：receiver_id / group_id 可能为 NULL，必须用 sql.NullString 扫描。
-func (db *appdbimpl) GetMessagesByConversation(conversationID, before, after string, limit int) ([]models.Message, error) {
-	normalize := func(ts string) string {
-		ts = strings.TrimSpace(ts)
-		if ts == "" {
-			return ""
-		}
-		// 支持 RFC3339 游标："2025-10-14T15:12:03Z" -> "2025-10-14 15:12:03"
-		if strings.Contains(ts, "T") {
-			ts = strings.ReplaceAll(ts, "T", " ")
-			ts = strings.TrimSuffix(ts, "Z")
-		}
-		if len(ts) >= len("2006-01-02 15:04:05") {
-			return ts[:19]
-		}
-		return ts
-	}
-
-	nbefore := normalize(before)
-	nafter := normalize(after)
+// GetMessagesByConversation returns messages for a conversation with cursor pagination.
+// - when before != "", return items with created_at < before (newer -> older)
+// - when after  != "", return items with created_at > after  (older -> newer)
+// If both are given，以 before 优先。
+func (db *appdbimpl) GetMessagesByConversation(
+	convID, before, after string, limit int,
+) ([]models.Message, error) {
 	if limit <= 0 {
 		limit = 20
 	}
+	convID = strings.TrimSpace(convID)
+	before = strings.TrimSpace(before)
+	after = strings.TrimSpace(after)
 
-	// 拼 SQL
-	q := `
-		SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
-		FROM messages
-		WHERE conversation_id = ?
-	`
-	args := []interface{}{conversationID}
-	if nbefore != "" {
-		q += " AND created_at < ?"
-		args = append(args, nbefore)
+	// 基础 WHERE
+	qb := `
+        SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
+        FROM messages
+        WHERE conversation_id = ?`
+	args := []interface{}{convID}
+
+	// 游标条件（严格不含边界，避免重复）
+	if before != "" {
+		qb += ` AND created_at < ?`
+		args = append(args, before)
+	} else if after != "" {
+		qb += ` AND created_at > ?`
+		args = append(args, after)
 	}
-	if nafter != "" {
-		q += " AND created_at > ?"
-		args = append(args, nafter)
-	}
-	q += " ORDER BY created_at DESC, id DESC LIMIT ?"
+
+	// 稳定排序：时间降序，id 降序（同秒并发也稳定）
+	qb += ` ORDER BY created_at DESC, id DESC LIMIT ?`
 	args = append(args, limit)
 
-	rows, err := db.c.Query(q, args...)
+	rows, err := db.c.Query(qb, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	// 注意 receiver_id / group_id 可能为 NULL，用 sql.NullString 扫描再取 .String
 	out := make([]models.Message, 0, limit)
 	for rows.Next() {
-		var (
-			m   models.Message
-			rid sql.NullString
-			gid sql.NullString
-			cid sql.NullString
-		)
+		var m models.Message
+		var recv, grp, conv sql.NullString
 		if err := rows.Scan(
-			&m.ID,
-			&m.Content,
-			&m.SenderID,
-			&rid, // 可能为 NULL
-			&gid, // 可能为 NULL
-			&cid, // 这里通常不为 NULL，但依旧安全处理
-			&m.CreatedAt,
+			&m.ID, &m.Content, &m.SenderID, &recv, &grp, &conv, &m.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
-		m.ReceiverID = rid.String
-		m.GroupID = gid.String
-		m.ConversationID = cid.String
+		m.ReceiverID = recv.String
+		m.GroupID = grp.String
+		m.ConversationID = conv.String
 		out = append(out, m)
 	}
 	if err := rows.Err(); err != nil {

@@ -146,7 +146,9 @@ func (rt *_router) sendMessage(
 		return
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	// use RFC3339Nano to avoid same-second collisions in ordering/cursors
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+
 	msg := models.Message{
 		ID:             id,
 		Content:        req.Content,
@@ -179,8 +181,7 @@ func (rt *_router) sendMessage(
 //
 
 // getMessages returns a cursor-paginated slice for a conversation.
-// NOTE: DB does not expose a query-by-conversation method yet; we filter in memory.
-// Cursors are simple RFC3339 timestamps (opaque to clients).
+// 优先走 DB 层的按会话查询；若 DB 返回错误，回退到内存过滤，保证返回 200。
 func (rt *_router) getMessages(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -197,74 +198,77 @@ func (rt *_router) getMessages(
 	before := strings.TrimSpace(q.Get("beforeCursor"))
 	after := strings.TrimSpace(q.Get("afterCursor"))
 
-	// Fallback: get all, then filter/sort page in API.
-	all, err := rt.db.GetAllMessages()
+	// 1) 优先 DB 查询
+	items, err := rt.db.GetMessagesByConversation(convID, before, after, limit)
 	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "Failed to fetch messages")
-		return
-	}
+		// 便于定位问题的日志（不改变返回格式）
+		rt.baseLogger.WithError(err).Error("getMessages: db.GetMessagesByConversation failed; falling back to in-memory filter")
 
-	// Filter by conversationId.
-	buf := make([]models.Message, 0, len(all))
-	for _, m := range all {
-		if strings.TrimSpace(m.ConversationID) == convID {
-			buf = append(buf, m)
+		// 2) 回退：拉全量内存过滤（保证不 500）
+		all, e2 := rt.db.GetAllMessages()
+		if e2 != nil {
+			rt.baseLogger.WithError(e2).Error("getMessages: db.GetAllMessages failed")
+			rt.sendError(w, http.StatusInternalServerError, "Failed to fetch messages")
+			return
+		}
+		// 过滤会话
+		buf := make([]models.Message, 0, len(all))
+		for _, m := range all {
+			if strings.TrimSpace(m.ConversationID) == convID {
+				buf = append(buf, m)
+			}
+		}
+		// 按时间降序（同时间再用 id 降序保证稳定）
+		sort.Slice(buf, func(i, j int) bool {
+			if buf[i].CreatedAt == buf[j].CreatedAt {
+				return buf[i].ID > buf[j].ID
+			}
+			return buf[i].CreatedAt > buf[j].CreatedAt
+		})
+		// 应用游标
+		filtered := buf[:0]
+		for _, m := range buf {
+			if before != "" && !timeBefore(m.CreatedAt, before) {
+				continue
+			}
+			if after != "" && !timeAfter(m.CreatedAt, after) {
+				continue
+			}
+			filtered = append(filtered, m)
+		}
+		// 取页
+		if len(filtered) > limit {
+			items = filtered[:limit]
+		} else {
+			items = filtered
 		}
 	}
 
-	// Sort by createdAt DESC (newest first) for UX; spec doesn't mandate order.
-	sort.Slice(buf, func(i, j int) bool {
-		return buf[i].CreatedAt > buf[j].CreatedAt
-	})
-
-	// Apply cursors.
-	filtered := buf[:0]
-	for _, m := range buf {
-		if before != "" && !timeBefore(m.CreatedAt, before) {
-			continue
-		}
-		if after != "" && !timeAfter(m.CreatedAt, after) {
-			continue
-		}
-		filtered = append(filtered, m)
-	}
-
-	// Page slice.
-	page := filtered
-	if len(page) > limit {
-		page = page[:limit]
-	}
-
-	// Compute cursors (opaque timestamps).
+	// 生成游标
 	var nextCursor, prevCursor *string
-	if len(filtered) > len(page) {
-		// There are more older items beyond the page -> nextCursor = oldest on page
-		nc := page[len(page)-1].CreatedAt
+	if len(items) == limit {
+		nc := items[len(items)-1].CreatedAt
 		nextCursor = &nc
 	}
-	if after != "" && len(page) > 0 {
-		// If client asked "after", expose prevCursor = newest on page
-		pc := page[0].CreatedAt
+	if after != "" && len(items) > 0 {
+		pc := items[0].CreatedAt
 		prevCursor = &pc
 	}
 
-	// Build DTOs.
-	items := make([]MessageDTO, 0, len(page))
-	for _, m := range page {
-		items = append(items, toMessageDTO(m))
+	// DTO
+	out := make([]MessageDTO, 0, len(items))
+	for _, m := range items {
+		out = append(out, toMessageDTO(m))
 	}
 
-	// MessageResourceEnvelopeCollection -> data: MessageCollection
-	data := map[string]interface{}{
-		"messages":   items,
-		"nextCursor": nextCursor,
-		"prevCursor": prevCursor,
-		// "pagination" deprecated in our spec; omit.
-	}
 	resp := map[string]interface{}{
 		"code":    http.StatusOK,
 		"message": "Messages retrieved successfully",
-		"data":    data,
+		"data": map[string]interface{}{
+			"messages":   out,
+			"nextCursor": nextCursor,
+			"prevCursor": prevCursor,
+		},
 	}
 	_ = writeJSON(w, http.StatusOK, resp)
 }
