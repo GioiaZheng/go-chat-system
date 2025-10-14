@@ -4,15 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
-	"log"
+	"sort"
+	"strings"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
 
 const defaultPrivateLimit = 50
 
-// nullIfEmpty is a small helper used when inserting nullable timestamps.
+// nullIfEmpty is a small helper for nullable timestamps in INSERTs.
 func nullIfEmpty(s string) interface{} {
 	if s == "" {
 		return nil
@@ -26,72 +26,144 @@ func nullIfEmpty(s string) interface{} {
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// SendPrivateMessage inserts a direct message to a single receiver (legacy private chat).
-// Interface: AppDatabase.SendPrivateMessage(message models.Message) error
+// SendPrivateMessage inserts a direct (1:1) message.
+// NOTE: Our SQLite schema does NOT have type/status columns; we don't persist them.
 func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
-	if message.Type == "" {
-		message.Type = "text"
-	}
-	if message.Status == "" {
-		message.Status = "sent"
-	}
 	_, err := db.c.Exec(`
-		INSERT INTO messages (id, content, sender_id, receiver_id, type, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
-	`, message.ID, message.Content, message.SenderID, message.ReceiverID,
-		message.Type, message.Status, nullIfEmpty(message.CreatedAt))
+		INSERT INTO messages (
+			id, content, sender_id, receiver_id, group_id, conversation_id, created_at
+		) VALUES (
+			?,  ?,       ?,         ?,           NULL,    NULL,            COALESCE(?, datetime('now'))
+		)
+	`, message.ID, message.Content, message.SenderID, message.ReceiverID, nullIfEmpty(message.CreatedAt))
 	return err
 }
 
-// SendMessageToConversation inserts a message into a conversation (group/multi-party).
-// Interface: AppDatabase.SendMessageToConversation(message models.Message) error
+// SendMessageToConversation inserts a message linked to a conversation.
+// NOTE: No type/status persistence due to table schema.
 func (db *appdbimpl) SendMessageToConversation(message models.Message) error {
-	if message.Type == "" {
-		message.Type = "text"
-	}
-	if message.Status == "" {
-		message.Status = "sent"
-	}
 	_, err := db.c.Exec(`
-		INSERT INTO messages (id, content, sender_id, conversation_id, type, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))
-	`, message.ID, message.Content, message.SenderID, message.ConversationID,
-		message.Type, message.Status, nullIfEmpty(message.CreatedAt))
+		INSERT INTO messages (
+			id, content, sender_id, receiver_id, group_id, conversation_id, created_at
+		) VALUES (
+			?,  ?,       ?,         NULL,        NULL,    ?,               COALESCE(?, datetime('now'))
+		)
+	`, message.ID, message.Content, message.SenderID, message.ConversationID, nullIfEmpty(message.CreatedAt))
 	return err
 }
 
-// SendGroupMessage is a backward-compatible shim that delegates to SendMessageToConversation.
-// Interface: AppDatabase.SendGroupMessage(message models.Message) error
+// SendGroupMessage keeps backward compatibility; it delegates to SendMessageToConversation.
 func (db *appdbimpl) SendGroupMessage(message models.Message) error {
 	if message.ConversationID == "" {
-		return fmt.Errorf("conversation_id required for group message")
+		return errors.New("conversation_id required for group message")
 	}
 	return db.SendMessageToConversation(message)
 }
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   READ (QUERIES)
+//   READ — BY CONVERSATION (used by GET /messages)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// GetPrivateConversation returns ordered messages between two users (legacy private).
-// Interface: AppDatabase.GetPrivateConversation(userID1, userID2 string) ([]models.Message, error)
-func (db *appdbimpl) GetPrivateConversation(userID1 string, userID2 string) ([]models.Message, error) {
+// GetMessagesByConversation returns messages by conversation with optional before/after cursors.
+// 关键点：receiver_id / group_id 可能为 NULL，必须用 sql.NullString 扫描。
+func (db *appdbimpl) GetMessagesByConversation(conversationID, before, after string, limit int) ([]models.Message, error) {
+	normalize := func(ts string) string {
+		ts = strings.TrimSpace(ts)
+		if ts == "" {
+			return ""
+		}
+		// 支持 RFC3339 游标："2025-10-14T15:12:03Z" -> "2025-10-14 15:12:03"
+		if strings.Contains(ts, "T") {
+			ts = strings.ReplaceAll(ts, "T", " ")
+			ts = strings.TrimSuffix(ts, "Z")
+		}
+		if len(ts) >= len("2006-01-02 15:04:05") {
+			return ts[:19]
+		}
+		return ts
+	}
+
+	nbefore := normalize(before)
+	nafter := normalize(after)
+	if limit <= 0 {
+		limit = 20
+	}
+
+	// 拼 SQL
+	q := `
+		SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
+		FROM messages
+		WHERE conversation_id = ?
+	`
+	args := []interface{}{conversationID}
+	if nbefore != "" {
+		q += " AND created_at < ?"
+		args = append(args, nbefore)
+	}
+	if nafter != "" {
+		q += " AND created_at > ?"
+		args = append(args, nafter)
+	}
+	q += " ORDER BY created_at DESC, id DESC LIMIT ?"
+	args = append(args, limit)
+
+	rows, err := db.c.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]models.Message, 0, limit)
+	for rows.Next() {
+		var (
+			m   models.Message
+			rid sql.NullString
+			gid sql.NullString
+			cid sql.NullString
+		)
+		if err := rows.Scan(
+			&m.ID,
+			&m.Content,
+			&m.SenderID,
+			&rid, // 可能为 NULL
+			&gid, // 可能为 NULL
+			&cid, // 这里通常不为 NULL，但依旧安全处理
+			&m.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		m.ReceiverID = rid.String
+		m.GroupID = gid.String
+		m.ConversationID = cid.String
+		out = append(out, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//   READ — PRIVATE / GROUP (legacy helpers; kept for completeness)
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
+func (db *appdbimpl) GetPrivateConversation(userID1, userID2 string) ([]models.Message, error) {
 	return db.getPrivateConversationEx(context.Background(), userID1, userID2, defaultPrivateLimit, "")
 }
 
-// Internal helper with pagination token and limit (can be extended later).
 func (db *appdbimpl) getPrivateConversationEx(
 	_ context.Context, userID1, userID2 string, limit int, _ string,
 ) ([]models.Message, error) {
-
 	rows, err := db.c.Query(`
-		SELECT id, content, sender_id, receiver_id, conversation_id, created_at, type, status
+		SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
 		  FROM messages
 		 WHERE (sender_id = ? AND receiver_id = ?)
 		    OR (sender_id = ? AND receiver_id = ?)
-		 ORDER BY created_at ASC
+		 ORDER BY created_at ASC, id ASC
 		 LIMIT ?
 	`, userID1, userID2, userID2, userID1, limit)
 	if err != nil {
@@ -99,14 +171,20 @@ func (db *appdbimpl) getPrivateConversationEx(
 	}
 	defer rows.Close()
 
-	var out []models.Message
+	out := make([]models.Message, 0, limit)
 	for rows.Next() {
 		var m models.Message
-		var convID sql.NullString
-		if err := rows.Scan(&m.ID, &m.Content, &m.SenderID, &m.ReceiverID, &convID, &m.CreatedAt, &m.Type, &m.Status); err != nil {
+		if err := rows.Scan(
+			&m.ID,
+			&m.Content,
+			&m.SenderID,
+			&m.ReceiverID,
+			&m.GroupID,
+			&m.ConversationID,
+			&m.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
-		m.ConversationID = convID.String // may be empty for legacy private
 		out = append(out, m)
 	}
 	if err := rows.Err(); err != nil {
@@ -115,24 +193,30 @@ func (db *appdbimpl) getPrivateConversationEx(
 	return out, nil
 }
 
-// GetGroupConversation returns the ordered messages of a group.
-// Interface: AppDatabase.GetGroupConversation(groupID string) ([]models.Message, error)
 func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, error) {
 	rows, err := db.c.Query(`
-		SELECT id, content, sender_id, group_id, conversation_id, created_at
+		SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
 		  FROM messages
 		 WHERE group_id = ?
-		 ORDER BY created_at ASC
+		 ORDER BY created_at ASC, id ASC
 	`, groupID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []models.Message
+	out := make([]models.Message, 0, 64)
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.Content, &m.SenderID, &m.GroupID, &m.ConversationID, &m.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&m.ID,
+			&m.Content,
+			&m.SenderID,
+			&m.ReceiverID,
+			&m.GroupID,
+			&m.ConversationID,
+			&m.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
@@ -143,75 +227,50 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 	return out, nil
 }
 
-// GetMessageByID returns a single message by its id.
-// Interface: AppDatabase.GetMessageByID(messageID string) (models.Message, error)
 func (db *appdbimpl) GetMessageByID(messageID string) (models.Message, error) {
 	var m models.Message
-	// Use sql.NullString to tolerate legacy rows missing some columns.
-	var recv, grp, conv sql.NullString
-	if err := db.c.QueryRow(`
-		SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at, type, status
+	err := db.c.QueryRow(`
+		SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
 		  FROM messages
 		 WHERE id = ?
-	`, messageID).Scan(&m.ID, &m.Content, &m.SenderID, &recv, &grp, &conv, &m.CreatedAt, &m.Type, &m.Status); err != nil {
+	`, messageID).Scan(
+		&m.ID,
+		&m.Content,
+		&m.SenderID,
+		&m.ReceiverID,
+		&m.GroupID,
+		&m.ConversationID,
+		&m.CreatedAt,
+	)
+	if err != nil {
 		return models.Message{}, err
 	}
-	m.ReceiverID = recv.String
-	m.GroupID = grp.String
-	m.ConversationID = conv.String
 	return m, nil
 }
 
-// GetMyConversations returns conversation summaries for a user (very simple).
-// Interface: AppDatabase.GetMyConversations(userID string) ([]models.Conversation, error)
-func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, error) {
-	rows, err := db.c.Query(`
-		SELECT c.id, c.name, c.avatar_url,
-		       COALESCE( (SELECT content
-		                  FROM messages m
-		                  WHERE m.conversation_id = c.id
-		                  ORDER BY created_at DESC LIMIT 1), '' ) AS last_message
-		  FROM conversations c
-		  JOIN conversation_members cm ON cm.conversation_id = c.id
-		 WHERE cm.user_id = ?
-		 ORDER BY c.name COLLATE NOCASE ASC
-	`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []models.Conversation
-	for rows.Next() {
-		var c models.Conversation
-		if err := rows.Scan(&c.ID, &c.Name, &c.AvatarUrl, &c.LastMessage); err != nil {
-			return nil, err
-		}
-		out = append(out, c)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// GetAllMessages returns all messages (for admin/tests).
-// Not required by the interface, but useful and used by some tooling.
 func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 	rows, err := db.c.Query(`
 		SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
 		  FROM messages
-		 ORDER BY created_at DESC
+		 ORDER BY created_at DESC, id DESC
 	`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []models.Message
+	out := make([]models.Message, 0, 256)
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.Content, &m.SenderID, &m.ReceiverID, &m.GroupID, &m.ConversationID, &m.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&m.ID,
+			&m.Content,
+			&m.SenderID,
+			&m.ReceiverID,
+			&m.GroupID,
+			&m.ConversationID,
+			&m.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
@@ -222,24 +281,47 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 	return out, nil
 }
 
-// GetMessageComments returns comments for a message if you keep them in separate table.
-// (If your schema keeps comments inline, feel free to adjust or return an empty slice.)
+//
+// ────────────────────────────────────────────────────────────────────────────────
+/*  COMMENTS (lazy table creation)  */
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
+func (db *appdbimpl) ensureCommentsTable() error {
+	_, err := db.c.Exec(`
+		CREATE TABLE IF NOT EXISTS message_comments (
+			id          TEXT PRIMARY KEY,
+			message_id  TEXT NOT NULL,
+			sender_id   TEXT NOT NULL,
+			content     TEXT NOT NULL,
+			created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(message_id) REFERENCES messages(id),
+			FOREIGN KEY(sender_id)  REFERENCES users(id)
+		)
+	`)
+	return err
+}
+
 func (db *appdbimpl) GetMessageComments(messageID string) ([]models.Message, error) {
+	if err := db.ensureCommentsTable(); err != nil {
+		return nil, err
+	}
+
 	rows, err := db.c.Query(`
-		SELECT id, content, sender_id, conversation_id, created_at
+		SELECT id, content, sender_id, created_at
 		  FROM message_comments
 		 WHERE message_id = ?
-		 ORDER BY created_at ASC
+		 ORDER BY created_at ASC, id ASC
 	`, messageID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []models.Message
+	out := make([]models.Message, 0, 16)
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.Content, &m.SenderID, &m.ConversationID, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.Content, &m.SenderID, &m.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
@@ -250,15 +332,10 @@ func (db *appdbimpl) GetMessageComments(messageID string) ([]models.Message, err
 	return out, nil
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   UPDATE / MISC
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// CommentMessage attaches a comment to a message (simple schema).
-// Interface: AppDatabase.CommentMessage(messageID, userID, comment string) error
 func (db *appdbimpl) CommentMessage(messageID, userID, comment string) error {
+	if err := db.ensureCommentsTable(); err != nil {
+		return err
+	}
 	_, err := db.c.Exec(`
 		INSERT INTO message_comments (id, message_id, sender_id, content, created_at)
 		VALUES (lower(hex(randomblob(16))), ?, ?, ?, datetime('now'))
@@ -266,46 +343,49 @@ func (db *appdbimpl) CommentMessage(messageID, userID, comment string) error {
 	return err
 }
 
-// UncommentMessage deletes the comment record (simple version).
-// Interface: AppDatabase.UncommentMessage(messageID string) error
 func (db *appdbimpl) UncommentMessage(messageID string) error {
+	if err := db.ensureCommentsTable(); err != nil {
+		return err
+	}
 	_, err := db.c.Exec(`DELETE FROM message_comments WHERE message_id = ?`, messageID)
 	return err
 }
 
-// ForwardMessage creates a copy of the original message to a new target.
-// Interface: AppDatabase.ForwardMessage(userID, messageID, toUserID, toGroupID string) error
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//   FORWARD / DELETE / OWNERSHIP
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
 func (db *appdbimpl) ForwardMessage(userID, messageID, toUserID, toGroupID string) error {
 	orig, err := db.GetMessageByID(messageID)
 	if err != nil {
 		return err
 	}
-	// Keep the same content/type; override sender and routing.
-	if toUserID != "" {
+
+	if strings.TrimSpace(toUserID) != "" {
 		_, err = db.c.Exec(`
-			INSERT INTO messages (id, content, sender_id, receiver_id, type, status, created_at)
-			VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?, 'sent', datetime('now'))
-		`, orig.Content, userID, toUserID, orig.Type)
+			INSERT INTO messages (id, content, sender_id, receiver_id, group_id, conversation_id, created_at)
+			VALUES (lower(hex(randomblob(16))), ?, ?, ?, NULL, NULL, datetime('now'))
+		`, orig.Content, userID, toUserID)
 		return err
 	}
-	if toGroupID != "" || orig.ConversationID != "" {
-		convID := orig.ConversationID
+
+	if strings.TrimSpace(toGroupID) != "" || strings.TrimSpace(orig.ConversationID) != "" {
+		convID := strings.TrimSpace(orig.ConversationID)
 		if convID == "" {
-			// When forwarding a legacy message to a group conversation we need the conversation id.
-			log.Printf("ForwardMessage: conversation_id empty for original message %s; forwarding to group requires a conv id", messageID)
 			return errors.New("conversation_id required to forward to group")
 		}
 		_, err = db.c.Exec(`
-			INSERT INTO messages (id, content, sender_id, conversation_id, type, status, created_at)
-			VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?, 'sent', datetime('now'))
-		`, orig.Content, userID, convID, orig.Type)
+			INSERT INTO messages (id, content, sender_id, receiver_id, group_id, conversation_id, created_at)
+			VALUES (lower(hex(randomblob(16))), ?, ?, NULL, NULL, ?, datetime('now'))
+		`, orig.Content, userID, convID)
 		return err
 	}
+
 	return errors.New("either toUserID or toGroupID must be provided")
 }
 
-// IsMessageOwner returns true if the message is authored by the given user.
-// Interface: AppDatabase.IsMessageOwner(userID, messageID string) (bool, error)
 func (db *appdbimpl) IsMessageOwner(userID, messageID string) (bool, error) {
 	var cnt int
 	if err := db.c.QueryRow(`
@@ -319,17 +399,141 @@ func (db *appdbimpl) IsMessageOwner(userID, messageID string) (bool, error) {
 	return cnt > 0, nil
 }
 
-// DeleteMessage removes a message (only owner can delete; owner check is done at API).
-// Interface: AppDatabase.DeleteMessage(userID, messageID string) error
 func (db *appdbimpl) DeleteMessage(userID, messageID string) error {
-	// Optional safety: double-check ownership here too.
-	owner, err := db.IsMessageOwner(userID, messageID)
+	ok, err := db.IsMessageOwner(userID, messageID)
 	if err != nil {
 		return err
 	}
-	if !owner {
+	if !ok {
 		return errors.New("not the owner of the message")
 	}
 	_, err = db.c.Exec(`DELETE FROM messages WHERE id = ?`, messageID)
 	return err
+}
+
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//   CONVERSATIONS LIST (used by GET /conversations)
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
+// GetMyConversations returns conversation summaries for a user.
+// 1) Try standard tables: conversations + conversation_members
+// 2) Fallback: aggregate from messages when (1) not available
+func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, error) {
+	type row struct {
+		id, name, avatar                          sql.NullString
+		lastID, lastContent, lastSender, lastConv sql.NullString
+		lastAt                                    sql.NullString
+	}
+
+	// --- Path 1: standard tables ---
+	rows, err := db.c.Query(`
+		SELECT
+			c.id,
+			c.name,
+			c.avatar_url,
+			(SELECT id         FROM messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC, id DESC LIMIT 1) AS last_id,
+			(SELECT content    FROM messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC, id DESC LIMIT 1) AS last_content,
+			(SELECT sender_id  FROM messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC, id DESC LIMIT 1) AS last_sender,
+			(SELECT conversation_id FROM messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC, id DESC LIMIT 1) AS last_conv,
+			(SELECT created_at FROM messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC, id DESC LIMIT 1) AS last_at
+		FROM conversations c
+		JOIN conversation_members cm ON cm.conversation_id = c.id
+		WHERE cm.user_id = ?
+		ORDER BY c.name COLLATE NOCASE ASC
+	`, userID)
+	if err == nil {
+		defer rows.Close()
+		var out []models.Conversation
+		for rows.Next() {
+			var rr row
+			if err := rows.Scan(&rr.id, &rr.name, &rr.avatar, &rr.lastID, &rr.lastContent, &rr.lastSender, &rr.lastConv, &rr.lastAt); err != nil {
+				return nil, err
+			}
+			c := models.Conversation{
+				ID:        strings.TrimSpace(rr.id.String),
+				Name:      strings.TrimSpace(rr.name.String),
+				AvatarUrl: strings.TrimSpace(rr.avatar.String),
+			}
+			if rr.lastID.Valid {
+				c.LastMessage = &models.Message{
+					ID:             strings.TrimSpace(rr.lastID.String),
+					Content:        strings.TrimSpace(rr.lastContent.String),
+					SenderID:       strings.TrimSpace(rr.lastSender.String),
+					ConversationID: strings.TrimSpace(rr.lastConv.String),
+					CreatedAt:      strings.TrimSpace(rr.lastAt.String),
+				}
+			}
+			out = append(out, c)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+
+	// --- Path 2: fallback — aggregate from messages table ---
+	msgRows, err2 := db.c.Query(`
+		SELECT conversation_id, id, content, sender_id, created_at
+		  FROM messages
+		 WHERE conversation_id IN (
+			 SELECT DISTINCT conversation_id
+			   FROM conversation_members
+			  WHERE user_id = ?
+		 )
+		 ORDER BY created_at DESC, id DESC
+	`, userID)
+	if err2 != nil {
+		// If both fail, return the first error (closer to root cause).
+		return nil, err
+	}
+	defer msgRows.Close()
+
+	type agg struct {
+		name, avatar string
+		last         *models.Message
+	}
+	m := make(map[string]*agg)
+
+	for msgRows.Next() {
+		var convID, mid, content, sender, createdAt sql.NullString
+		if scanErr := msgRows.Scan(&convID, &mid, &content, &sender, &createdAt); scanErr != nil {
+			return nil, scanErr
+		}
+		id := strings.TrimSpace(convID.String)
+		if id == "" {
+			continue
+		}
+		a := m[id]
+		if a == nil {
+			a = &agg{name: "Conversation", avatar: "", last: nil}
+			m[id] = a
+		}
+		// since ordered DESC, the first seen is the latest
+		if a.last == nil {
+			a.last = &models.Message{
+				ID:             strings.TrimSpace(mid.String),
+				Content:        strings.TrimSpace(content.String),
+				SenderID:       strings.TrimSpace(sender.String),
+				ConversationID: id,
+				CreatedAt:      strings.TrimSpace(createdAt.String),
+			}
+		}
+	}
+	if err := msgRows.Err(); err != nil {
+		return nil, err
+	}
+
+	out := make([]models.Conversation, 0, len(m))
+	for id, a := range m {
+		out = append(out, models.Conversation{
+			ID:          id,
+			Name:        a.name,
+			AvatarUrl:   a.avatar,
+			LastMessage: a.last,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name) })
+	return out, nil
 }
