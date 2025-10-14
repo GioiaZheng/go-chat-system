@@ -62,7 +62,9 @@ func detectContentType(f multipart.File) (string, error) {
 	}
 
 	// Best effort rewind. multipart.File typically supports Seek, but guard anyway.
-	type seeker interface{ Seek(offset int64, whence int) (int64, error) }
+	type seeker interface {
+		Seek(offset int64, whence int) (int64, error)
+	}
 	if sf, ok := f.(seeker); ok {
 		_, _ = sf.Seek(0, io.SeekStart)
 	}

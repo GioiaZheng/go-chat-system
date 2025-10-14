@@ -354,7 +354,7 @@ func (rt *_router) forwardMessage(
 
 	// Map to existing DB API: treat target conversation as a "group" sink.
 	// (If you have a real conversation->group lookup, add it here.)
-	if err := rt.db.ForwardMessage(userID, msgID, /*toUserID*/ "", /*toGroupID*/ req.ConversationID); err != nil {
+	if err := rt.db.ForwardMessage(userID, msgID /*toUserID*/, "" /*toGroupID*/, req.ConversationID); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to forward message")
 		return
 	}

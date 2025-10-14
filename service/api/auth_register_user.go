@@ -36,6 +36,7 @@ type registerResponse struct {
 // OpenAPI path:
 //   - Input:  { "username": string, "password": string, "name"?: string }
 //   - Output: 201 Created with { code, message, data: { user, token } }.
+//
 // Compatibility:
 //   - If "username" is empty but "name" is provided (legacy), we set username := name.
 //   - Token is an opaque string equal to user.ID (same as /session and auth middleware).

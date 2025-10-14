@@ -6,10 +6,10 @@ import "net/http"
 RegisterRoutes wires all HTTP endpoints to their handlers.
 
 This router is kept 1:1 aligned with the OpenAPI spec:
-- No global "/api" prefix.
-- No CORS preflight helper endpoint (the spec removed /cors).
-- Only the endpoints required by the assignment are exposed here.
-  (If you need dev-only helpers, put them in a separate file.)
+  - No global "/api" prefix.
+  - No CORS preflight helper endpoint (the spec removed /cors).
+  - Only the endpoints required by the assignment are exposed here.
+    (If you need dev-only helpers, put them in a separate file.)
 */
 func (rt *_router) RegisterRoutes() {
 	// -------------------- Public (no auth) --------------------

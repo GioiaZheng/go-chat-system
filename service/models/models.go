@@ -7,9 +7,9 @@ type User struct {
 	ID        string `json:"id"`
 	Username  string `json:"username"`
 	Name      string `json:"name,omitempty"`
-	Password  string `json:"-"`                     // internal only, never exposed
-	AvatarUrl string `json:"avatarUri,omitempty"`   // exposed as avatarUri
-	Photo     string `json:"-"`                     // internal file path, never exposed
+	Password  string `json:"-"`                   // internal only, never exposed
+	AvatarUrl string `json:"avatarUri,omitempty"` // exposed as avatarUri
+	Photo     string `json:"-"`                   // internal file path, never exposed
 }
 
 // --- Group ---
@@ -29,8 +29,8 @@ type Group struct {
 type GroupMember struct {
 	UserID    string `json:"userId"`
 	UserName  string `json:"username"`
-	Role      string `json:"role,omitempty"`       // "admin" | "member"
-	AvatarUrl string `json:"avatarUri,omitempty"`  // convenience
+	Role      string `json:"role,omitempty"`      // "admin" | "member"
+	AvatarUrl string `json:"avatarUri,omitempty"` // convenience
 }
 
 // --- Message ---

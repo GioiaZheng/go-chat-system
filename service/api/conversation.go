@@ -11,8 +11,8 @@ import (
 // StartConversationRequest accepts both the OpenAPI field (memberIds)
 // and a legacy snake_case field (member_ids) for backward compatibility.
 type StartConversationRequest struct {
-	MemberIDs       []string `json:"memberIds,omitempty"`   // OpenAPI (camelCase)
-	LegacyMemberIDs []string `json:"member_ids,omitempty"`  // legacy (snake_case)
+	MemberIDs       []string `json:"memberIds,omitempty"`  // OpenAPI (camelCase)
+	LegacyMemberIDs []string `json:"member_ids,omitempty"` // legacy (snake_case)
 	Name            string   `json:"name,omitempty"`
 }
 

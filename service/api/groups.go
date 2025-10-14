@@ -33,11 +33,11 @@ type CreateGroupRequest struct {
 // createGroup creates a new group and adds the caller as a member.
 //
 // Flow:
-//  1) Auth check via ctx.UserID (injected by rt.wrap).
-//  2) Parse request body and normalize member IDs (dedupe, trim).
-//  3) Ensure creator is included.
-//  4) Persist the group and the membership.
-//  5) Read back the complete group (with members) and return GroupEnvelope.
+//  1. Auth check via ctx.UserID (injected by rt.wrap).
+//  2. Parse request body and normalize member IDs (dedupe, trim).
+//  3. Ensure creator is included.
+//  4. Persist the group and the membership.
+//  5. Read back the complete group (with members) and return GroupEnvelope.
 func (rt *_router) createGroup(
 	w http.ResponseWriter,
 	r *http.Request,

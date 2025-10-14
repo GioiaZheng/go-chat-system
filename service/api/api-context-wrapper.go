@@ -31,11 +31,11 @@ type httpRouterHandler func(http.ResponseWriter, *http.Request, httprouter.Param
 // 3) Build a RequestContext (logger + user identity) for downstream use.
 //
 // Authentication model used in this assignment:
-// - Login/Register issue an "opaque token" equal to the user ID.
-// - For convenience and to match the assignment scripts / existing clients,
-//   both "Authorization: Bearer <token>" and a bare "<token>" are accepted.
-// - We treat "<token>" directly as the user ID to avoid a second lookup.
-//   (If you prefer, enable the optional DB existence check below.)
+//   - Login/Register issue an "opaque token" equal to the user ID.
+//   - For convenience and to match the assignment scripts / existing clients,
+//     both "Authorization: Bearer <token>" and a bare "<token>" are accepted.
+//   - We treat "<token>" directly as the user ID to avoid a second lookup.
+//     (If you prefer, enable the optional DB existence check below.)
 func (rt *_router) wrap(fn httpRouterHandler) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		reqUUID, err := uuid.NewV4()
@@ -81,8 +81,8 @@ func (rt *_router) wrap(fn httpRouterHandler) func(http.ResponseWriter, *http.Re
 
 // extractTokenFromHeader extracts the auth token from the "Authorization" header.
 // Accepted formats:
-//   1) "Authorization: Bearer <token>"
-//   2) "Authorization: <token>" (bare token, kept for assignment/client compatibility)
+//  1. "Authorization: Bearer <token>"
+//  2. "Authorization: <token>" (bare token, kept for assignment/client compatibility)
 func extractTokenFromHeader(r *http.Request) (string, error) {
 	raw := strings.TrimSpace(r.Header.Get("Authorization"))
 	if raw == "" {
