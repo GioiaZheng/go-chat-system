@@ -69,7 +69,7 @@ func (db *appdbimpl) SendGroupMessage(message models.Message) error {
 // GetMessagesByConversation returns messages for a conversation with cursor pagination.
 // - when before != "", return items with created_at < before (newer -> older)
 // - when after  != "", return items with created_at > after  (older -> newer)
-// If both are given，以 before 优先。
+// If both are given, before takes precedence.
 func (db *appdbimpl) GetMessagesByConversation(
 	convID, before, after string, limit int,
 ) ([]models.Message, error) {
@@ -80,14 +80,14 @@ func (db *appdbimpl) GetMessagesByConversation(
 	before = strings.TrimSpace(before)
 	after = strings.TrimSpace(after)
 
-	// 基础 WHERE
+	// Base WHERE
 	qb := `
         SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
         FROM messages
         WHERE conversation_id = ?`
 	args := []interface{}{convID}
 
-	// 游标条件（严格不含边界，避免重复）
+	// Cursor predicates (exclusive)
 	if before != "" {
 		qb += ` AND created_at < ?`
 		args = append(args, before)
@@ -96,7 +96,7 @@ func (db *appdbimpl) GetMessagesByConversation(
 		args = append(args, after)
 	}
 
-	// 稳定排序：时间降序，id 降序（同秒并发也稳定）
+	// Stable order: created_at DESC, id DESC
 	qb += ` ORDER BY created_at DESC, id DESC LIMIT ?`
 	args = append(args, limit)
 
@@ -106,7 +106,7 @@ func (db *appdbimpl) GetMessagesByConversation(
 	}
 	defer rows.Close()
 
-	// 注意 receiver_id / group_id 可能为 NULL，用 sql.NullString 扫描再取 .String
+	// receiver_id / group_id / conversation_id can be NULL -> scan via sql.NullString
 	out := make([]models.Message, 0, limit)
 	for rows.Next() {
 		var m models.Message
@@ -209,8 +209,11 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 	return out, nil
 }
 
+// GetMessageByID with NULL-safe scanning (fixes 404 on NULL columns)
 func (db *appdbimpl) GetMessageByID(messageID string) (models.Message, error) {
 	var m models.Message
+	var recv, grp, conv sql.NullString
+
 	err := db.c.QueryRow(`
 		SELECT id, content, sender_id, receiver_id, group_id, conversation_id, created_at
 		  FROM messages
@@ -219,14 +222,17 @@ func (db *appdbimpl) GetMessageByID(messageID string) (models.Message, error) {
 		&m.ID,
 		&m.Content,
 		&m.SenderID,
-		&m.ReceiverID,
-		&m.GroupID,
-		&m.ConversationID,
+		&recv,
+		&grp,
+		&conv,
 		&m.CreatedAt,
 	)
 	if err != nil {
 		return models.Message{}, err
 	}
+	m.ReceiverID = recv.String
+	m.GroupID = grp.String
+	m.ConversationID = conv.String
 	return m, nil
 }
 
@@ -244,17 +250,21 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 	out := make([]models.Message, 0, 256)
 	for rows.Next() {
 		var m models.Message
+		var recv, grp, conv sql.NullString
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
 			&m.SenderID,
-			&m.ReceiverID,
-			&m.GroupID,
-			&m.ConversationID,
+			&recv,
+			&grp,
+			&conv,
 			&m.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
+		m.ReceiverID = recv.String
+		m.GroupID = grp.String
+		m.ConversationID = conv.String
 		out = append(out, m)
 	}
 	if err := rows.Err(); err != nil {
@@ -339,12 +349,14 @@ func (db *appdbimpl) UncommentMessage(messageID string) error {
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
+// ForwardMessage now prefers toGroupID (target conversationId) and falls back to original.
 func (db *appdbimpl) ForwardMessage(userID, messageID, toUserID, toGroupID string) error {
 	orig, err := db.GetMessageByID(messageID)
 	if err != nil {
 		return err
 	}
 
+	// private forwarding
 	if strings.TrimSpace(toUserID) != "" {
 		_, err = db.c.Exec(`
 			INSERT INTO messages (id, content, sender_id, receiver_id, group_id, conversation_id, created_at)
@@ -353,19 +365,20 @@ func (db *appdbimpl) ForwardMessage(userID, messageID, toUserID, toGroupID strin
 		return err
 	}
 
-	if strings.TrimSpace(toGroupID) != "" || strings.TrimSpace(orig.ConversationID) != "" {
-		convID := strings.TrimSpace(orig.ConversationID)
-		if convID == "" {
-			return errors.New("conversation_id required to forward to group")
-		}
-		_, err = db.c.Exec(`
-			INSERT INTO messages (id, content, sender_id, receiver_id, group_id, conversation_id, created_at)
-			VALUES (lower(hex(randomblob(16))), ?, ?, NULL, NULL, ?, datetime('now'))
-		`, orig.Content, userID, convID)
-		return err
+	// conversation forwarding
+	convID := strings.TrimSpace(toGroupID)
+	if convID == "" {
+		convID = strings.TrimSpace(orig.ConversationID)
+	}
+	if convID == "" {
+		return errors.New("conversation_id required to forward to group")
 	}
 
-	return errors.New("either toUserID or toGroupID must be provided")
+	_, err = db.c.Exec(`
+		INSERT INTO messages (id, content, sender_id, receiver_id, group_id, conversation_id, created_at)
+		VALUES (lower(hex(randomblob(16))), ?, ?, NULL, NULL, ?, datetime('now'))
+	`, orig.Content, userID, convID)
+	return err
 }
 
 func (db *appdbimpl) IsMessageOwner(userID, messageID string) (bool, error) {
@@ -409,7 +422,7 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 		lastAt                                    sql.NullString
 	}
 
-	// --- Path 1: standard tables ---
+	// Path 1: standard tables
 	rows, err := db.c.Query(`
 		SELECT
 			c.id,
@@ -455,7 +468,7 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 		return out, nil
 	}
 
-	// --- Path 2: fallback — aggregate from messages table ---
+	// Path 2: fallback — aggregate from messages table (uses membership filter)
 	msgRows, err2 := db.c.Query(`
 		SELECT conversation_id, id, content, sender_id, created_at
 		  FROM messages
@@ -492,7 +505,7 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 			a = &agg{name: "Conversation", avatar: "", last: nil}
 			m[id] = a
 		}
-		// since ordered DESC, the first seen is the latest
+		// first seen is the latest because of DESC order
 		if a.last == nil {
 			a.last = &models.Message{
 				ID:             strings.TrimSpace(mid.String),
