@@ -1,86 +1,67 @@
-# --- Runtime data ---
-data/
-uploads/users/
-
-# --- Databases ---
-*.db
-*.db.bak.*
-
-# --- Logs / temp files ---
-*.log
-*.out
-*.tmp
-vet.log
-npm-debug.log*
-yarn-error.log*
-.eslintcache
-
-# --- OS junk ---
-.DS_Store
-Thumbs.db
-
-# --- Local junk / mis-added files ---
-SELECT
-Using
-test.png
-restart_webapi.sh
-open-node.sh
-
-# --- Go build artifacts ---
-/webapi
-/cmd/webapi/webapi
-/bin/
-/build/
-/dist-webapi/
+# ────────────────────────────────
+# Go 编译 & 缓存文件
+# ────────────────────────────────
+bin/
+build/
 *.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.log
 
-# --- Frontend build (Vite / Vue) ---
-/webui/dist/
-# 仅忽略根目录 dist，避免误伤子项目
-/dist/
-# Vite 缓存（选其一，推荐更精确的第一行）
-/webui/.vite/
-# 或者：**/.vite/
-**/*.local
-
-# --- Node / Yarn ---
-**/node_modules/
-**/package-lock.json
-**/.pnp.*
-**/.yarn/cache/
-**/.yarn/unplugged/
-**/.yarn/build-state.yml
-**/.yarn/install-state.gz
-
-# --- Docker build noise (layer IDs accidentally committed) ---
-/*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
-
-# --- Common caches / coverage ---
-.turbo/
-.cache/
-coverage*/
-coverage.out
-
-# --- Data folders (keep sentinels) ---
-**/data/
-!**/data/.keep
-
-# --- Env files ---
-.env
-.env.*
-
-# webui 本地/构建
-/webui/dist/
-webui/.vite/
-/webui/data/
-webui/*.local
-/webui/node_modules/
-webui/.yarn/cache/
-webui/.yarn/unplugged/
-webui/.yarn/build-state.yml
-webui/.yarn/install-state.gz
-
-# IDE
-.vscode/
+# Go 模块缓存
+/go.sum
+/vendor/
 .idea/
-*.iml
+.vscode/
+
+# ────────────────────────────────
+# SQLite 数据库 / 临时数据
+# ────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+dev.sqlite
+
+# ────────────────────────────────
+# 前端 (Vue / Yarn / Node)
+# ────────────────────────────────
+node_modules/
+dist/
+webui/node_modules/
+webui/.yarn/
+webui/.pnp.*
+webui/.pnp.js
+webui/.pnp.cjs
+webui/.turbo/
+webui/.vite/
+webui/.cache/
+webui/yarn.lock
+webui/pnpm-lock.yaml
+
+# 构建产物（如 Docker 构建中间产物）
+tmp/
+.DS_Store
+*.env
+.env.local
+.env.*
+__pycache__/
+*.swp
+*.swo
+
+# ────────────────────────────────
+# 日志、备份、系统文件
+# ────────────────────────────────
+*.bak
+*.tmp
+*.old
+*.swp
+*.swo
+*.log
+*.pid
+*.seed
+*.orig
+*~
