@@ -1,67 +1,35 @@
-# ────────────────────────────────
-# Go 编译 & 缓存文件
-# ────────────────────────────────
+# Backend build
 bin/
-build/
 *.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
 *.out
 *.log
 
-# Go 模块缓存
-/go.sum
-/vendor/
-.idea/
-.vscode/
-
-# ────────────────────────────────
-# SQLite 数据库 / 临时数据
-# ────────────────────────────────
+# SQLite databases
 *.db
 *.sqlite
-*.sqlite3
-dev.sqlite
 
-# ────────────────────────────────
-# 前端 (Vue / Yarn / Node)
-# ────────────────────────────────
-node_modules/
-dist/
-webui/node_modules/
-webui/.yarn/
-webui/.pnp.*
-webui/.pnp.js
-webui/.pnp.cjs
-webui/.turbo/
-webui/.vite/
-webui/.cache/
-webui/yarn.lock
-webui/pnpm-lock.yaml
+# Uploads
+uploads/*
+!uploads/.gitkeep
 
-# 构建产物（如 Docker 构建中间产物）
+# Temp & cache
 tmp/
-.DS_Store
-*.env
-.env.local
-.env.*
-__pycache__/
-*.swp
-*.swo
-
-# ────────────────────────────────
-# 日志、备份、系统文件
-# ────────────────────────────────
-*.bak
 *.tmp
-*.old
+*.bak
 *.swp
-*.swo
-*.log
-*.pid
-*.seed
-*.orig
-*~
+
+# Node stuff (if any root JS)
+node_modules/
+
+# Frontend build
+webui/dist/
+webui/node_modules/
+webui/.vite/
+webui/.yarn/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Env
+.env
