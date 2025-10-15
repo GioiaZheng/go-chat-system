@@ -19,12 +19,17 @@
           v-for="c in conversations"
           :key="c.id || c.conversation_id"
           class="item"
+          role="button"
+          @click="open(c)"
         >
           <div class="name">
             {{ c.name || 'Conversation' }}
+            <div v-if="c.lastMessage?.content" class="last">
+              {{ c.lastMessage.content }}
+            </div>
           </div>
           <div class="meta">
-            {{ (c.updated_at || '').toString().slice(0, 19) }}
+            {{ displayTime(c) }}
           </div>
         </article>
       </div>
@@ -36,7 +41,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '../components/ErrorMsg.vue'
-import { getMyConversations } from '../services/api'
+import api, { getMyConversations } from '../services/api'
 
 const router = useRouter()
 const me = ref(localStorage.getItem('name') || 'user')
@@ -45,20 +50,29 @@ const loading = ref(false)
 const err = ref('')
 let timer = null
 
-function hasToken () {
-  return !!localStorage.getItem('token')
+const hasToken = () =>
+  !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+
+function normalizeList(raw) {
+  const arr = Array.isArray(raw) ? raw : (raw?.items ?? [])
+  // 轻量归一化：确保存在 id/name/lastMessage
+  return arr.map(x => ({
+    id: x.id ?? x.conversation_id ?? x.cid ?? x._id,
+    name: x.name ?? x.title ?? 'Conversation',
+    avatarUri: x.avatarUri ?? x.avatar_url ?? x.photo ?? null,
+    lastMessage: x.lastMessage ?? x.last_message ?? null,
+    updated_at: x.updated_at ?? x.updatedAt ?? null,
+  })).filter(x => !!x.id)
 }
 
 async function load () {
-  if (!hasToken()) {
-    router.replace('/login'); return
-  }
+  if (!hasToken()) { router.replace('/login'); return }
   if (loading.value) return
   loading.value = true
   err.value = ''
   try {
-    const data = await getMyConversations()
-    conversations.value = Array.isArray(data) ? data : (data?.items || [])
+    const data = await getMyConversations() // 兼容 api 默认导出 & 命名导出
+    conversations.value = normalizeList(data)
   } catch (e) {
     err.value = e?.response?.data?.error || e?.message || 'Failed to load'
   } finally {
@@ -66,13 +80,34 @@ async function load () {
   }
 }
 
+function displayTime(c) {
+  const t = c.lastMessage?.createdAt || c.updated_at
+  if (!t) return ''
+  const d = new Date(t)
+  // 防止无效日期
+  return isNaN(d.getTime()) ? String(t).slice(0, 19) : d.toLocaleString()
+}
+
+function open(c) {
+  router.push({ name: 'chat', params: { type: 'conv', id: c.id } })
+}
+
+function onVisibilityChange () {
+  if (document.visibilityState === 'visible') load()
+}
+
 onMounted(() => {
   if (!hasToken()) { router.replace('/login'); return }
   load()
-  timer = setInterval(load, 5000) // 5s auto refresh
+  // 5s 轮询（简单可靠）
+  timer = setInterval(load, 5000)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
-onUnmounted(() => { if (timer) clearInterval(timer) })
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
 </script>
 
 <style scoped>
@@ -119,6 +154,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   margin-bottom:10px;
   box-shadow: 0 4px 14px rgba(2,6,23,.06);
 }
+.item:hover { background:#fbfeff; border-color:#dbeafe; cursor:pointer; }
 .name{ font-weight:600; color:#0f172a }
-.meta{ color:#64748b; font-size:.9rem }
+.name .last{ font-weight: 400; color:#60708b; font-size: 13px; margin-top: 4px; }
+.meta{ color:#64748b; font-size:.9rem; white-space:nowrap; }
 </style>

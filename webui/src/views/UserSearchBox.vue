@@ -33,7 +33,7 @@
             id: {{ u.id }}
           </div>
         </div>
-        <button class="text-blue-600 hover:underline" @click="$emit('select', u)">
+        <button class="text-blue-600 hover:underline" @click="emit('select', u)">
           Select
         </button>
       </li>
@@ -48,35 +48,21 @@
 
 <script setup>
 // English-only UI & comments.
-// This component uses axios directly and injects Authorization header per call.
-// It unwraps both {code,data} and plain payloads, and emits 'error' upward on failures.
+// This component now uses your api.js (searchUsers) and emits 'select' / 'error' upward.
 
 import { ref } from 'vue'
-import axios from '../services/axios'
+import api, { searchUsers as apiSearchUsers } from '@/services/api'
 
 const props = defineProps({
-  placeholder: { type: String, default: 'Search users…' }
+  placeholder: { type: String, default: 'Search users…' },
 })
-defineEmits(['select', 'error'])
+const emit = defineEmits(['select', 'error']) // <-- capture emit
 
 const q = ref('')
 const items = ref([])
 const loading = ref(false)
 const err = ref('')
 const queried = ref(false)
-
-/** Attach Authorization header (token saved at login). */
-function getAuthHeaders() {
-  const token = localStorage.getItem('token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-/** Unwrap both { code, data } and plain payloads. */
-function unwrap(res) {
-  const d = res?.data
-  if (d && typeof d === 'object' && 'data' in d) return d.data
-  return d
-}
 
 async function search() {
   err.value = ''
@@ -88,31 +74,20 @@ async function search() {
 
   loading.value = true
   try {
-    // Backend route: GET /users/search?q=...
-    const res = await axios.get('/users/search', {
-      params: { q: query },
-      headers: { ...getAuthHeaders() }
-    })
-    const payload = unwrap(res)
-
+    // Backend route via your api.js: GET /users/search?q=...
+    const payload = await apiSearchUsers(query)
     // Accept multiple shapes: { items: [...] } or direct array
     items.value = payload?.items || (Array.isArray(payload) ? payload : [])
   } catch (e) {
-    // Normalize error; also emit upward for parent UIs (e.g., toast)
+    // Normalize error and bubble up
     err.value =
       e?.response?.data?.message ||
       e?.message ||
       'Failed to search users'
-    // Optional: special hint on 401
     if (e?.response?.status === 401) {
       err.value = 'Unauthorized. Please login again.'
     }
-    // Let parent optionally react (show toast / redirect)
-    // Do not block UI if parent has no listener.
-    // eslint-disable-next-line vue/require-explicit-emits
-    // (we declared 'error' in defineEmits above)
-    // @ts-ignore
-    emit?.('error', err.value)
+    emit('error', err.value)
   } finally {
     loading.value = false
   }

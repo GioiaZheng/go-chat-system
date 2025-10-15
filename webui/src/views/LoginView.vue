@@ -45,11 +45,13 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import ErrorMsg from '../components/ErrorMsg.vue'
-import { doLogin } from '../services/api'
+import api from '../services/api' // ✅ 保留你自己的 api.js（默认导出里含 doLogin）
 
 const router = useRouter()
+const route = useRoute()
+
 const name = ref('')
 const err = ref('')
 const busy = ref(false)
@@ -58,8 +60,11 @@ onMounted(() => {
   // 页面级：把 body 改成浅色背景
   document.body.classList.add('theme-light-login')
 
-  const token = localStorage.getItem('token')
-  if (token) router.replace('/conversations')
+  // ✅ 若已登录（兼容同学的 sessionStorage + 你自己的 localStorage）
+  const authed = !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+  if (authed) {
+    router.replace('/conversations')
+  }
 })
 
 onUnmounted(() => {
@@ -71,10 +76,15 @@ async function login () {
   if (!name.value) return
   busy.value = true
   try {
-    const token = await doLogin(name.value)
+    // ✅ 使用你自己的 api.doLogin（内部已写入 token 与 authToken）
+    await api.doLogin(name.value)
+
+    // 仅保存显示用途（可选）
     localStorage.setItem('name', name.value || '')
-    localStorage.setItem('token', token)
-    router.replace('/conversations')
+
+    // 支持回跳 ?redirect=/xxx
+    const next = (route.query.redirect && String(route.query.redirect)) || '/conversations'
+    router.replace(next)
   } catch (e) {
     err.value = e?.response?.data?.error || e?.message || 'Login failed'
   } finally {

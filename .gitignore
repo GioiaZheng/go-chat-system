@@ -33,3 +33,14 @@ Thumbs.db
 
 # Env
 .env
+
+# Yarn PnP artifacts
+webui/.pnp.cjs
+webui/.pnp.loader.mjs
+webui/.yarn/cache/
+webui/.yarn/unplugged/
+webui/.yarn/build-state.yml
+webui/.yarn/install-state.gz
+
+# Vite cache
+webui/node_modules/.cache/

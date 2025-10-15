@@ -37,9 +37,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from '../services/axios'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorMsg from '../components/ErrorMsg.vue'
+import api, { getGroupsList, createGroup as apiCreateGroup } from '../services/api' // ✅ 用你自家的 api.js
 
 const router = useRouter()
 const groups = ref([])
@@ -49,22 +49,25 @@ const err = ref('')
 const groupName = ref('')
 const memberIdsRaw = ref('')
 
-function auth() {
-  const t = localStorage.getItem('token')
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
-function unwrap(res){ const d=res?.data; return (d && typeof d==='object' && 'data' in d) ? d.data : d }
+const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 
-onMounted(load)
+function normalize(list) {
+  const arr = Array.isArray(list) ? list : (list?.items ?? list?.groups ?? [])
+  return (arr || []).map(g => ({
+    id: g.id ?? g.group_id ?? g._id,
+    name: g.name ?? g.title ?? '',
+    conversation_id: g.conversation_id ?? g.conversationId ?? g.cid ?? null,
+  })).filter(g => !!g.id)
+}
 
 async function load () {
+  if (!authed()) { router.replace('/login'); return }
   loading.value = true; err.value = ''; groups.value = []
   try {
-    const res = await axios.get('/groups', { headers: auth() })
-    const payload = unwrap(res)
-    groups.value = payload?.items || payload?.groups || (Array.isArray(payload) ? payload : []) || []
+    const data = await getGroupsList()
+    groups.value = normalize(data)
   } catch (e) {
-    if (e?.response?.status === 401) { err.value='Unauthorized. Please login again.'; router.push('/login') }
+    if (e?.response?.status === 401) { err.value = 'Unauthorized. Please login again.'; router.push('/login') }
     else { err.value = e?.response?.data?.message || e?.message || 'Failed to load groups' }
   } finally {
     loading.value = false
@@ -74,16 +77,23 @@ async function load () {
 async function createGroup () {
   err.value = ''
   const members = memberIdsRaw.value.split(',').map(s => s.trim()).filter(Boolean)
-  if (!groupName.value || members.length === 0) { err.value = 'Group name and member list are required.'; return }
+  if (!groupName.value || members.length === 0) {
+    err.value = 'Group name and member list are required.'; return
+  }
   loading.value = true
   try {
-    await axios.post('/groups', { name: groupName.value, members, member_ids: members }, { headers: auth() })
-    await load(); groupName.value=''; memberIdsRaw.value=''
+    // ✅ 你自家 api：createGroup({ name, members })
+    await apiCreateGroup({ name: groupName.value, members })
+    await load()
+    groupName.value = ''
+    memberIdsRaw.value = ''
   } catch (e) {
     if (e?.response?.status === 401) { err.value='Unauthorized. Please login again.'; router.push('/login') }
     else { err.value = e?.response?.data?.message || e?.message || 'Failed to create group' }
   } finally { loading.value = false }
 }
+
+onMounted(load)
 </script>
 
 <style scoped>

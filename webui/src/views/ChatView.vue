@@ -1,26 +1,24 @@
 <template>
   <div class="wrap">
     <div class="bar">
-      <h2 class="h5">Chat <small>({{ type }} / {{ id }})</small></h2>
+      <h2 class="h5">
+        Chat <small>({{ type }} / {{ id }})</small>
+      </h2>
       <RouterLink class="link" to="/conversations">Back</RouterLink>
     </div>
 
     <ErrorMsg v-if="err" :text="err" class="mb-2" />
 
     <section class="panel">
-      <div ref="scrollbox" class="scroll">
-        <LoadingSpinner v-if="loading" />
-        <div
-          v-for="m in messages"
-          :key="m.id"
-          class="msg"
-          :class="{ mine: m.sender_id === meId }"
-        >
-          <div class="bubble" :class="{ mine: m.sender_id === meId }">
+      <div ref="scrollbox" class="scroll" @scroll.passive="onScroll">
+        <LoadingSpinner v-if="loading && messages.length === 0" />
+        <div v-for="m in messages" :key="m.id" class="msg" :class="{ mine: (m.senderId || m.sender_id) === meId }">
+          <div class="bubble" :class="{ mine: (m.senderId || m.sender_id) === meId }">
             {{ m.content }}
           </div>
           <div class="meta">{{ formatMeta(m) }}</div>
         </div>
+        <LoadingSpinner v-if="loadingMore" small />
       </div>
 
       <div class="composer">
@@ -31,7 +29,9 @@
           rows="1"
           @keyup.enter.exact.prevent="onSend"
         ></textarea>
-        <button class="btn" :disabled="!draft.trim()" @click="onSend">Send</button>
+        <button class="btn" :disabled="!draft.trim() || sending" @click="onSend">
+          {{ sending ? 'Sending…' : 'Send' }}
+        </button>
       </div>
     </section>
   </div>
@@ -40,59 +40,72 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from '../services/axios'
 import ErrorMsg from '../components/ErrorMsg.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import api, { startConversation, getMessages, sendMessage } from '../services/api'
 
 const route = useRoute()
 const router = useRouter()
-const type = computed(() => route.params.type) // conv | private | group
+const type = computed(() => route.params.type)
 const id = computed(() => route.params.id)
 
 const messages = ref([])
 const loading = ref(false)
+const loadingMore = ref(false)
+const sending = ref(false)
 const err = ref('')
 const draft = ref('')
 const scrollbox = ref(null)
+const beforeCursor = ref(null)
 
 const meId = ref('')
 try { meId.value = JSON.parse(localStorage.getItem('me') || '{}')?.id || '' } catch {}
 
-function authHeaders () {
-  const t = localStorage.getItem('token')
-  return t ? { Authorization: `Bearer ${t}` } : {}
+const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+const conversationId = ref(null)
+
+/** 格式化消息元信息 */
+function formatMeta(m) {
+  const who = String(m.senderId ?? m.sender_id ?? '').slice(0, 8)
+  const created = m.createdAt ?? m.created_at ?? ''
+  const d = new Date(created)
+  const when = isNaN(d.getTime()) ? String(created).slice(0, 19) : d.toLocaleString()
+  return `${who} · ${when}`
 }
 
-watch([type, id], load, { immediate: true })
-
-function formatMeta(m){
-  return `${(m.sender_id || '').slice(0,8)} · ${m.created_at || ''}`
+async function resolveConversationId() {
+  if (type.value === 'conv') {
+    conversationId.value = String(id.value)
+    return
+  }
+  if (type.value === 'private') {
+    const res = await startConversation({ user_id: String(id.value) })
+    conversationId.value =
+      res?.conversationId ?? res?.id ?? res?.conversation_id ?? res?.cid ?? String(res)
+    return
+  }
+  if (type.value === 'group') {
+    const res = await startConversation({ group_id: String(id.value) })
+    conversationId.value =
+      res?.conversationId ?? res?.id ?? res?.conversation_id ?? res?.cid ?? String(res)
+    return
+  }
+  throw new Error('Unknown chat type')
 }
 
-async function load(){
-  if (!localStorage.getItem('token')) { router.replace('/login'); return }
-  loading.value = true; err.value = ''; messages.value = []
+/** 首次加载或刷新 */
+async function load() {
+  if (!authed()) { router.replace('/login'); return }
+  loading.value = true
+  err.value = ''
   try {
-    if (type.value === 'conv') {
-      const res = await axios.get('/messages', {
-        params: { conversation_id: id.value },
-        headers: authHeaders()
-      })
-      messages.value = res.data?.data?.messages || res.data?.messages || []
-    } else if (type.value === 'private') {
-      const res = await axios.get('/messages', {
-        params: { chat_type: 'private', target_id: id.value },
-        headers: authHeaders()
-      })
-      messages.value = res.data?.data?.messages || res.data?.messages || []
-    } else if (type.value === 'group') {
-      const res = await axios.get('/messages', {
-        params: { chat_type: 'group', target_id: id.value },
-        headers: authHeaders()
-      })
-      messages.value = res.data?.data?.messages || res.data?.messages || []
-    } else {
-      err.value = 'Unknown chat type'
+    await resolveConversationId()
+    const data = await getMessages({ conversationId: conversationId.value, limit: 20 })
+    const msgs = Array.isArray(data) ? data : (data?.messages ?? [])
+    messages.value = msgs
+    // 更新 beforeCursor 为最早消息的时间
+    if (msgs.length > 0) {
+      beforeCursor.value = msgs[0].createdAt ?? msgs[0].created_at
     }
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to load messages'
@@ -103,32 +116,86 @@ async function load(){
   }
 }
 
-async function onSend(){
-  const text = draft.value.trim()
-  if (!text) return
+/** 加载更早的历史记录 */
+async function loadMore() {
+  if (loadingMore.value || !beforeCursor.value) return
+  loadingMore.value = true
   try {
-    if (type.value === 'conv') {
-      await axios.post('/messages',
-        { conversation_id: id.value, content: text },
-        { headers: authHeaders() }
-      )
-    } else if (type.value === 'private') {
-      await axios.post('/messages',
-        { chat_type: 'private', target_id: id.value, content: text },
-        { headers: authHeaders() }
-      )
-    } else if (type.value === 'group') {
-      await axios.post('/messages',
-        { chat_type: 'group', target_id: id.value, content: text },
-        { headers: authHeaders() }
-      )
+    const data = await getMessages({
+      conversationId: conversationId.value,
+      limit: 20,
+      beforeCursor: beforeCursor.value,
+    })
+    const older = Array.isArray(data) ? data : (data?.messages ?? [])
+    if (older.length > 0) {
+      beforeCursor.value = older[0].createdAt ?? older[0].created_at
+      messages.value = [...older, ...messages.value]
+      await nextTick()
+      // 维持滚动位置（防止跳动）
+      if (scrollbox.value) {
+        const prevHeight = scrollbox.value.scrollHeight
+        scrollbox.value.scrollTop = scrollbox.value.scrollHeight - prevHeight + 10
+      }
     }
-    draft.value = ''
-    await load()
   } catch (e) {
-    err.value = e?.response?.data?.message || e?.message || 'Failed to send message'
+    console.error('Load more failed:', e)
+  } finally {
+    loadingMore.value = false
   }
 }
+
+/** 发送消息（乐观插入） */
+async function onSend() {
+  const text = draft.value.trim()
+  if (!text || sending.value) return
+  if (!authed()) { router.replace('/login'); return }
+
+  try {
+    if (!conversationId.value) await resolveConversationId()
+    sending.value = true
+    const tempId = `tmp_${Date.now()}_${Math.random().toString(16).slice(2)}`
+    const optimistic = {
+      id: tempId,
+      content: text,
+      senderId: meId.value,
+      createdAt: new Date().toISOString(),
+    }
+    messages.value = [...messages.value, optimistic]
+    draft.value = ''
+    await nextTick()
+    if (scrollbox.value) scrollbox.value.scrollTop = scrollbox.value.scrollHeight
+
+    const res = await sendMessage({
+      conversationId: conversationId.value,
+      content: text,
+      type: 'text',
+      status: 'sent',
+    })
+    const real = res?.resource ?? res
+    if (real && real.id) {
+      messages.value = messages.value.map(m => m.id === tempId ? real : m)
+    } else {
+      await load()
+    }
+  } catch (e) {
+    messages.value = messages.value.filter(m => !String(m.id).startsWith('tmp_'))
+    err.value = e?.response?.data?.message || e?.message || 'Failed to send message'
+  } finally {
+    sending.value = false
+    await nextTick()
+    if (scrollbox.value) scrollbox.value.scrollTop = scrollbox.value.scrollHeight
+  }
+}
+
+/** 滚动事件：接近顶部加载更多 */
+function onScroll() {
+  if (!scrollbox.value) return
+  if (scrollbox.value.scrollTop < 50 && !loadingMore.value) {
+    loadMore()
+  }
+}
+
+watch([type, id], load, { immediate: true })
 </script>
 
 <style scoped>

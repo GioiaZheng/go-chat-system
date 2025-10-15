@@ -13,8 +13,8 @@
       <section v-if="me" class="card">
         <div class="head">
           <img
-            v-if="me.photo_url"
-            :src="me.photo_url"
+            v-if="me.photo_url || me.avatarUri"
+            :src="me.photo_url || me.avatarUri"
             alt="avatar"
             class="avatar"
           />
@@ -51,6 +51,11 @@
                 <span v-if="loading && savingKind==='photo'" class="spinner"></span>
                 Upload
               </button>
+              <!-- 可选：使用预设头像（示例） -->
+              <button class="btn" :disabled="loading" @click="setPreset('avatar7')">
+                <span v-if="loading && savingKind==='photo-preset'" class="spinner"></span>
+                Use preset avatar7
+              </button>
             </div>
             <p class="hint">You can also use preset mode via backend (e.g., <code>?preset=avatar7</code>), if enabled.</p>
           </div>
@@ -63,8 +68,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from '../services/axios'
 import ErrorMsg from '../components/ErrorMsg.vue'
+import api, { getMyProfile, setMyUserName, setMyPhoto } from '../services/api' // ✅ 用你自己的 api.js
 
 const router = useRouter()
 
@@ -72,17 +77,11 @@ const me = ref(null)
 const newName = ref('')
 const file = ref(null)
 const loading = ref(false)
-const savingKind = ref('') // 'name' | 'photo'
+const savingKind = ref('') // 'name' | 'photo' | 'photo-preset'
 const err = ref('')
 
-function auth() {
-  const t = localStorage.getItem('token')
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
-function unwrap(res) {
-  const d = res?.data
-  return (d && typeof d === 'object' && 'data' in d) ? d.data : d
-}
+const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+
 const initials = computed(() => {
   const s = (me.value?.username || me.value?.name || 'U').toString().trim()
   const parts = s.split(/\s+/)
@@ -90,7 +89,7 @@ const initials = computed(() => {
 })
 
 onMounted(() => {
-  if (!localStorage.getItem('token')) {
+  if (!authed()) {
     router.replace('/login')
     return
   }
@@ -100,9 +99,9 @@ onMounted(() => {
 async function loadProfile() {
   err.value = ''
   try {
-    const res = await axios.get('/users/me', { headers: auth() })
-    const payload = unwrap(res)
-    me.value = payload?.user || payload || null
+    const data = await getMyProfile()
+    // 后端可能返回 {user: {...}} 或直接 {...}
+    me.value = data?.user ?? data ?? null
     if (me.value) localStorage.setItem('me', JSON.stringify(me.value))
   } catch (e) {
     if (e?.response?.status === 401) {
@@ -122,7 +121,7 @@ async function setUsername() {
   savingKind.value = 'name'
   err.value = ''
   try {
-    await axios.put('/users/set_username', { username: newName.value }, { headers: auth() })
+    await setMyUserName(newName.value)
     newName.value = ''
     await loadProfile()
   } catch (e) {
@@ -143,12 +142,28 @@ async function setPhoto() {
   savingKind.value = 'photo'
   err.value = ''
   try {
-    const form = new FormData()
-    form.append('upload', file.value, file.value.name)
-    await axios.put('/users/set_photo', form, {
-      headers: { ...auth(), 'Content-Type': 'multipart/form-data' }
-    })
+    await setMyPhoto({ file: file.value }) // api.js 内部自动用字段名 upload
     file.value = null
+    await loadProfile()
+  } catch (e) {
+    if (e?.response?.status === 401) {
+      err.value = 'Unauthorized. Please login again.'; router.push('/login')
+    } else {
+      err.value = e?.response?.data?.message || e?.message || 'Failed to set photo'
+    }
+  } finally {
+    loading.value = false
+    savingKind.value = ''
+  }
+}
+
+// 可选：使用后端预设头像
+async function setPreset(presetName) {
+  loading.value = true
+  savingKind.value = 'photo-preset'
+  err.value = ''
+  try {
+    await setMyPhoto({ preset: presetName })
     await loadProfile()
   } catch (e) {
     if (e?.response?.status === 401) {
