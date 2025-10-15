@@ -73,8 +73,10 @@ export async function getMyProfile() {
   return unwrap(res)
 }
 
-export async function setMyUserName(username) {
-  const res = await axios.put('/users/set_username', { username }, { headers: auth() })
+export async function setMyUserName (username) {
+  // 兼容后端把“用户名”写到 name 或 username 的两种实现
+  const body = { username, name: username }
+  const res = await axios.put('/users/set_username', body, { headers: auth() })
   return unwrap(res)
 }
 

@@ -121,9 +121,11 @@ async function setUsername() {
   savingKind.value = 'name'
   err.value = ''
   try {
+    const next = newName.value
     await setMyUserName(newName.value)
     newName.value = ''
     await loadProfile()
+    if (me.value && me.value.username !== next) me.value.username = next
   } catch (e) {
     if (e?.response?.status === 401) {
       err.value = 'Unauthorized. Please login again.'; router.push('/login')
