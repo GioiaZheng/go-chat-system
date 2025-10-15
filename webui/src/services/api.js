@@ -28,8 +28,7 @@ function unwrap(res) {
  * 返回中兼容 identifier/token/id/user_id 等多种写法
  */
 export async function doLogin(name) {
-  const body = { name, username: name, display_name: name }
-  const res = await axios.post('/session', body)
+  const res = await axios.post('/session', { name })
   const payload = unwrap(res)
 
   const identifier =
@@ -41,7 +40,7 @@ export async function doLogin(name) {
 
   if (!identifier) throw new Error('Login response missing identifier')
 
-  // 与同学版本一致：同时写入 localStorage + sessionStorage
+  // 同时写入 localStorage + sessionStorage
   localStorage.setItem('token', identifier)
   sessionStorage.setItem('authToken', identifier)
 
