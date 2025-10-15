@@ -7,12 +7,12 @@ import axios from './axios'
 
 /* -------------------- helpers -------------------- */
 
-function auth () {
+function auth() {
   const token = localStorage.getItem('token')
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-function unwrap (res) {
+function unwrap(res) {
   // 支持 { code, data } 或直接 payload
   if (res?.data && typeof res.data === 'object' && 'data' in res.data) {
     return res.data.data
@@ -27,7 +27,7 @@ function unwrap (res) {
  * 兼容后端需要 username 的情况：同时传 name/username/display_name
  * 返回中兼容 identifier/token/id/user_id 等多种写法
  */
-export async function doLogin (name) {
+export async function doLogin(name) {
   const body = { name, username: name, display_name: name }
   const res = await axios.post('/session', body)
   const payload = unwrap(res)
@@ -41,18 +41,21 @@ export async function doLogin (name) {
 
   if (!identifier) throw new Error('Login response missing identifier')
 
+  // 与同学版本一致：同时写入 localStorage + sessionStorage
   localStorage.setItem('token', identifier)
+  sessionStorage.setItem('authToken', identifier)
+
   return identifier
 }
 
 /** POST /register  -- optional helper */
-export async function registerUser ({ name, email } = {}) {
+export async function registerUser({ name, email } = {}) {
   const res = await axios.post('/register', { name, email })
   return unwrap(res)
 }
 
 /** GET /liveness */
-export async function liveness () {
+export async function liveness() {
   const res = await axios.get('/liveness')
   return unwrap(res)
 }
@@ -66,21 +69,21 @@ export async function liveness () {
    GET /users/profile/:user_id
 */
 
-export async function getMyProfile () {
+export async function getMyProfile() {
   const res = await axios.get('/users/me', { headers: auth() })
   return unwrap(res)
 }
 
-export async function setMyUserName (username) {
+export async function setMyUserName(username) {
   const res = await axios.put('/users/set_username', { username }, { headers: auth() })
   return unwrap(res)
 }
 
 /** setMyPhoto – preset (?preset=avatar7) or multipart upload (field: upload) */
-export async function setMyPhoto ({ preset, file }) {
+export async function setMyPhoto({ preset, file }) {
   if (preset) {
     const res = await axios.put(`/users/set_photo?preset=${encodeURIComponent(preset)}`, null, {
-      headers: auth()
+      headers: auth(),
     })
     return unwrap(res)
   }
@@ -88,30 +91,30 @@ export async function setMyPhoto ({ preset, file }) {
     const form = new FormData()
     form.append('upload', file, file.name)
     const res = await axios.put('/users/set_photo', form, {
-      headers: { ...auth(), 'Content-Type': 'multipart/form-data' }
+      headers: { ...auth(), 'Content-Type': 'multipart/form-data' },
     })
     return unwrap(res)
   }
   throw new Error('Provide either { preset } or { file }')
 }
 
-export async function searchUsers (q) {
+export async function searchUsers(q) {
   const res = await axios.get('/users/search', { params: { q }, headers: auth() })
   return unwrap(res)
 }
 
-export async function getUserProfile (userIdOrName) {
+export async function getUserProfile(userIdOrName) {
   // Prefer path param by id; if only username, backend also accepts ?username=
   if (/^[a-f0-9-]{8,}$/i.test(userIdOrName)) {
     const res = await axios.get(`/users/profile/${encodeURIComponent(userIdOrName)}`, {
-      headers: auth()
+      headers: auth(),
     })
     return unwrap(res)
   }
   const res = await axios.get('/users/profile/0', {
     // dummy path id; backend resolves via ?username
     params: { username: userIdOrName },
-    headers: auth()
+    headers: auth(),
   })
   return unwrap(res)
 }
@@ -120,29 +123,29 @@ export async function getUserProfile (userIdOrName) {
 /* Canonical:
    POST /conversations
    GET  /conversations
-   Aliases:
+   Aliases (optional compat):
    GET  /conversations/:conversationId
    POST /conversations/:conversationId/messages
 */
 
-export async function startConversation ({ user_id, group_id } = {}) {
+export async function startConversation({ user_id, group_id } = {}) {
   const res = await axios.post('/conversations', { user_id, group_id }, { headers: auth() })
   return unwrap(res)
 }
 
-export async function getMyConversations () {
+export async function getMyConversations() {
   const res = await axios.get('/conversations', { headers: auth() })
   return unwrap(res)
 }
 
-export async function getConversation (conversationId) {
+export async function getConversation(conversationId) {
   const res = await axios.get(`/conversations/${encodeURIComponent(conversationId)}`, {
-    headers: auth()
+    headers: auth(),
   })
   return unwrap(res)
 }
 
-export async function sendConversationMessage (
+export async function sendConversationMessage(
   conversationId,
   content,
   { type = 'text', status = 'sent' } = {}
@@ -156,9 +159,9 @@ export async function sendConversationMessage (
 }
 
 /* -------------------- messages -------------------- */
-/* Canonical:
-   GET    /messages                      (supports ?conversation_id=...)
-   POST   /messages
+/* Canonical (对齐后端的 camelCase 参数名):
+   GET    /messages                      (supports ?conversationId=...&limit=&beforeCursor=&afterCursor=)
+   POST   /messages                      (body: { conversationId, content, type? })
    GET    /messages/:id
    DELETE /messages/:id
    POST   /messages/:id/forward
@@ -167,56 +170,50 @@ export async function sendConversationMessage (
    POST   /messages/:id/uncomment
 */
 
-export async function getMessages ({ conversation_id, limit, before } = {}) {
+export async function getMessages({ conversationId, limit, beforeCursor, afterCursor } = {}) {
   const res = await axios.get('/messages', {
-    params: { conversation_id, limit, before },
-    headers: auth()
+    params: { conversationId, limit, beforeCursor, afterCursor },
+    headers: auth(),
   })
   return unwrap(res)
 }
 
-export async function sendMessage ({
-  content,
-  to_user_id,
-  conversation_id,
-  type = 'text',
-  status = 'sent'
-}) {
+export async function sendMessage({ content, conversationId, type = 'text', status = 'sent' }) {
   const res = await axios.post(
     '/messages',
-    { content, to_user_id, conversation_id, type, status },
+    { content, conversationId, type, status },
     { headers: auth() }
   )
   return unwrap(res)
 }
 
-export async function getMessageById (messageId) {
+export async function getMessageById(messageId) {
   const res = await axios.get(`/messages/${encodeURIComponent(messageId)}`, { headers: auth() })
   return unwrap(res)
 }
 
-export async function deleteMessage (messageId) {
+export async function deleteMessage(messageId) {
   const res = await axios.delete(`/messages/${encodeURIComponent(messageId)}`, { headers: auth() })
   return unwrap(res)
 }
 
-export async function forwardMessage (messageId, { to_user_id, to_group_id }) {
+export async function forwardMessage(messageId, { conversationId }) {
   const res = await axios.post(
     `/messages/${encodeURIComponent(messageId)}/forward`,
-    { to_user_id, to_group_id },
+    { conversationId },
     { headers: auth() }
   )
   return unwrap(res)
 }
 
-export async function getMessageComments (messageId) {
+export async function getMessageComments(messageId) {
   const res = await axios.get(`/messages/${encodeURIComponent(messageId)}/comment`, {
-    headers: auth()
+    headers: auth(),
   })
   return unwrap(res)
 }
 
-export async function commentMessage (messageId, comment) {
+export async function commentMessage(messageId, comment) {
   const res = await axios.post(
     `/messages/${encodeURIComponent(messageId)}/comment`,
     { comment },
@@ -225,9 +222,9 @@ export async function commentMessage (messageId, comment) {
   return unwrap(res)
 }
 
-export async function uncommentMessage (messageId) {
+export async function uncommentMessage(messageId) {
   const res = await axios.post(`/messages/${encodeURIComponent(messageId)}/uncomment`, null, {
-    headers: auth()
+    headers: auth(),
   })
   return unwrap(res)
 }
@@ -243,22 +240,22 @@ export async function uncommentMessage (messageId) {
    DELETE /groups/:id/members
 */
 
-export async function createGroup ({ name, members }) {
+export async function createGroup({ name, members }) {
   const res = await axios.post('/groups', { name, members }, { headers: auth() })
   return unwrap(res)
 }
 
-export async function getGroupsList () {
+export async function getGroupsList() {
   const res = await axios.get('/groups', { headers: auth() })
   return unwrap(res)
 }
 
-export async function getGroup (groupId) {
+export async function getGroup(groupId) {
   const res = await axios.get(`/groups/${encodeURIComponent(groupId)}`, { headers: auth() })
   return unwrap(res)
 }
 
-export async function setGroupName (groupId, name) {
+export async function setGroupName(groupId, name) {
   const res = await axios.put(
     `/groups/${encodeURIComponent(groupId)}/name`,
     { name },
@@ -268,7 +265,7 @@ export async function setGroupName (groupId, name) {
 }
 
 /** setGroupPhoto – preset (?preset=avatar7) or multipart (field: upload) */
-export async function setGroupPhoto (groupId, { preset, file }) {
+export async function setGroupPhoto(groupId, { preset, file }) {
   if (preset) {
     const res = await axios.put(
       `/groups/${encodeURIComponent(groupId)}/photo?preset=${encodeURIComponent(preset)}`,
@@ -281,7 +278,7 @@ export async function setGroupPhoto (groupId, { preset, file }) {
     const form = new FormData()
     form.append('upload', file, file.name)
     const res = await axios.put(`/groups/${encodeURIComponent(groupId)}/photo`, form, {
-      headers: { ...auth(), 'Content-Type': 'multipart/form-data' }
+      headers: { ...auth(), 'Content-Type': 'multipart/form-data' },
     })
     return unwrap(res)
   }
@@ -289,44 +286,77 @@ export async function setGroupPhoto (groupId, { preset, file }) {
 }
 
 /** addToGroup – supports 1 or many members; backend parses body */
-export async function addToGroup (groupId, userOrUsers) {
+export async function addToGroup(groupId, userOrUsers) {
   const body = Array.isArray(userOrUsers)
     ? { members: userOrUsers }
     : { user_id: userOrUsers }
   const res = await axios.post(`/groups/${encodeURIComponent(groupId)}/members`, body, {
-    headers: auth()
+    headers: auth(),
   })
   return unwrap(res)
 }
 
 /** leaveGroup – current user leaves */
-export async function leaveGroup (groupId) {
+export async function leaveGroup(groupId) {
   const res = await axios.delete(`/groups/${encodeURIComponent(groupId)}/members`, {
-    headers: auth()
+    headers: auth(),
   })
   return unwrap(res)
 }
 
 /* -------------------- compat / alias helpers -------------------- */
-export const getConversationMessages = getMessages // with { conversation_id }
-export function sendMessageToConversation (conversationId, content, opt) {
-  return sendMessage({ conversation_id: conversationId, content, ...(opt || {}) })
+
+// 兼容旧签名：getConversationMessages({ conversation_id, limit, before })
+export async function getConversationMessages(opt = {}) {
+  const mapped = {
+    conversationId: opt.conversation_id ?? opt.conversationId,
+    limit: opt.limit,
+    beforeCursor: opt.before ?? opt.beforeCursor,
+    afterCursor: opt.afterCursor,
+  }
+  return getMessages(mapped)
+}
+
+// 兼容旧签名：sendMessageToConversation(conversationId, content, opt)
+export function sendMessageToConversation(conversationId, content, opt) {
+  return sendMessage({ conversationId, content, ...(opt || {}) })
 }
 
 /* Default export (方便旧代码以 `import api from ...` 使用) */
 export default {
   // public
-  doLogin, registerUser, liveness,
+  doLogin,
+  registerUser,
+  liveness,
   // users
-  getMyProfile, setMyUserName, setMyPhoto, searchUsers, getUserProfile,
+  getMyProfile,
+  setMyUserName,
+  setMyPhoto,
+  searchUsers,
+  getUserProfile,
   // conversations
-  startConversation, getMyConversations, getConversation, sendConversationMessage,
+  startConversation,
+  getMyConversations,
+  getConversation,
+  sendConversationMessage,
   // messages
-  getMessages, sendMessage, getMessageById, deleteMessage, forwardMessage,
-  getMessageComments, commentMessage, uncommentMessage,
+  getMessages,
+  sendMessage,
+  getMessageById,
+  deleteMessage,
+  forwardMessage,
+  getMessageComments,
+  commentMessage,
+  uncommentMessage,
   // groups
-  createGroup, getGroupsList, getGroup, setGroupName, setGroupPhoto,
-  addToGroup, leaveGroup,
-  // alias
-  getConversationMessages, sendMessageToConversation
+  createGroup,
+  getGroupsList,
+  getGroup,
+  setGroupName,
+  setGroupPhoto,
+  addToGroup,
+  leaveGroup,
+  // alias / compat
+  getConversationMessages,
+  sendMessageToConversation,
 }

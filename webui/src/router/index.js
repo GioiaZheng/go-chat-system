@@ -1,3 +1,4 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 
 // views
@@ -9,27 +10,57 @@ import ProfileView from '../views/ProfileView.vue'
 
 const routes = [
   // 根路径：按是否登录进行动态重定向
-  { path: '/', redirect: () => (localStorage.getItem('token') ? '/conversations' : '/login') },
+  {
+    path: '/',
+    redirect: () =>
+      (sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+        ? '/conversations'
+        : '/login',
+  },
 
-  // 快速自检页（上线前删掉即可）
+  // 快速自检页（开发调试用，可删）
   { path: '/__check', component: { template: '<div style="padding:12px">Router OK ✅</div>' } },
 
   // 公开页
   { path: '/login', name: 'login', component: LoginView },
 
   // 受保护页
-  { path: '/conversations', name: 'conversations', component: ConversationsView, meta: { requiresAuth: true } },
-  { path: '/groups',        name: 'groups',        component: GroupView,        meta: { requiresAuth: true } },
-  { path: '/profile',       name: 'profile',       component: ProfileView,      meta: { requiresAuth: true } },
+  {
+    path: '/conversations',
+    name: 'conversations',
+    component: ConversationsView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/groups',
+    name: 'groups',
+    component: GroupView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/profile',
+    name: 'profile',
+    component: ProfileView,
+    meta: { requiresAuth: true },
+  },
 
   // 聊天页（会话 / 私聊 / 群聊）
-  { path: '/chat/:type/:id', name: 'chat', component: ChatView, props: true, meta: { requiresAuth: true } },
+  {
+    path: '/chat/:type/:id',
+    name: 'chat',
+    component: ChatView,
+    props: true,
+    meta: { requiresAuth: true },
+  },
 
-  // 兼容跳转
-  { path: '/conversations/:id', redirect: to => ({ name: 'chat', params: { type: 'conv', id: to.params.id } }) },
+  // 兼容跳转（旧路径适配）
+  {
+    path: '/conversations/:id',
+    redirect: to => ({ name: 'chat', params: { type: 'conv', id: to.params.id } }),
+  },
   { path: '/new-conversation', redirect: '/conversations' },
-  { path: '/new-group',        redirect: '/groups' },
-  { path: '/me',               redirect: '/profile' },
+  { path: '/new-group', redirect: '/groups' },
+  { path: '/me', redirect: '/profile' },
 
   // 兜底
   { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -41,7 +72,9 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-const isAuthed = () => !!localStorage.getItem('token')
+// ✅ 登录检测：兼容 sessionStorage + localStorage
+const isAuthed = () =>
+  !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 
 router.beforeEach((to) => {
   const needsAuth = to.matched.some(r => r.meta?.requiresAuth)
