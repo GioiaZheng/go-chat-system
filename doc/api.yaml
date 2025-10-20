@@ -7,10 +7,16 @@ info:
     name: Chat App Team
     email: support@chatapp.com
     url: https://chatapp.com/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
   
 servers:
   - url: /
     description: API foundation path
+
+security:
+  - BearerAuth: []
 
 tags:
   - name: auth
@@ -113,18 +119,12 @@ components:
           minLength: 3
           maxLength: 50
           pattern: '^[a-zA-Z0-9_-]+$'
-        name:
-          type: string
-          description: Display name
-          minLength: 1
-          maxLength: 100
-          pattern: '^[a-zA-Z0-9\s''-]+$'
         password:
           type: string
           description: User's password
           minLength: 6
           maxLength: 100
-          pattern: ^[a-zA-Z0-9!@#$%^&*()_+]+$
+          pattern: '^[a-zA-Z0-9!@#$%^&*()_+]+$'
 
     BaseSuccessResponse:
       type: object
@@ -146,6 +146,7 @@ components:
           example: "Operation succeeded"
 
     AuthEnvelope:
+      description: Envelope for authentication responses containing the user and access token.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -182,12 +183,6 @@ components:
           minLength: 1
           maxLength: 50
           pattern: '^[a-zA-Z0-9_-]+$'
-        name:
-          type: string
-          description: User's full name
-          minLength: 1
-          maxLength: 100
-          pattern: '^[a-zA-Z0-9\s''-]+$'
         avatarUri:
           type: string
           description: URL of user's avatar
@@ -197,6 +192,7 @@ components:
 
 
     UserEnvelope:
+      description: Envelope with a single user resource.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -211,6 +207,7 @@ components:
                   $ref: '#/components/schemas/User'
 
     UserEnvelopeCollection:
+      description: Envelope with a list of users and optional pagination.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -299,6 +296,7 @@ components:
           pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
 
     ConversationEnvelope:
+      description: Envelope with a single conversation resource.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -313,6 +311,7 @@ components:
                   $ref: '#/components/schemas/Conversation'
 
     ConversationListEnvelope:
+      description: Envelope with the list of conversations and optional pagination.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -376,6 +375,7 @@ components:
           maxLength: 255
 
     FileUploadEnvelope:
+      description: Envelope for file upload metadata.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -448,16 +448,20 @@ components:
             $ref: '#/components/schemas/Message'
         nextCursor:
           type: string
-          nullable: true
+          minLength: 1
+          maxLength: 512
+          pattern: '^[A-Za-z0-9._~+=/-]+$'
           description: Opaque cursor to fetch older messages (for infinite scroll up).
         prevCursor:
           type: string
-          nullable: true
+          minLength: 1
+          maxLength: 512
+          pattern: '^[A-Za-z0-9._~+=/-]+$'
           description: Opaque cursor to fetch newer messages (for pull-to-refresh).
         pagination:
           type: object
           deprecated: true
-          description: Pagination metadata.
+          description: Pagination metadata (deprecated, use cursor-based instead).
           properties:
             total:
               type: integer
@@ -487,6 +491,7 @@ components:
               $ref: '#/components/schemas/MessageCollection'
 
     MessageResourceEnvelope:
+      description: Envelope with a single message resource.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -617,6 +622,7 @@ components:
                 maxLength: 50
 
     GroupEnvelope:
+      description: Envelope with a single group resource.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -631,6 +637,7 @@ components:
                   $ref: '#/components/schemas/Group'
 
     GroupEnvelopeCollection:
+      description: Envelope with a list of groups and optional pagination.
       allOf:
         - $ref: '#/components/schemas/BaseSuccessResponse'
         - type: object
@@ -827,6 +834,7 @@ paths:
 
   /session:
     post:
+      security: []
       tags: [auth]
       operationId: doLogin
       summary: Simplified user login
@@ -838,14 +846,14 @@ paths:
             schema:
               description: Request payload for user login
               type: object
-              required: [name]
+              required: [username]
               properties:
-                name:
+                username:
                   type: string
                   description: User's display name
                   minLength: 3
                   maxLength: 16
-                  pattern: ^[a-zA-Z0-9\s'-]+$
+                  pattern: '^[a-zA-Z0-9\s''-]+$'
                   example: Maria
       responses:
         '200':
@@ -870,6 +878,7 @@ paths:
 
   /register:
     post:
+      security: []
       tags: [auth]
       operationId: doRegister
       summary: Register a new user
@@ -1045,7 +1054,6 @@ paths:
                   user:
                     id: usr-123456
                     username: john_doe
-                    name: John Doe
                     avatarUri: https://example.com/avatars/john_doe.jpg
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -1311,12 +1319,18 @@ paths:
           description: Return messages older than this cursor
           schema:
             type: string
+            minLength: 1
+            maxLength: 512
+            pattern: '^[A-Za-z0-9._~+=/-]+$'
         - name: afterCursor
           in: query
           required: false
           description: Return messages newer than this cursor
           schema:
             type: string
+            minLength: 1
+            maxLength: 512
+            pattern: '^[A-Za-z0-9._~+=/-]+$'
       responses:
         '200':
           description: Messages retrieved successfully
@@ -1565,6 +1579,7 @@ paths:
   
   /liveness:
     get:
+      security: []
       tags: [health]
       operationId: liveness
       summary: Health check
@@ -1579,3 +1594,5 @@ paths:
               example:
                 code: 200
                 message: Service is alive
+        '400':
+          $ref: '#/components/responses/BadRequest'
