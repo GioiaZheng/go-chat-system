@@ -1,29 +1,26 @@
-# ========= Build stage =========
-FROM node:20-alpine AS build
+# ===== stage 1: build =====
+FROM node:18-alpine AS build
+WORKDIR /app/webui
 
-# 1) 安装依赖
-WORKDIR /app
+# 用与本机一致的 Yarn 3.6.4
+RUN corepack enable && corepack prepare yarn@3.6.4 --activate
+
+# 先只拷贝依赖文件，充分利用缓存
 COPY webui/package.json webui/yarn.lock ./
-RUN yarn install --frozen-lockfile
 
-# 2) 构建前端
+# 用 node-modules linker，避免 PnP 在容器里折腾
+RUN yarn config set nodeLinker node-modules
+
+# 这里不要 --immutable，让容器内和锁文件对齐即可
+RUN yarn install --inline-builds
+
+# 再拷贝其余源码并构建
 COPY webui/ ./
 RUN yarn build
 
-# ========= Runtime stage =========
-FROM nginx:1.27-alpine
-
-# 1) 删除默认配置
-RUN rm -rf /etc/nginx/conf.d/*
-
-# 2) 复制自定义配置
+# ===== stage 2: serve =====
+FROM nginx:1.25-alpine
+# 你的 nginx.conf 在项目根目录
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# 3) 拷贝前端静态文件
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# 4) 暴露端口
+COPY --from=build /app/webui/dist/ /usr/share/nginx/html/
 EXPOSE 80
-
-# 5) 启动 nginx
-CMD ["nginx", "-g", "daemon off;"]
