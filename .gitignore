@@ -55,3 +55,14 @@ webui/.yarn/install-state.gz
 # Vite cache & node_modules (front-end)
 webui/node_modules/
 webui/node_modules/.cache/
+
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+node_modules
+dist
+dev.sqlite

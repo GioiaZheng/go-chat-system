@@ -1,21 +1,21 @@
 # =========================
-#  Build stage
+#  Build stage (Go 1.17)
 # =========================
-FROM golang:1.22-alpine AS build
+FROM golang:1.17-alpine AS go-build
 
 # go-sqlite3 需要 CGO
 RUN apk add --no-cache build-base sqlite-dev
 
 WORKDIR /src
 
-# 仅复制依赖清单，先走缓存
+# 利用依赖缓存
 COPY go.mod go.sum ./
 RUN go mod download
 
 # 复制源码
 COPY . .
 
-# 可选构建标签（为空表示纯后端；传 webui 则同时内置静态前端路由）
+# 可选构建标签
 ARG BUILD_TAGS=""
 ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
 
@@ -26,21 +26,17 @@ RUN go build -tags "$BUILD_TAGS" -ldflags "-s -w" -o /out/webapi ./cmd/webapi
 # =========================
 FROM alpine:3.20
 
-# 运行期只需要 sqlite-libs + 时区/证书
 RUN apk add --no-cache sqlite-libs tzdata ca-certificates \
  && adduser -D -H -s /sbin/nologin app
 
 WORKDIR /app
-COPY --from=build /out/webapi /app/webapi
+COPY --from=go-build /out/webapi /app/webapi
 
-# 数据目录（挂载卷）
 RUN mkdir -p /data && chown -R app:app /data /app
 USER app
 
-# 缺省使用 /data/app.sqlite，可通过环境变量覆盖
 ENV WASA_DB_FILENAME=/data/app.sqlite \
     GIN_MODE=release
 
 EXPOSE 3000
 ENTRYPOINT ["/app/webapi"]
-# 例如使用：docker run ... --db-filename /data/app.sqlite

@@ -67,8 +67,8 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.GET("/messages", rt.wrap(rt.getMessages))
 	// POST /messages -> sendMessage
 	rt.router.POST("/messages", rt.wrap(rt.sendMessage))
-	// GET /messages/{id} -> getMessageById
-	rt.router.GET("/messages/:id", rt.wrap(rt.getMessageById))
+	// GET /messages/{id} -> getMessageByID
+	rt.router.GET("/messages/:id", rt.wrap(rt.getMessageByID))
 	// DELETE /messages/{id} -> deleteMessage
 	rt.router.DELETE("/messages/:id", rt.wrap(rt.deleteMessage))
 	// POST /messages/{id}/forward -> forwardMessage

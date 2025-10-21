@@ -1,8 +1,22 @@
+# backend artifacts
+webapi
+*.exe
+*.out
+
+# database / uploads
+*.sqlite
+data/
+uploads/
+
+# node / yarn
 node_modules/
-dist/
-.vite/
-.yarn/
-.env
-*.local
-*.log
-*.tmp
+webui/.pnp.cjs
+webui/.yarn/*
+!webui/.yarn/releases
+!webui/.yarn/plugins
+!webui/.yarn/patches
+!webui/.yarn/sdks
+!webui/.yarn/versions
+
+# dist
+webui/dist/

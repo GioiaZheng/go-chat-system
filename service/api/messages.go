@@ -275,11 +275,11 @@ func (rt *_router) getMessages(
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//  GET /messages/{id}  -> getMessageById (OpenAPI)
+//  GET /messages/{id}  -> getMessageByID (OpenAPI)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-func (rt *_router) getMessageById(
+func (rt *_router) getMessageByID(
 	w http.ResponseWriter,
 	_ *http.Request,
 	ps httprouter.Params,
@@ -302,16 +302,6 @@ func (rt *_router) getMessageById(
 		},
 	}
 	_ = writeJSON(w, http.StatusOK, resp)
-}
-
-// Keep a compatibility alias if router still refers to getMessageByID (different case).
-func (rt *_router) getMessageByID(
-	w http.ResponseWriter,
-	r *http.Request,
-	ps httprouter.Params,
-	ctx reqcontext.RequestContext,
-) {
-	rt.getMessageById(w, r, ps, ctx)
 }
 
 //
