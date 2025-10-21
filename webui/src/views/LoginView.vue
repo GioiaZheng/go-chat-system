@@ -47,7 +47,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ErrorMsg from '../components/ErrorMsg.vue'
-import api from '../services/api' // ✅ 保留你自己的 api.js（默认导出里含 doLogin）
+import api from '../services/api'  // 继续用你自己的 api.js（默认导出里含 doLogin）
 
 const router = useRouter()
 const route = useRoute()
@@ -57,10 +57,10 @@ const err = ref('')
 const busy = ref(false)
 
 onMounted(() => {
-  // 页面级：把 body 改成浅色背景
+  // 登录页浅色背景
   document.body.classList.add('theme-light-login')
 
-  // ✅ 若已登录（兼容同学的 sessionStorage + 你自己的 localStorage）
+  // 已登录则跳转
   const authed = !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
   if (authed) {
     router.replace('/conversations')
@@ -76,24 +76,33 @@ async function login () {
   if (!name.value) return
   busy.value = true
   try {
-    // ✅ 使用你自己的 api.doLogin（内部已写入 token 与 authToken）
+    // 后端登录（内部已保存 token / authToken）
     await api.doLogin(name.value)
 
-    // 仅保存显示用途（可选）
+    // 显示用途：保存用户名（顶栏依赖这个键）
+    localStorage.setItem('username', name.value)
+    // 保留你之前的 name 键（如果其它页面用了）
     localStorage.setItem('name', name.value || '')
 
-    // 支持回跳 ?redirect=/xxx
+    // 可选：给 me 做个最小缓存，便于其它页面兜底读取
+    const me = { username: name.value }
+    localStorage.setItem('me', JSON.stringify(me))
+
+    // 同标签页通知 App.vue 立即刷新用户名
+    window.dispatchEvent(new Event('auth:changed'))
+
+    // 回跳
     const next = (route.query.redirect && String(route.query.redirect)) || '/conversations'
     router.replace(next)
   } catch (e) {
-    err.value = e?.response?.data?.error || e?.message || 'Login failed'
+    err.value = e?.response?.data?.error || e?.response?.data?.message || e?.message || 'Login failed'
   } finally {
     busy.value = false
   }
 }
 </script>
 
-<!-- 这段样式不加 scoped，用来覆盖 body 的深色背景 -->
+<!-- 不加 scoped，覆盖 body 背景 -->
 <style>
 body.theme-light-login{
   background:
@@ -104,7 +113,7 @@ body.theme-light-login{
 }
 </style>
 
-<!-- 组件内样式（浅色卡片） -->
+<!-- 组件内样式 -->
 <style scoped>
 .auth-wrap{
   min-height: 100vh;
@@ -113,7 +122,6 @@ body.theme-light-login{
   justify-content: center;
   padding: 32px 16px;
 }
-
 .auth-card{
   width: 100%;
   max-width: 460px;
@@ -124,7 +132,6 @@ body.theme-light-login{
   padding: 28px 24px;
   color: #0f172a;
 }
-
 .brand{
   font-weight: 800;
   font-size: 28px;
@@ -143,7 +150,6 @@ body.theme-light-login{
   font-weight: 700;
   margin: 6px 0 18px;
 }
-
 .form-label{ color:#334155 }
 .form-control{
   background:#fff;
@@ -155,7 +161,6 @@ body.theme-light-login{
   border-color:#22c55e;
   box-shadow: 0 0 0 .25rem rgba(34,197,94,.15);
 }
-
 .btn-gradient{
   background-image: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #3b82f6 120%);
   color:#fff;
