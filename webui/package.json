@@ -9,6 +9,10 @@
     "preview": "vite preview --port 4173",
     "build": "vite build"
   },
+  "resolutions": {
+    "esbuild": "0.21.5",
+    "esbuild-linux-64": "0.21.5"
+  },
   "dependencies": {
     "@popperjs/core": "^2",
     "axios": "0.28.0",
@@ -22,5 +26,5 @@
     "vite": "^3.2.11",
     "vue": "^3.5.21"
   },
-  "packageManager": "yarn@3.2.1+sha512.2e8753234dc01d8cc7ed64c98e459a382c68cf239ce06102b2bec91cbbdf383ba520010e85df0f70fc400648d0706ac5bf37b59d99e3488c44a5436b50bf4204"
+  "packageManager": "yarn@3.2.1"
 }
