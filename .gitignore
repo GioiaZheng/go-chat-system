@@ -1,68 +1,95 @@
-# Backend build
+# =========================
+# Go (build artifacts)
+# =========================
 bin/
 *.exe
 *.out
 *.log
+*.test
 
-# SQLite databases
+# 不忽略 vendor/ —— 我们要提交 go mod vendor 的产物
+# vendor/
+
+# =========================
+# Databases & uploads
+# =========================
 *.db
 *.sqlite
-
-# Uploads
+*.sqlite3
+dev.sqlite
+data/
 uploads/*
 !uploads/.gitkeep
 
-# Temp & cache
+# =========================
+# Temp / cache / misc
+# =========================
 tmp/
 *.tmp
 *.bak
 *.swp
 
-# Node stuff (if any root JS)
+# =========================
+# Node / Yarn (monorepo-friendly)
+# =========================
 node_modules/
-
-# Frontend build
-webui/dist/
-webui/node_modules/
-webui/.vite/
-webui/.yarn/
-
-# System files
-.DS_Store
-Thumbs.db
-
-# Env
-.env
-
-# Yarn PnP artifacts
-webui/.pnp.cjs
-webui/.pnp.loader.mjs
-webui/.yarn/cache/
-webui/.yarn/unplugged/
-webui/.yarn/build-state.yml
-webui/.yarn/install-state.gz
-
-# Vite cache
-webui/node_modules/.cache/
-# Yarn PnP artifacts
-webui/.pnp.cjs
-webui/.pnp.loader.mjs
-webui/.yarn/cache/
-webui/.yarn/unplugged/
-webui/.yarn/build-state.yml
-webui/.yarn/install-state.gz
-
-# Vite cache & node_modules (front-end)
-webui/node_modules/
-webui/node_modules/.cache/
-
 .pnp.cjs
 .pnp.loader.mjs
-.yarn/*
+
+# ---- Yarn 3+（根目录）仅忽略缓存，保留离线镜像需要的目录 ----
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+# 允许提交以下目录（离线镜像 / 插件 / SDK / 版本）
+!.yarn/
 !.yarn/releases
 !.yarn/plugins
 !.yarn/sdks
 !.yarn/versions
-node_modules
-dist
-dev.sqlite
+
+# =========================
+# WebUI (子目录)
+# =========================
+webui/node_modules/
+webui/.vite/
+webui/dist/
+
+# Yarn PnP / 缓存（webui 子目录）
+webui/.pnp.cjs
+webui/.pnp.loader.mjs
+webui/.yarn/cache/
+webui/.yarn/unplugged/
+webui/.yarn/build-state.yml
+webui/.yarn/install-state.gz
+# 允许提交 webui 的离线镜像等
+!webui/.yarn/
+!webui/.yarn/releases
+!webui/.yarn/plugins
+!webui/.yarn/sdks
+!webui/.yarn/versions
+
+# 若你在根也产出 dist（例如打包脚本）
+dist/
+webui/node_modules/.cache/
+
+# =========================
+# Env / Secrets
+# =========================
+.env
+.env.*
+
+# =========================
+# IDE / OS 垃圾
+# =========================
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# =========================
+# Coverage / reports
+# =========================
+coverage/
+*.lcov
