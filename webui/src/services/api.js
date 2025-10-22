@@ -1,7 +1,8 @@
 // src/services/api.js
-// Full frontend API client that matches major routes in backend.
-// Every call injects Authorization locally.
-// Return values unwrap { code, data } => return data only.
+// Unified API client aligned with backend RegisterRoutes().
+// - Uses canonical /messages & /groups endpoints (no 404 aliases)
+// - Automatically attaches Authorization header if token exists
+// - unwraps { data } payloads for simpler usage
 
 import axios from './axios'
 
@@ -13,7 +14,6 @@ function auth() {
 }
 
 function unwrap(res) {
-  // 支持 { code, data } 或直接 payload
   if (res?.data && typeof res.data === 'object' && 'data' in res.data) {
     return res.data.data
   }
@@ -22,32 +22,21 @@ function unwrap(res) {
 
 /* -------------------- public / utility -------------------- */
 
-/**
- * POST /session  -- simplified login
- * 兼容后端需要 username 的情况：同时传 name/username/display_name
- * 返回中兼容 identifier/token/id/user_id 等多种写法
- */
+/** POST /session — simplified login */
 export async function doLogin(name) {
   const res = await axios.post('/session', { name })
   const payload = unwrap(res)
-
   const identifier =
-    payload?.identifier ??
-    payload?.token ??
-    payload?.id ??
-    payload?.user_id ??
-    payload
+    payload?.identifier ?? payload?.token ?? payload?.id ?? payload?.user_id ?? payload
 
   if (!identifier) throw new Error('Login response missing identifier')
 
-  // 同时写入 localStorage + sessionStorage
   localStorage.setItem('token', identifier)
   sessionStorage.setItem('authToken', identifier)
-
   return identifier
 }
 
-/** POST /register  -- optional helper */
+/** POST /register */
 export async function registerUser({ name, email } = {}) {
   const res = await axios.post('/register', { name, email })
   return unwrap(res)
@@ -59,28 +48,25 @@ export async function liveness() {
   return unwrap(res)
 }
 
+/** GET /healthz */
+export async function healthz() {
+  const res = await axios.get('/healthz')
+  return unwrap(res)
+}
+
 /* -------------------- users -------------------- */
-/* Canonical:
-   PUT /users/set_username
-   PUT /users/set_photo
-   GET /users/me
-   GET /users/search
-   GET /users/profile/:user_id
-*/
 
 export async function getMyProfile() {
   const res = await axios.get('/users/me', { headers: auth() })
   return unwrap(res)
 }
 
-export async function setMyUserName (username) {
-  // 兼容后端把“用户名”写到 name 或 username 的两种实现
+export async function setMyUserName(username) {
   const body = { username, name: username }
   const res = await axios.put('/users/set_username', body, { headers: auth() })
   return unwrap(res)
 }
 
-/** setMyPhoto – preset (?preset=avatar7) or multipart upload (field: upload) */
 export async function setMyPhoto({ preset, file }) {
   if (preset) {
     const res = await axios.put(`/users/set_photo?preset=${encodeURIComponent(preset)}`, null, {
@@ -105,7 +91,6 @@ export async function searchUsers(q) {
 }
 
 export async function getUserProfile(userIdOrName) {
-  // Prefer path param by id; if only username, backend also accepts ?username=
   if (/^[a-f0-9-]{8,}$/i.test(userIdOrName)) {
     const res = await axios.get(`/users/profile/${encodeURIComponent(userIdOrName)}`, {
       headers: auth(),
@@ -113,7 +98,6 @@ export async function getUserProfile(userIdOrName) {
     return unwrap(res)
   }
   const res = await axios.get('/users/profile/0', {
-    // dummy path id; backend resolves via ?username
     params: { username: userIdOrName },
     headers: auth(),
   })
@@ -121,13 +105,6 @@ export async function getUserProfile(userIdOrName) {
 }
 
 /* -------------------- conversations -------------------- */
-/* Canonical:
-   POST /conversations
-   GET  /conversations
-   Aliases (optional compat):
-   GET  /conversations/:conversationId
-   POST /conversations/:conversationId/messages
-*/
 
 export async function startConversation({ user_id, group_id } = {}) {
   const res = await axios.post('/conversations', { user_id, group_id }, { headers: auth() })
@@ -139,37 +116,21 @@ export async function getMyConversations() {
   return unwrap(res)
 }
 
-export async function getConversation(conversationId) {
-  const res = await axios.get(`/conversations/${encodeURIComponent(conversationId)}`, {
-    headers: auth(),
-  })
-  return unwrap(res)
+/** 兼容旧函数：内部改走 /messages?conversationId=... */
+export async function getConversation(conversationId, { limit, beforeCursor, afterCursor } = {}) {
+  return getMessages({ conversationId, limit, beforeCursor, afterCursor })
 }
 
+/** 兼容旧函数：内部改走 POST /messages */
 export async function sendConversationMessage(
   conversationId,
   content,
   { type = 'text', status = 'sent' } = {}
 ) {
-  const res = await axios.post(
-    `/conversations/${encodeURIComponent(conversationId)}/messages`,
-    { content, type, status },
-    { headers: auth() }
-  )
-  return unwrap(res)
+  return sendMessage({ conversationId, content, type, status })
 }
 
 /* -------------------- messages -------------------- */
-/* Canonical (对齐后端的 camelCase 参数名):
-   GET    /messages                      (supports ?conversationId=...&limit=&beforeCursor=&afterCursor=)
-   POST   /messages                      (body: { conversationId, content, type? })
-   GET    /messages/:id
-   DELETE /messages/:id
-   POST   /messages/:id/forward
-   GET    /messages/:id/comment
-   POST   /messages/:id/comment
-   POST   /messages/:id/uncomment
-*/
 
 export async function getMessages({ conversationId, limit, beforeCursor, afterCursor } = {}) {
   const res = await axios.get('/messages', {
@@ -231,15 +192,6 @@ export async function uncommentMessage(messageId) {
 }
 
 /* -------------------- groups -------------------- */
-/* Canonical:
-   POST   /groups
-   GET    /groups
-   GET    /groups/:id
-   PUT    /groups/:id/name
-   PUT    /groups/:id/photo
-   POST   /groups/:id/members
-   DELETE /groups/:id/members
-*/
 
 export async function createGroup({ name, members }) {
   const res = await axios.post('/groups', { name, members }, { headers: auth() })
@@ -265,7 +217,6 @@ export async function setGroupName(groupId, name) {
   return unwrap(res)
 }
 
-/** setGroupPhoto – preset (?preset=avatar7) or multipart (field: upload) */
 export async function setGroupPhoto(groupId, { preset, file }) {
   if (preset) {
     const res = await axios.put(
@@ -286,7 +237,6 @@ export async function setGroupPhoto(groupId, { preset, file }) {
   throw new Error('Provide either { preset } or { file }')
 }
 
-/** addToGroup – supports 1 or many members; backend parses body */
 export async function addToGroup(groupId, userOrUsers) {
   const body = Array.isArray(userOrUsers)
     ? { members: userOrUsers }
@@ -297,7 +247,6 @@ export async function addToGroup(groupId, userOrUsers) {
   return unwrap(res)
 }
 
-/** leaveGroup – current user leaves */
 export async function leaveGroup(groupId) {
   const res = await axios.delete(`/groups/${encodeURIComponent(groupId)}/members`, {
     headers: auth(),
@@ -307,7 +256,6 @@ export async function leaveGroup(groupId) {
 
 /* -------------------- compat / alias helpers -------------------- */
 
-// 兼容旧签名：getConversationMessages({ conversation_id, limit, before })
 export async function getConversationMessages(opt = {}) {
   const mapped = {
     conversationId: opt.conversation_id ?? opt.conversationId,
@@ -318,17 +266,17 @@ export async function getConversationMessages(opt = {}) {
   return getMessages(mapped)
 }
 
-// 兼容旧签名：sendMessageToConversation(conversationId, content, opt)
 export function sendMessageToConversation(conversationId, content, opt) {
   return sendMessage({ conversationId, content, ...(opt || {}) })
 }
 
-/* Default export (方便旧代码以 `import api from ...` 使用) */
+/* -------------------- export -------------------- */
+
 export default {
-  // public
   doLogin,
   registerUser,
   liveness,
+  healthz,
   // users
   getMyProfile,
   setMyUserName,
@@ -357,7 +305,7 @@ export default {
   setGroupPhoto,
   addToGroup,
   leaveGroup,
-  // alias / compat
+  // alias
   getConversationMessages,
   sendMessageToConversation,
 }
