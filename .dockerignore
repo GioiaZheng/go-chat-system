@@ -1,0 +1,21 @@
+# Git & VCS
+.git
+.gitignore
+
+# Node / Frontend caches
+node_modules
+webui/node_modules
+webui/.cache
+webui/dist
+
+# Local data & artifacts
+data/*
+uploads/*
+dev.sqlite
+*.log
+*.tmp
+.DS_Store
+/webapi
+/webapi.exe
+*.db
+*.sqlite*

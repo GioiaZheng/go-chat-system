@@ -1,0 +1,28 @@
+# ===== Build stage =====
+FROM node:18-alpine AS build
+
+# 1) 启用 Corepack + Yarn 3.6.4
+RUN corepack enable && corepack prepare yarn@3.6.4 --activate
+
+WORKDIR /app
+
+# 2) 先拷 “锁文件 + yarn 配置 + .yarn 目录”（Berry 必须）
+COPY webui/package.json webui/yarn.lock webui/.yarnrc.yml ./
+COPY webui/.yarn/ .yarn/
+
+# 3) 安装依赖（Berry 用 --immutable）
+RUN yarn install --immutable
+
+# 4) 拷源码并构建
+COPY webui/ .
+RUN yarn build
+
+# ===== Runtime stage =====
+FROM nginx:1.25-alpine
+
+# 5) 你说 nginx.conf 在仓库根目录
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# 6) 静态资源
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80

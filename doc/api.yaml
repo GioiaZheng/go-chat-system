@@ -1,0 +1,1678 @@
+openapi: 3.0.0
+info:
+  title: Chat Application API
+  description: Chat application REST API documentation
+  version: 1.0.0
+  contact:
+    name: Chat App Team
+    email: support@chatapp.com
+    url: https://chatapp.com/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  
+servers:
+  - url: /
+    description: API foundation path
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: auth
+    description: User authentication and authorization operations
+  - name: users
+    description: Operations related to user management
+  - name: groups
+    description: Group chat management operations
+  - name: messages
+    description: Operations for sending and managing messages
+  - name: conversations
+    description: Conversation management operations
+  - name: health
+    description: Health and diagnostics endpoints
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        JWT authentication using the Bearer scheme.
+        Example: "Authorization: Bearer {token}"
+  
+  responses:
+    BadRequest:
+      description: >
+        The request was malformed or contained invalid parameters.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            default:
+              value:
+                code: 400
+                message: "Invalid request parameters"
+                trace: "req-123456"
+                error: "validation.failed"
+                errors:
+                  - "name: Must be between 3-50 characters"
+
+    Unauthorized:
+      description: >
+        Authentication failed or user lacks proper permissions.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            default:
+              value:
+                code: 401
+                message: "Unauthorized: Invalid or expired token"
+                trace: "req-789012"
+                error: "auth.invalid_token"
+                errors: []
+
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            default:
+              value:
+                code: 404
+                message: "User not found"
+                trace: "req-345678"
+                error: "resource.not_found"
+                errors: []
+
+    Forbidden:
+      description: >
+        Authenticated user does not have permission to access this resource.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            default:
+              value:
+                code: 403
+                message: "Forbidden"
+                trace: "req-abcdef"
+                error: "auth.forbidden"
+                errors: []
+  
+  schemas:
+    RegisterUserRequest:
+      type: object
+      description: User registration request model for creating new user accounts
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: User's desired name
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_-]+$'
+
+    BaseSuccessResponse:
+      type: object
+      description: Base structure for all success responses
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          format: int64
+          description: HTTP status code indicating success
+          enum: [200, 201]
+          example: 200
+        message:
+          type: string
+          description: Human-readable success message
+          minLength: 1
+          maxLength: 255
+          pattern: '^[\s\S]{1,255}$'
+          example: "Operation succeeded"
+
+    AuthEnvelope:
+      description: Envelope for authentication responses containing the user and access token.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Authentication result payload.
+              required: [user, token]
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+                token:
+                  type: string
+                  description: Access token (opaque string; equals userId in this assignment)
+                  pattern: '^[A-Za-z0-9._~+=/-]+$'
+                  minLength: 1
+                  maxLength: 4096
+
+    User:
+      type: object
+      description: User information model
+      required: [id, name, avatarUri]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the user
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        name:
+          type: string
+          description: name
+          minLength: 1
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_-]+$'
+        avatarUri:
+          type: string
+          description: URL of user's avatar
+          format: uri
+          maxLength: 255
+          minLength: 1
+
+
+    UserEnvelope:
+      description: Envelope with a single user resource.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Payload wrapper for a single user resource.
+              required: [user]
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+
+    UserEnvelopeCollection:
+      description: Envelope with a list of users and optional pagination.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Container for user list results.
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  description: List of users.
+                  minItems: 0
+                  maxItems: 100
+                  items:
+                    $ref: '#/components/schemas/User'
+                pagination:
+                  type: object
+                  description: Pagination metadata.
+                  properties:
+                    total:
+                      type: integer
+                      format: int32
+                      description: Total number of available items.
+                      minimum: 0
+                      maximum: 1000000 
+                    limit:
+                      type: integer
+                      format: int32
+                      description: Page size.
+                      minimum: 1
+                      maximum: 100
+                    offset:
+                      type: integer
+                      format: int32
+                      description: Zero-based index of the first returned item.
+                      minimum: 0
+                      maximum: 1000000 
+
+    Conversation:
+      type: object
+      description: Chat conversation model
+      required: [id, type, participants]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the conversation
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        type:
+          type: string
+          enum: [private, group]
+          description: >
+            Type of the conversation.  
+            `private` = 1-to-1 chat between two users.  
+            `group` = multi-user chat.
+        name:
+          type: string
+          description:  >
+            Display name of the conversation.  
+            - For **private chats**, the server may override this value, or return
+              the other participant’s name.  
+            - For **group chats**, this is the group name.
+          minLength: 1
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9\s''-]+$'
+        avatarUri:
+          type: string
+          description: >
+            Avatar URL representing this conversation.  
+            - For **private chats**, normally the avatar of the other user.  
+            - For **group chats**, the group avatar.
+          format: uri
+        participants:
+          type: array
+          description: >
+            List of users participating in this conversation.  
+            Must contain at least two distinct users.  
+            Each participant entry follows the User schema.
+          minItems: 2
+          maxItems: 200
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/User'
+        lastMessage:
+          $ref: '#/components/schemas/Message'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp of the latest activity in this conversation
+        createdAt:
+          type: string
+          description:  ISO 8601 timestamp when the conversation was created
+          format: date-time
+          minLength: 1
+          maxLength: 64
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
+
+    ConversationEnvelope:
+      description: Envelope with a single conversation resource.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Payload wrapper for a conversation resource.
+              required: [conversation]
+              properties:
+                conversation:
+                  $ref: '#/components/schemas/Conversation'
+
+    ConversationListEnvelope:
+      description: Envelope with the list of conversations and optional pagination.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Container for conversation list results.
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  description: List of conversations.
+                  minItems: 0
+                  maxItems: 100
+                  items:
+                    $ref: '#/components/schemas/Conversation'
+                pagination:
+                  type: object
+                  nullable: true
+                  description: Pagination metadata.
+                  properties:
+                    total:
+                      type: integer
+                      format: int32
+                      description: Total number of available items.
+                      minimum: 0
+                      maximum: 1000000 
+                    limit:
+                      type: integer
+                      format: int32
+                      description: Page size.
+                      minimum: 1
+                      maximum: 100
+                    offset:
+                      type: integer
+                      format: int32
+                      description: Zero-based index of the first returned item.
+                      minimum: 0
+                      maximum: 1000000 
+
+    FileUpload:
+      type: object
+      description: File upload information
+      required: [filename, uri]
+      properties:
+        filename:
+          type: string
+          description: Original filename
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-zA-Z0-9_\-. ]+$'
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+          minimum: 1
+          maximum: 10485760
+        uri:
+          type: string
+          description: File access URL
+          format: uri
+          minLength: 1
+          maxLength: 255
+
+    FileUploadEnvelope:
+      description: Envelope for file upload metadata.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Payload wrapper for uploaded file metadata.
+              required: [file]
+              properties:
+                file:
+                  $ref: '#/components/schemas/FileUpload'
+
+    Message:
+      type: object
+      description: Message model
+      required: [id, content, senderId, conversationId, createdAt, type, status]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the message
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        content:
+          type: string
+          description: Message content text
+          minLength: 1
+          maxLength: 1000
+          pattern: '^[\s\S]{1,1000}$'
+        senderId:
+          type: string
+          description: ID of the message sender
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        conversationId:
+          type: string
+          description: ID of the present conversation
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        createdAt:
+          type: string
+          description: ISO 8601 creation timestamp
+          format: date-time
+          minLength: 1
+          maxLength: 64
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
+        type:
+          type: string
+          description: Type of message content
+          enum: [text, image, video, file]
+          minLength: 1
+          maxLength: 50
+        status:
+          type: string
+          description: Delivery status of the message
+          enum: [sending, sent, delivered, read, failed]
+          minLength: 1
+          maxLength: 50
+
+    MessageCollection:
+      type: object
+      description: Cursor-based collection of messages.
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          description: Messages on this slice.
+          minItems: 0
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Message'
+        nextCursor:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: '^[A-Za-z0-9._~+=/-]+$'
+          description: Opaque cursor to fetch older messages (for infinite scroll up).
+        prevCursor:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: '^[A-Za-z0-9._~+=/-]+$'
+          description: Opaque cursor to fetch newer messages (for pull-to-refresh).
+        pagination:
+          type: object
+          deprecated: true
+          description: Pagination metadata (deprecated, use cursor-based instead).
+          properties:
+            total:
+              type: integer
+              format: int32
+              description: Total number of available messages.
+              minimum: 0
+              maximum: 1000000 
+            limit:
+              type: integer
+              format: int32
+              description: Page size.
+              minimum: 1
+              maximum: 100
+            offset:
+              type: integer
+              format: int32
+              description: Zero-based index of the first returned item.
+              minimum: 0
+              maximum: 1000000 
+
+    MessageResourceEnvelopeCollection:
+      description: Envelope containing a paginated messages collection.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/MessageCollection'
+
+    MessageResourceEnvelope:
+      description: Envelope with a single message resource.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Payload wrapper for a single message resource.
+              required: [resource]
+              properties:
+                resource:
+                  $ref: '#/components/schemas/Message'
+    
+    ForwardMessageRequest:
+      type: object
+      description: Request model for forwarding a message to another conversation
+      required: [conversationId]
+      properties:
+        conversationId:
+          type: string
+          description: Target conversation ID
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-zA-Z0-9-]+$'
+
+    CommentMessageRequest:
+      type: object
+      description: Request model for adding a comment or reaction to a message
+      required: [type, content]
+      properties:
+        type:
+          type: string
+          description: Type of comment
+          enum: [text, emoji]
+          minLength: 1
+          maxLength: 50
+        content:
+          type: string
+          description: Comment content or emoji code
+          minLength: 1
+          maxLength: 1000
+          pattern: '^[\s\S]{1,1000}$'
+
+    Comment:
+      type: object
+      description: Comment/reaction object for a message.
+      required: [id, authorId, content, createdAt]
+      properties:
+        id:
+          type: string
+          description: Comment ID
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        authorId:
+          type: string
+          description: Author user ID
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        content:
+          type: string
+          description: Comment content or emoji code
+          minLength: 1
+          maxLength: 1000
+          pattern: '^[\s\S]{1,1000}$'
+        createdAt:
+          type: string
+          description: ISO 8601 timestamp
+          format: date-time
+          minLength: 1
+          maxLength: 64
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
+
+    CommentsListResponse:
+      type: object
+      description: Comments list response.
+      required: [comments]
+      properties:
+        comments:
+          type: array
+          description: List of comments or reactions for the message.
+          minItems: 0
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/Comment'
+
+    Group:
+      type: object
+      description: Group information model
+      required: [id, name, conversationId, members]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the group
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-zA-Z0-9-]+$'
+        name:
+          type: string
+          description: Group display name
+          minLength: 1
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9\s''-]+$'
+        conversationId:
+          type: string
+          description: ID of the present conversation
+          pattern: '^[a-zA-Z0-9-]+$'
+          minLength: 1
+          maxLength: 64
+        members:
+          type: array
+          description: Array of group member objects
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            description: Group member information
+            required: [userId, role]
+            properties:
+              userId:
+                type: string
+                description: User ID of the member
+                minLength: 1
+                maxLength: 64
+                pattern: '^[a-zA-Z0-9-]+$'
+              role:
+                type: string
+                description: Member's role in the group
+                enum: [admin, member]
+                minLength: 1
+                maxLength: 50
+
+    GroupEnvelope:
+      description: Envelope with a single group resource.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Payload wrapper for a single group resource.
+              required: [group]
+              properties:
+                group:
+                  $ref: '#/components/schemas/Group'
+
+    GroupEnvelopeCollection:
+      description: Envelope with a list of groups and optional pagination.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Container for group list results.
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  description: List of groups.
+                  minItems: 0
+                  maxItems: 100
+                  items:
+                    $ref: '#/components/schemas/Group'
+                pagination:
+                  type: object
+                  description: Pagination metadata.
+                  properties:
+                    total:
+                      type: integer
+                      format: int32
+                      description: Total number of available items.
+                      minimum: 0
+                      maximum: 1000000 
+                    limit:
+                      type: integer
+                      format: int32
+                      description: Page size.
+                      minimum: 1
+                      maximum: 100
+                    offset:
+                      type: integer
+                      format: int32
+                      description: Zero-based index of the first returned item.
+                      minimum: 0
+                      maximum: 1000000 
+
+    AddGroupMembersRequest:
+      type: object
+      description: Request model for adding members to an existing group
+      required: [memberIds]
+      properties:
+        memberIds:
+          type: array
+          description: Array of user IDs to add to the group
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            description: User ID to add to the group
+            pattern: '^[a-zA-Z0-9-]+$'
+            minLength: 1
+            maxLength: 64
+
+    UpdateGroupNameRequest:
+      type: object
+      description: Request model for updating a group's name
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9\s_-]+$'
+          description: New name for the group
+
+    Error:
+      type: object
+      description: Standard error response model for API error conditions
+      required: [code, message, trace, error, errors]
+      properties:
+        code:
+          type: integer
+          format: int64
+          description: HTTP error code
+          minimum: 400
+          maximum: 599
+        message:
+          type: string
+          description: Human-readable error message
+          minLength: 1
+          maxLength: 255
+          pattern: '^[\s\S]{1,255}$'
+        trace:
+          type: string
+          description: Error trace ID for debugging purposes
+          pattern: '^[a-zA-Z0-9\s.,!?-]+$'
+          minLength: 1
+          maxLength: 1000
+        error:
+          type: string
+          description: Machine-readable error key
+          minLength: 1
+          maxLength: 100
+          pattern: '^[a-z0-9_.:-]+$'
+          example: auth.invalid_token
+        errors:
+          type: array
+          description: Collection of detailed error messages
+          items:
+            type: string
+            description: Detailed error message
+            minLength: 1
+            maxLength: 255
+            pattern: '^[\s\S]{1,255}$'
+          minItems: 0
+          maxItems: 100
+
+  parameters:
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: ID of the user
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9-]+$'
+        minLength: 1
+        maxLength: 64
+        description: unique identifier of user
+    id:
+      name: id
+      in: path
+      required: true
+      description: ID of the resource
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9-]+$'
+        minLength: 1
+        maxLength: 64
+        description: unique identifier
+
+paths:
+  /conversations:
+    post:
+      tags: [conversations]
+      operationId: startConversation
+      summary: Start a new conversation
+      description: >
+        Start a new conversation.  
+        - For **private** conversations: name is optional.  
+        - For **group** conversations: name is required.
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        description: Request payload for starting a new conversation
+        content:
+          application/json:
+            schema:
+              description: Request payload for starting a new conversation
+              type: object
+              required: [memberIds, name]
+              properties:
+                type:
+                  type: string
+                  enum: [private, group]
+                  description: >
+                    Type of the conversation.  
+                    Determines how the server processes the request.
+                memberIds:
+                  type: array
+                  description: >
+                    List of user IDs to include in this conversation.
+                  items:
+                    type: string
+                    description: User ID of a member to include in the conversation
+                    pattern: '^[a-zA-Z0-9-]+$'
+                    minLength: 1
+                    maxLength: 64
+                  minItems: 1
+                  maxItems: 100
+                name:
+                  type: string
+                  description: Name for the new conversation
+                  minLength: 1
+                  maxLength: 100
+                  pattern: '^[a-zA-Z0-9\s''-]+$'
+      responses:
+        '201':
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      tags: [conversations]
+      operationId: getMyConversations
+      summary: Get my conversations list
+      description: Retrieve list of user's conversations with last message preview
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Conversations list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationListEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  
+  /conversations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    delete:
+      tags: [conversations]
+      operationId: deleteConversation
+      summary: Delete a conversation
+      description: >
+        Permanently deletes the specified conversation.  
+        Only participants of the conversation are allowed to delete it.  
+        This removes the conversation, its members, and all messages.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Conversation deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+              example:
+                code: 200
+                message: Conversation deleted successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /session:
+    post:
+      security: []
+      tags: [auth]
+      operationId: doLogin
+      summary: Simplified user login
+      description: Login with just name (creates account if new)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Request payload for user login
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: User's display name (login name)
+                  minLength: 3
+                  maxLength: 16
+                  pattern: '^[a-zA-Z0-9\s''-]+$'
+                  example: Maria
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthEnvelope'
+              example:
+                code: 200
+                message: Login successful
+                data:
+                  user:
+                    id: usr-999
+                    name: maria
+                    avatarUri: https://example.com/avatars/maria.jpg
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /register:
+    post:
+      security: []
+      tags: [auth]
+      operationId: doRegister
+      summary: Register a new user
+      description: Create a new user account with the provided information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthEnvelope'
+              example:
+                code: 201
+                message: User registered successfully
+                data:
+                  user:
+                    id: usr-123456
+                    name: john_doe
+                    avatarUri: https://example.com/avatars/john_doe.jpg
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/set_username:
+    put:
+      tags: [users]
+      operationId: setMyUserName
+      summary: Change username
+      description: Update the current user's name
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Request payload for updating user's name
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: New user's name
+                  minLength: 1
+                  maxLength: 50
+                  pattern: '^[a-zA-Z0-9_-]+$'
+      responses:
+        '200':
+          description: user's name updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/set_photo:
+    put:
+      tags: [users]
+      operationId: setMyPhoto
+      summary: Change profile photo
+      description: Update the current user's profile picture
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              description: Request payload for updating user photo
+              type: object
+              required: [upload]
+              properties:
+                upload:
+                  type: string
+                  format: binary
+                  description: Image file (JPEG/PNG)
+                  minLength: 1
+                  maxLength: 255  
+      responses:
+        '200':
+          description: Profile photo updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/me:
+    get:
+      tags: [users]
+      operationId: getUserInfo
+      summary: Get current user info
+      description: Retrieve current user's profile information
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/search:
+    get:
+      tags: [users]
+      summary: Search users by keyword
+      description: Search users by name
+      operationId: searchUsers
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+            description: Search keyword for user names
+            minLength: 1
+            maxLength: 255
+            pattern: '^[a-zA-Z0-9\s@.-]+$'
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Matching users found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEnvelopeCollection'
+              example:
+                code: 200
+                message: Matching users found
+                data:
+                  items:
+                    - id: usr-1
+                      name: alice
+                      avatarUri: https://example.com/avatars/alice.jpg
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/profile/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/userId'
+    get:
+      tags: [users]
+      operationId: getUserProfile
+      summary: Get user profile
+      description: Retrieve detailed profile information for a specific user
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEnvelope'
+              example:
+                code: 200
+                message: User information retrieved
+                data:
+                  user:
+                    id: usr-123456
+                    name: john_doe
+                    avatarUri: https://example.com/avatars/john_doe.jpg
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /groups:
+    post:
+      tags: [groups]
+      operationId: createGroup
+      summary: Create group
+      description: Create group and associated conversation
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Request payload for creating a group
+              type: object
+              required: [name, memberIds]
+              properties:
+                name:
+                  type: string
+                  description: Group display name
+                  minLength: 1
+                  maxLength: 100
+                  pattern: "^[a-zA-Z0-9\\s'-]+$"
+                memberIds:
+                  type: array
+                  description: IDs of users to include
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: string
+                    pattern: '^[a-zA-Z0-9-]+$'
+                    description: User ID to add to the group
+                    minLength: 1
+                    maxLength: 64
+      responses:
+        '201':
+          description: Group created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupEnvelope'
+              example:
+                code: 201
+                message: Group created
+                data:
+                  group:
+                    id: '1'
+                    name: Group 1
+                    conversationId: 'c-1'
+                    members:
+                      - userId: '1'
+                        role: admin
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      tags: [groups]
+      operationId: getGroupsList
+      summary: Get groups list
+      description: Retrieve list of user's groups
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Groups list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupEnvelopeCollection'
+              example:
+                code: 200
+                message: Groups list retrieved
+                data:
+                  items:
+                    - id: '1'
+                      name: Group 1
+                      conversationId: 'c-1'
+                      members:
+                        - userId: '1'
+                          role: admin
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /groups/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      tags: [groups]
+      operationId: getGroupDetail
+      summary: Get group details
+      description: Retrieve details of a specific group
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Group details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupEnvelope'
+              example:
+                code: 200
+                message: Group details retrieved
+                data:
+                  group:
+                    id: '1'
+                    name: Group 1
+                    conversationId: 'c-1'
+                    members:
+                      - userId: '1'
+                        role: admin
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /groups/{id}/name:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    put:
+      tags: [groups]
+      operationId: setGroupName
+      summary: Update group name
+      description: Update the name of an existing group
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGroupNameRequest'
+      responses:
+        '200':
+          description: Group name updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /groups/{id}/photo:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    put:
+      tags: [groups]
+      operationId: setGroupPhoto
+      summary: Change group photo
+      description: Update the group's profile picture
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              description: Request payload for updating group photo
+              type: object
+              required: [upload]
+              properties:
+                upload:
+                  type: string
+                  format: binary
+                  description: Group photo file
+                  minLength: 1
+                  maxLength: 255
+
+      responses:
+        '200':
+          description: Group photo updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /groups/{id}/members:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      tags: [groups]
+      operationId: addToGroup
+      summary: Add group members
+      description: Add new members to an existing group
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddGroupMembersRequest'
+      responses:
+        '200':
+          description: Members added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+              example:
+                code: 200
+                message: Members added
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [groups]
+      operationId: leaveGroup
+      summary: Leave group
+      description: Current user leaves the specified group
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Successfully left the group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+              example:
+                code: 200
+                message: Left the group
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /messages:
+    get:
+      tags: [messages]
+      operationId: getConversation
+      summary: Get conversation messages
+      description: Retrieve messages from a specific conversation
+      security: [ { BearerAuth: [] } ]
+      parameters:
+        - name: conversationId
+          in: query
+          required: true
+          description: ID of the conversation
+          schema:
+            type: string
+            description: Unique identifier of the conversation
+            pattern: '^[a-zA-Z0-9-]+$'
+            minLength: 1
+            maxLength: 64
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of messages to return
+          schema:
+            type: integer
+            format: int64
+            description: Maximum number of messages to retrieve
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: beforeCursor
+          in: query
+          required: false
+          description: Return messages older than this cursor
+          schema:
+            type: string
+            description: Opaque cursor for paginating to older messages
+            minLength: 1
+            maxLength: 512
+            pattern: '^[A-Za-z0-9._~+=/-]+$'
+        - name: afterCursor
+          in: query
+          required: false
+          description: Return messages newer than this cursor
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+            pattern: '^[A-Za-z0-9._~+=/-]+$'
+            description: Opaque cursor for paginating to newer messages
+      responses:
+        '200':
+          description: Messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResourceEnvelopeCollection'
+              example:
+                code: 200
+                message: Messages retrieved successfully
+                data:
+                  messages:
+                    - id: '1'
+                      content: Hello!
+                      senderId: '1'
+                      conversationId: 'c-1'
+                      createdAt: '2023-10-01T12:00:00Z'
+                      type: text
+                      status: delivered
+                  nextCursor: "opaque-next-abc123"
+                  prevCursor: "opaque-prev-def456"
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    post:
+      tags: [messages]
+      operationId: sendMessage
+      summary: Send a message
+      description: Send a new message to a user or group
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: Request payload for sending a message
+              type: object
+              required: [conversationId, content]
+              properties:
+                conversationId:
+                  type: string
+                  description: ID of the target conversation
+                  pattern: '^[a-zA-Z0-9-]+$'
+                  minLength: 1
+                  maxLength: 64
+                content:
+                  type: string
+                  description: Message content
+                  minLength: 1
+                  maxLength: 1000
+                  pattern: '^[\s\S]{1,1000}$'
+                type:
+                  type: string
+                  description: Message type
+                  enum: [text, image, video, file]
+                  minLength: 1
+                  maxLength: 50
+                  default: text
+      responses:
+        '201':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResourceEnvelope'
+              example:
+                code: 201
+                message: Message sent successfully
+                data:
+                  resource:
+                    id: '123'
+                    content: Hello!
+                    senderId: '1'
+                    conversationId: 'c-1'
+                    createdAt: '2023-10-01T12:00:00Z'
+                    type: text
+                    status: sent
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /messages/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      tags: [messages]
+      operationId: getMessageById
+      summary: Get a specific message
+      description: Retrieve details of a message by its ID
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Message details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResourceEnvelope'
+              example:
+                code: 200
+                message: Message details retrieved
+                data:
+                  resource:
+                    id: '123'
+                    content: Hello!
+                    senderId: '1'
+                    conversationId: 'c-1'
+                    createdAt: '2023-10-01T12:00:00Z'
+                    type: text
+                    status: delivered
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [messages]
+      operationId: deleteMessage
+      summary: Delete a message
+      description: Permanently delete a message
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: Message deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+              example:
+                code: 200
+                message: Message deleted successfully
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /messages/{id}/forward:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      tags: [messages]
+      operationId: forwardMessage
+      summary: Forward a message
+      description: Forward an existing message to another user or group
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForwardMessageRequest'
+      responses:
+        '200':
+          description: Message forwarded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+              example:
+                code: 200
+                message: Message forwarded successfully
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /messages/{id}/comment:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      tags: [messages]
+      operationId: commentMessage
+      summary: Add comment to message
+      description: Add a comment/reaction to a message
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentMessageRequest'
+      responses:
+        '201':
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+              example:
+                code: 201
+                message: Comment added successfully
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      tags: [messages]
+      operationId: getMessageComments
+      summary: Get message comments
+      description: Retrieve comments/reactions for a message
+      security: [ { BearerAuth: [] } ]
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentsListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  
+  /messages/{id}/uncomment:
+    post:
+      tags:
+      - messages
+      operationId: uncommentMessage
+      summary: Remove a comment from a message
+      description: Delete a comment from a message
+      security:
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Comment removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+              example:
+                code: 200
+                message: Comment removed successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  
+  /liveness:
+    get:
+      security: []
+      tags: [health]
+      operationId: liveness
+      summary: Health check
+      description: Check if the service is alive
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+              example:
+                code: 200
+                message: Service is alive
+        '400':
+          $ref: '#/components/responses/BadRequest'

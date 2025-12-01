@@ -1,0 +1,103 @@
+# =========================
+# Go build artifacts
+# =========================
+bin/
+*.exe
+*.out
+*.log
+*.test
+
+# Vendor (we keep vendor)
+# vendor/
+
+# =========================
+# Databases & uploads
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+dev.sqlite
+data/
+uploads/*
+!uploads/.gitkeep
+
+# =========================
+# Temp / cache / misc
+# =========================
+tmp/
+*.tmp
+*.bak
+*.swp
+
+# =========================
+# Node / Yarn (monorepo-friendly)
+# =========================
+node_modules/
+.pnp.cjs
+.pnp.loader.mjs
+
+# Yarn 3+
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+!.yarn/
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+# =========================
+# WebUI
+# =========================
+webui/node_modules/
+webui/.vite/
+webui/dist/
+webui/node_modules/.cache/
+
+webui/.pnp.cjs
+webui/.pnp.loader.mjs
+webui/.yarn/cache/
+webui/.yarn/unplugged/
+webui/.yarn/build-state.yml
+webui/.yarn/install-state.gz
+!webui/.yarn/
+!webui/.yarn/releases
+!webui/.yarn/plugins
+!webui/.yarn/sdks
+!webui/.yarn/versions
+
+dist/
+
+# =========================
+# Env / Secrets
+# =========================
+.env
+.env.*
+
+# =========================
+# IDE / OS
+# =========================
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# =========================
+# Coverage / reports
+# =========================
+coverage/
+*.lcov
+
+# ==== Binaries (explicit) ====
+/webapi
+/webapi.exe
+
+# ==== Extra DB globs ====
+/tmp/decaf.db
+*.sqlite*
+
+# ==== Binaries (explicit) ====
+/webapi
+/webapi.exe
