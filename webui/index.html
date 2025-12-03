@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WaSA app</title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap.css" />
+
+    <!-- ✅ 全局兜底：老模板/内联 onclick 若调用 getUserProfile()，不会再把页面搞崩 -->
+    <script>
+      window.getUserProfile = window.getUserProfile || function () {};
+    </script>
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script src="/bootstrap/js/bootstrap.bundle.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
