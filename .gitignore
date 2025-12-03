@@ -14,6 +14,7 @@ bin/
 # Databases & uploads
 # =========================
 *.db
+*.db.bak.*
 *.sqlite
 *.sqlite3
 dev.sqlite
@@ -28,6 +29,15 @@ tmp/
 *.tmp
 *.bak
 *.swp
+
+# Local junk files (your machine)
+pkill
+return
+SELECT
+Using
+test.png
+vet.log
+restart_webapi.sh
 
 # =========================
 # Node / Yarn (monorepo-friendly)
@@ -98,6 +108,5 @@ coverage/
 /tmp/decaf.db
 *.sqlite*
 
-# ==== Binaries (explicit) ====
-/webapi
-/webapi.exe
+# ==== Extra accidental ====
+open-node.sh
