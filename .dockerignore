@@ -1,21 +1,29 @@
-# Git & VCS
+# ===== Git =====
 .git
-.gitignore
+.gitattributes
 
-# Node / Frontend caches
-node_modules
-webui/node_modules
-webui/.cache
+# ===== Node build outputs =====
 webui/dist
+webui/.vite
+webui/node_modules
 
-# Local data & artifacts
-data/*
-uploads/*
-dev.sqlite
+# ===== Go build outputs =====
+bin/
+*.exe
+*.out
+
+# ===== Logs =====
 *.log
-*.tmp
-.DS_Store
-/webapi
-/webapi.exe
+
+# ===== Databases =====
 *.db
 *.sqlite*
+dev.sqlite
+
+# ===== OS junk =====
+.DS_Store
+Thumbs.db
+
+# ===== Local uploads =====
+uploads/
+data/
