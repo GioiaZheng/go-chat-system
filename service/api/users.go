@@ -52,7 +52,7 @@ func (rt *_router) getUserInfo(
 	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
 		"code":    http.StatusOK,
 		"message": "User information retrieved",
-		"data": u,
+		"data":    u,
 	})
 }
 
@@ -285,9 +285,7 @@ func (rt *_router) setMyPhoto(
 	rt.setUserPhoto(w, r, ps, ctx)
 }
 
-//
 // Search users  (GET /users/search?q=xxx)  — exclude myself
-//
 func (rt *_router) searchUsers(
 	w http.ResponseWriter,
 	r *http.Request,

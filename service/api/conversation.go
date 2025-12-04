@@ -147,49 +147,48 @@ func (rt *_router) getMyConversations(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-
 func (rt *_router) deleteConversation(
-    w http.ResponseWriter,
-    r *http.Request,
-    ps httprouter.Params,
-    ctx reqcontext.RequestContext,
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
 ) {
-    userID := strings.TrimSpace(ctx.UserID)
-    if userID == "" {
-        rt.writeErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
-        return
-    }
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.writeErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 
-    cid := ps.ByName("id")
-    if cid == "" {
-        rt.writeErrorResponse(w, http.StatusBadRequest, "missing conversation id")
-        return
-    }
+	cid := ps.ByName("id")
+	if cid == "" {
+		rt.writeErrorResponse(w, http.StatusBadRequest, "missing conversation id")
+		return
+	}
 
-    // Check membership
-    members, err := rt.db.GetConversationMembers(cid)
-    if err != nil {
-        rt.writeErrorResponse(w, http.StatusInternalServerError, "db error")
-        return
-    }
+	// Check membership
+	members, err := rt.db.GetConversationMembers(cid)
+	if err != nil {
+		rt.writeErrorResponse(w, http.StatusInternalServerError, "db error")
+		return
+	}
 
-    ok := false
-    for _, m := range members {
-        if m == userID {
-            ok = true
-            break
-        }
-    }
-    if !ok {
-        rt.writeErrorResponse(w, http.StatusForbidden, "not your conversation")
-        return
-    }
+	ok := false
+	for _, m := range members {
+		if m == userID {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		rt.writeErrorResponse(w, http.StatusForbidden, "not your conversation")
+		return
+	}
 
-    // Delete conversation
-    if err := rt.db.DeleteConversation(cid); err != nil {
-        rt.writeErrorResponse(w, http.StatusInternalServerError, err.Error())
-        return
-    }
+	// Delete conversation
+	if err := rt.db.DeleteConversation(cid); err != nil {
+		rt.writeErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
-    w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }

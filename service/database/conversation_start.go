@@ -152,6 +152,10 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 		participants = append(participants, u)
 	}
 
+	if err := rows.Err(); err != nil {
+		return models.Conversation{}, err
+	}
+
 	// Determine type
 	convType := "group"
 	if len(participants) == 2 {
@@ -160,13 +164,12 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 		// 正确选择对方
 		for _, p := range participants {
 			if p.ID != requesterID {
-				name = p.Name               // 会话名称 = 对方名字
+				name = p.Name                  // 会话名称 = 对方名字
 				avatarURL.String = p.AvatarUrl // 会话头像 = 对方头像
 				break
 			}
 		}
 	}
-
 
 	// LastMessage
 	var msg models.Message
@@ -299,6 +302,5 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 
 		result = append(result, conv)
 	}
-
 	return result, rows.Err()
 }

@@ -165,4 +165,3 @@ func (db *appdbimpl) SearchUsers(ctx context.Context, me string, query string) (
 	}
 	return users, nil
 }
-

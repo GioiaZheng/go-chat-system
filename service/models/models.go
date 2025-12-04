@@ -85,8 +85,8 @@ type Message struct {
 // required: id, type, participants
 type Conversation struct {
 	ID           string `json:"id"`
-	Type         string `json:"type"`                // "private" | "group"
-	Name         string `json:"name,omitempty"`      // group or derived name
+	Type         string `json:"type"`           // "private" | "group"
+	Name         string `json:"name,omitempty"` // group or derived name
 	AvatarUrl    string `json:"avatarUri,omitempty"`
 	Participants []User `json:"participants,omitempty"`
 

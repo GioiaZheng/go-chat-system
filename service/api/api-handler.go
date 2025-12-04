@@ -42,9 +42,6 @@ func (rt *_router) RegisterRoutes() {
 	// DELETE /conversations/{id} -> deleteConversation
 	rt.router.DELETE("/conversations/:id", rt.wrap(rt.deleteConversation))
 
-
-
-
 	// Users
 	// PUT /users/set_username -> setMyUserName
 	// NOTE: despite path name, this updates the user's display name ("name") per spec.

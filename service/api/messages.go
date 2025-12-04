@@ -1,13 +1,13 @@
 package api
 
 import (
+	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"io"
-    "os"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
@@ -459,7 +459,6 @@ func (rt *_router) commentMessage(
 	_ = writeJSON(w, http.StatusCreated, resp)
 }
 
-
 func (rt *_router) uncommentMessage(
 	w http.ResponseWriter,
 	_ *http.Request,
@@ -529,47 +528,47 @@ func (rt *_router) deleteMessage(
 
 // POST /messages/upload
 func (rt *_router) uploadMessageFile(
-    w http.ResponseWriter,
-    r *http.Request,
-    _ httprouter.Params,
-    ctx reqcontext.RequestContext,
+	w http.ResponseWriter,
+	r *http.Request,
+	_ httprouter.Params,
+	ctx reqcontext.RequestContext,
 ) {
-    userID := strings.TrimSpace(ctx.UserID)
-    if userID == "" {
-        rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
-        return
-    }
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 
-    // 读取文件（表单字段名: upload）
-    file, header, err := r.FormFile("upload")
-    if err != nil {
-        rt.sendError(w, http.StatusBadRequest, "file required")
-        return
-    }
-    defer file.Close()
+	// 读取文件（表单字段名: upload）
+	file, header, err := r.FormFile("upload")
+	if err != nil {
+		rt.sendError(w, http.StatusBadRequest, "file required")
+		return
+	}
+	defer file.Close()
 
-    // 存储到 ./uploads/
-    fname := "msg_" + uuid.Must(uuid.NewV4()).String() + "_" + header.Filename
-    path := "./uploads/" + fname
+	// 存储到 ./uploads/
+	fname := "msg_" + uuid.Must(uuid.NewV4()).String() + "_" + header.Filename
+	path := "./uploads/" + fname
 
-    out, err := os.Create(path)
-    if err != nil {
-        rt.sendError(w, http.StatusInternalServerError, "Failed to save file")
-        return
-    }
-    defer out.Close()
+	out, err := os.Create(path)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to save file")
+		return
+	}
+	defer out.Close()
 
-    _, _ = io.Copy(out, file)
+	_, _ = io.Copy(out, file)
 
-    // 返回可访问 URL（前端用来当 content）
-    url := "/uploads/" + fname
+	// 返回可访问 URL（前端用来当 content）
+	url := "/uploads/" + fname
 
-    resp := map[string]interface{}{
-        "code": http.StatusCreated,
-        "data": map[string]string{
-            "fileUrl":  url,
-            "filename": header.Filename,
-        },
-    }
-    _ = writeJSON(w, http.StatusCreated, resp)
+	resp := map[string]interface{}{
+		"code": http.StatusCreated,
+		"data": map[string]string{
+			"fileUrl":  url,
+			"filename": header.Filename,
+		},
+	}
+	_ = writeJSON(w, http.StatusCreated, resp)
 }

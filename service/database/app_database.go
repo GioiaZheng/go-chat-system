@@ -43,11 +43,10 @@ type AppDatabase interface {
 	GetMessagesByConversation(conversationID, before, after string, limit int) ([]models.Message, error)
 	DeleteConversation(conversationID string) error
 
-
 	// --- messages ---
 	SendMessageToConversation(message models.Message) error
-	SendPrivateMessage(message models.Message) error 
-	SendGroupMessage(message models.Message) error 
+	SendPrivateMessage(message models.Message) error
+	SendGroupMessage(message models.Message) error
 
 	GetAllMessages() ([]models.Message, error)
 	GetPrivateConversation(userID1, userID2 string) ([]models.Message, error)
@@ -207,5 +206,3 @@ func (db *appdbimpl) InitDefaultUsers() error {
 	}
 	return nil
 }
-
-
