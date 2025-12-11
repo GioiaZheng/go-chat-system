@@ -36,11 +36,12 @@
         >
           <!-- LEFT AVATAR  -->
           <div v-if="!isMine(m)" class="avatar" :class="{ placeholder: !avatarFor(m) }">
-            <div
+            <img
               v-if="avatarFor(m)"
               class="avatar-img"
-              :style="{ backgroundImage: `url('${avatarFor(m)}')` }"
-            ></div>
+              :src="avatarFor(m)"
+              :alt="avatarInitial(m)"
+            />
             <span v-else class="avatar-initial">{{ avatarInitial(m) }}</span>
           </div>
           <!-- MESSAGE BLOCK -->
@@ -134,11 +135,12 @@
 
           <!-- RIGHT AVATAR (me) -->
           <div v-if="isMine(m)" class="avatar mine" :class="{ placeholder: !myAvatar }">
-            <div
+            <img
               v-if="myAvatar"
               class="avatar-img"
-              :style="{ backgroundImage: `url('${myAvatar}')` }"
-            ></div>
+              :src="myAvatar"
+              :alt="avatarInitial(m)"
+            />
             <span v-else class="avatar-initial">{{ avatarInitial(m) }}</span>
           </div>
         </div>
@@ -754,7 +756,7 @@ watch(convId, async () => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid #e2e8f0;
+  overflow: hidden;
 
   flex-shrink: 0;
   display: grid;
@@ -767,6 +769,7 @@ watch(convId, async () => {
 }
 .avatar.placeholder {
   background: #e2e8f0;
+  border: 1px solid #e2e8f0;
   color: #475569;
   font-weight: 700;
 }
@@ -775,8 +778,9 @@ watch(convId, async () => {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-size: cover;
-  background-position: center;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
+  display: block;
 }
 
 .avatar-initial {
