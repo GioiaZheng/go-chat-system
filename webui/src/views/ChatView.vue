@@ -6,17 +6,27 @@
       <button class="back" @click="router.back()">←</button>
 
       <div class="title">
-        <strong>{{ headerTitle }}</strong>
-        <small class="muted">
-          {{ isGroup ? 'Group Chat' : 'Private Chat' }}
-        </small>
+        <div class="title-row">
+          <div
+            class="header-avatar"
+            :style="headerAvatar ? { backgroundImage: `url('${headerAvatar}')` } : {}"
+          >
+            <span v-if="!headerAvatar">{{ headerTitle[0] || 'C' }}</span>
+          </div>
+          <div>
+            <strong>{{ headerTitle }}</strong>
+            <small class="muted">
+              {{ isGroup ? 'Group Chat' : 'Private Chat' }}
+            </small>
+          </div>
+        </div>
       </div>
     </header>
 
     <!-- MAIN CONTENT -->
     <section class="content">
       <ErrorMsg v-if="err" :text="err" class="mb-2" />
-
+      <p v-else-if="notice" class="notice">{{ notice }}</p>
       <div ref="scrollbox" class="scroll">
         <div
           v-for="m in messages"
@@ -25,12 +35,14 @@
           :class="{ mine: isMine(m) }"
         >
           <!-- LEFT AVATAR  -->
-          <div
-            v-if="!isMine(m)"
-            class="avatar"
-            :style="{ backgroundImage: `url('${avatarFor(m)}')` }"
-          ></div>
-
+          <div v-if="!isMine(m)" class="avatar" :class="{ placeholder: !avatarFor(m) }">
+            <div
+              v-if="avatarFor(m)"
+              class="avatar-img"
+              :style="{ backgroundImage: `url('${avatarFor(m)}')` }"
+            ></div>
+            <span v-else class="avatar-initial">{{ avatarInitial(m) }}</span>
+          </div>
           <!-- MESSAGE BLOCK -->
           <div class="bubble-wrap" :class="{ mine: isMine(m) }">
             <!-- Sender Name (group only) -->
@@ -52,6 +64,7 @@
             <!-- Timestamp -->
             <div class="meta">
               {{ fmtTime(m._ts) }}
+              <span v-if="tickText(m)" class="ticks">{{ tickText(m) }}</span>
             </div>
 
             <!-- COMMENT CHIP -->
@@ -74,8 +87,9 @@
 
             <!-- REACTIONS -->
             <div class="actions">
+              <button class="icon-btn" title="Reply" @click="setReplyTarget(m)">↩️</button>
               <button class="icon-btn" @click="toggleCommentBox(m)">💬</button>
-
+              <button class="icon-btn" title="Forward" @click="forward(m)">🔗</button>
               <button
                 class="icon-btn"
                 :class="{ active: m._myReactions.includes('👍') }"
@@ -107,7 +121,7 @@
                 v-model="m._commentDraft"
                 class="comment-input"
                 type="text"
-                placeholder="Write a comment…"
+                placeholder="Write a reply…"
                 @keyup.enter="sendComment(m)"
               />
               <button class="btn-xs" @click="sendComment(m)">Send</button>
@@ -115,46 +129,55 @@
           </div>
 
           <!-- RIGHT AVATAR (me) -->
-          <div
-            v-if="isMine(m)"
-            class="avatar mine"
-            :style="{ backgroundImage: `url('${myAvatar}')` }"
-          ></div>
+          <div v-if="isMine(m)" class="avatar mine" :class="{ placeholder: !myAvatar }">
+            <div
+              v-if="myAvatar"
+              class="avatar-img"
+              :style="{ backgroundImage: `url('${myAvatar}')` }"
+            ></div>
+            <span v-else class="avatar-initial">{{ avatarInitial(m) }}</span>
+          </div>
         </div>
       </div>
 
       <!-- COMPOSER -->
       <div class="composer">
-        <textarea
-          v-model="draft"
-          class="input"
-          placeholder="Type a message…"
-          rows="1"
-          @keyup.enter.exact.prevent="onSend"
-        ></textarea>
+        <div v-if="replyTarget" class="reply-banner">
+          Replying to: {{ replyTarget.content || replyTarget._replyPreview || 'message' }}
+          <button class="btn-xs btn-secondary" type="button" @click="clearReplyTarget">Cancel</button>
+        </div>
+        <div class="composer-row">
+          <textarea
+            v-model="draft"
+            class="input"
+            placeholder="Type a message…"
+            rows="1"
+            @keyup.enter.exact.prevent="onSend"
+          ></textarea>
 
-        <!-- Attach button for images -->
-        <button
-          type="button"
-          class="icon-btn attach"
-          @click="triggerImagePicker"
-          title="Send image"
-        >
-          📎
-        </button>
+          <!-- Attach button for images -->
+          <button
+            type="button"
+            class="icon-btn attach"
+            @click="triggerImagePicker"
+            title="Send image"
+          >
+            📎
+          </button>
 
-        <!-- Hidden file input -->
-        <input
-          ref="imageInput"
-          type="file"
-          class="filepick"
-          accept="image/*"
-          @change="onPickImage"
-        />
+          <!-- Hidden file input -->
+          <input
+            ref="imageInput"
+            type="file"
+            class="filepick"
+            accept="image/*"
+            @change="onPickImage"
+          />
 
-        <button class="btn" :disabled="!canSend" @click="onSend">
-          {{ sending ? 'Sending…' : 'Send' }}
-        </button>
+          <button class="btn" :disabled="!canSend" @click="onSend">
+            {{ sending ? 'Sending…' : 'Send' }}
+          </button>
+        </div>
       </div>
     </section>
   </div>
@@ -175,6 +198,8 @@ import {
   absUrl,
   commentMessage,
   uncommentMessage,
+  forwardMessage,
+  ticksFor,
 } from '@/services/api'
 
 const route = useRoute()
@@ -183,12 +208,14 @@ const router = useRouter()
 // basic states
 const convId = computed(() => String(route.params.id || ''))
 const err = ref('')
+const notice = ref('')
 const loading = ref(false)
 const sending = ref(false)
 const draft = ref('')
 const messages = ref([])
 const scrollbox = ref(null)
 const imageInput = ref(null)
+const replyTarget = ref(null)
 
 const me = ref(null)
 const meId = computed(() => String(me.value?.id || ''))
@@ -208,7 +235,14 @@ function avatarFor(m) {
   const sender = participants.value.find(u => String(u.id) === String(m.senderId))
   if (sender) return getAvatarUrl(sender)
 
-  return '/default-avatar.png'
+  return ''
+}
+
+function avatarInitial(m) {
+  if (isMine(m)) return (me.value?.name || 'Me')[0] || 'M'
+  const sender = participants.value.find(u => String(u.id) === String(m.senderId))
+  const name = sender?.name || sender?.username || 'U'
+  return (name[0] || 'U').toUpperCase()
 }
 
 function displayNameFor(m) {
@@ -221,6 +255,12 @@ const headerTitle = computed(() => {
   if (!currentConv.value) return 'Chat'
   if (!isGroup.value) return peer.value?.name || 'Chat'
   return currentConv.value.name || 'Group'
+})
+
+const headerAvatar = computed(() => {
+  if (!currentConv.value) return ''
+  if (isGroup.value) return getAvatarUrl(currentConv.value)
+  return getAvatarUrl(peer.value || {})
 })
 
 const showSenderName = computed(() => isGroup.value)
@@ -265,6 +305,9 @@ function normalizeMessage(raw) {
   const fileRel =
     raw.fileUrl ||
     raw.file_url ||
+    raw.imageUrl ||
+    raw.image_url ||
+    raw.file ||
     (raw.type === 'image' ? raw.content : null)
 
   return {
@@ -278,6 +321,7 @@ function normalizeMessage(raw) {
     _commentDraft: '',
     _myLastComment: '',
     _myReactions: [],
+    _replyPreview: raw.replyTo?.content || '',
   }
 }
 
@@ -285,6 +329,7 @@ function normalizeMessage(raw) {
 async function loadMessages() {
   loading.value = true
   err.value = ''
+  notice.value = ''
   try {
     const data = await getMessages({ conversationId: convId.value, limit: 150 })
 
@@ -318,9 +363,15 @@ async function onSend() {
 
   sending.value = true
   err.value = ''
+  notice.value = ''
   try {
-    await sendMessage({ conversationId: convId.value, content: t })
+    await sendMessage({
+      conversationId: convId.value,
+      content: t,
+      replyTo: replyTarget.value?.id,
+    })
     draft.value = ''
+    replyTarget.value = null
     await loadMessages()
   } catch (e) {
     err.value = e?.response?.data?.message || 'Failed to send'
@@ -407,6 +458,38 @@ async function toggleReaction(m, emoji) {
   }
 }
 
+
+async function forward(m) {
+  const target = prompt('Forward to conversation ID:')
+  if (!target) return
+  notice.value = ''
+  err.value = ''
+  try {
+    await forwardMessage(m.id, target)
+    notice.value = 'Message forwarded successfully.'
+  } catch (e) {
+    err.value = e?.response?.data?.message || 'Failed to forward message'
+  }
+}
+
+function setReplyTarget(m) {
+  replyTarget.value = m
+}
+
+function clearReplyTarget() {
+  replyTarget.value = null
+}
+
+function tickText(m) {
+  const v = ticksFor(m, meId.value)
+  if (v === 3) return '✓✓ read'
+  if (v === 2) return '✓✓ delivered'
+  if (v === 1) return '✓ sent'
+  if (v === 0) return '…'
+  return ''
+}
+
+
 // ---- Bootstrap ----
 async function bootstrap() {
   if (!isAuthed()) {
@@ -458,6 +541,25 @@ watch(convId, async () => {
   flex-direction: column;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #334155;
+}
+
 .muted {
   font-size: 0.75rem;
   color: #64748b;
@@ -467,6 +569,15 @@ watch(convId, async () => {
   max-width: 900px;
   margin: 0 auto;
   padding: 16px;
+}
+
+.notice {
+  background: #ecfeff;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
 }
 
 .scroll {
@@ -494,16 +605,33 @@ watch(convId, async () => {
   border-radius: 50%;
   border: 1px solid #e2e8f0;
 
-  /* 用背景图来显示头像，避免任何拉伸 */
-  background-size: cover;        /* 等比例放大裁剪 */
-  background-position: center;   /* 取中间 */
-  background-repeat: no-repeat;
   flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: #e2e8f0;
 }
 
 .avatar.mine {
   margin-left: 4px;    /* 自己的头像和气泡之间留一点空 */
 }
+.avatar.placeholder {
+  background: #e2e8f0;
+  color: #475569;
+  font-weight: 700;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+}
+
+.avatar-initial {
+  font-size: 0.9rem;
+}
+
 .bubble-wrap {
   display: flex;
   flex-direction: column;
@@ -542,6 +670,11 @@ watch(convId, async () => {
   font-size: 0.7rem;
   color: #6b7280;
   margin-top: 3px;
+}
+
+.ticks {
+  margin-left: 6px;
+  color: #0f766e;
 }
 
 .comment-chip {
@@ -608,12 +741,18 @@ watch(convId, async () => {
 .composer {
   margin-top: 12px;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   padding: 10px;
   background: white;
   border-radius: 12px;
   border: 1px solid #e1e5eb;
+}
+
+.composer-row {
+  display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .input {
@@ -622,6 +761,18 @@ watch(convId, async () => {
   border-radius: 10px;
   border: 1px solid #cbd5e1;
   resize: none;
+}
+
+.reply-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  width: 100%;
 }
 
 .btn {

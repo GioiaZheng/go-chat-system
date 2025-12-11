@@ -81,12 +81,14 @@ import {
   getAvatarUrl,
   createGroup as apiCreateGroup,
   setGroupPhoto,
+  getMyProfile,
 } from '@/services/api'
 
 const router = useRouter()
 
 const err = ref('')
 const loading = ref(false)
+const me = ref(null)
 
 const groupName = ref('')
 
@@ -96,13 +98,24 @@ const avatarPreview = ref('')
 const fileInput = ref(null)
 
 const avatar = (u) => getAvatarUrl(u)
-const memberIds = computed(() => pickedUsers.value.map(u => String(u.id)).filter(Boolean))
+const memberIds = computed(() => {
+  const ids = new Set(pickedUsers.value.map(u => String(u.id)).filter(Boolean))
+  if (me.value?.id) ids.add(String(me.value.id))
+  return Array.from(ids)
+})
 
 onMounted(() => {
   if (!isAuthed()) {
     router.replace('/login')
   }
+  loadMe()
 })
+
+async function loadMe() {
+  try {
+    me.value = await getMyProfile()
+  } catch {}
+}
 
 function onChildError(msg) {
   err.value = msg || ''

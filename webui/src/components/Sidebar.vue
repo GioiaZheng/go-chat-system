@@ -4,6 +4,20 @@
     <!-- Brand -->
     <div class="brand">Wa<span class="accent">SA</span>Text</div>
 
+    <!-- User info -->
+    <div class="me" v-if="me">
+      <div
+        class="me-avatar"
+        :style="avatarUrl ? { backgroundImage: `url('${avatarUrl}')` } : {}"
+      >
+        <span v-if="!avatarUrl">{{ initials }}</span>
+      </div>
+      <div class="me-info">
+        <div class="me-name">{{ me.name || '(no name)' }}</div>
+        <div class="me-username">@{{ me.username || 'user' }}</div>
+      </div>
+    </div>
+
     <!-- Navigation -->
     <div class="nav">
       <RouterLink to="/conversations" class="link" active-class="active">💬 Chats</RouterLink>
@@ -20,14 +34,26 @@
 </template>
 
 <script setup>
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '@/services/api' // ✅ 使用统一的 doLogout
+import api from '@/services/api' 
+import { getMyProfile, getAvatarUrl } from '@/services/api'
 
 const router = useRouter()
+const me = ref(null)
+
+const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
+const initials = computed(() => (me.value?.name || me.value?.username || 'U')[0].toUpperCase())
+
+onMounted(async () => {
+  try {
+    me.value = await getMyProfile()
+  } catch {}
+})
 
 function logout() {
-  api.doLogout()               // 清理 token、name、me，并广播 auth:changed
-  router.replace('/login')     // 回到登录页
+  api.doLogout()            
+  router.replace('/login') 
 }
 </script>
 
@@ -52,6 +78,38 @@ function logout() {
   margin-bottom: 24px;
 }
 .accent { color: #3b82f6; }
+
+.me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  margin-bottom: 14px;
+}
+
+.me-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #475569;
+}
+
+.me-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.me-name { font-weight: 700; color: #0f172a; }
+.me-username { color: #475569; font-size: 0.9rem; }
 
 .nav {
   display: flex;

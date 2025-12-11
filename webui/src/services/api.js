@@ -136,6 +136,9 @@ export async function setMyUserName(name) {
   try {
     return unwrap(await put('/users/set_username', { name }))
   } catch (e) {
+    if (e?.response?.status === 409) {
+      throw new Error('Username already taken. Please choose another.')
+    }
     const msg = e?.response?.data?.message || e?.message || 'Failed to set username'
     throw new Error(msg)
   }
@@ -419,12 +422,25 @@ export async function getMessageComments(id) {
 }
 
 // 写评论
-export async function commentMessage(msgId, type, content) {
-  return api.post(`/messages/${msgId}/comment`, {
-    type,
-    content
-  });
+export async function commentMessage(msgId, payload) {
+  const mid = encodeURIComponent(String(msgId))
+  let body = { type: 'text', content: '' }
+
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    body = {
+      type: payload.type || 'text',
+      content: payload.content ?? '',
+    }
+  } else {
+    body = {
+      type: payload || 'text',
+      content: arguments[2] ?? '',
+    }
+  }
+
+  return unwrap(await post(`/messages/${mid}/comment`, body))
 }
+
 
 
 // 删除评论：后端不读取 body，只需要 POST 即可
@@ -440,7 +456,7 @@ export const removeMessageReply = uncommentMessage
 
 // 表情：将内容写成 :react:emoji，并标记类型为 emoji
 export async function reactToMessage(id, emoji) {
-  return commentMessage(id, `:react:${emoji}`, 'emoji')
+  return commentMessage(id, { type: 'emoji', content: emoji })
 }
 
 // 删除表情：后端目前无法删除指定 emoji，因此全删
