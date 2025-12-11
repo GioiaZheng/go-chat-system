@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -547,9 +548,16 @@ func (rt *_router) uploadMessageFile(
 	}
 	defer file.Close()
 
+	// 确保 uploads 目录存在
+	baseDir := "./uploads"
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to prepare upload directory")
+		return
+	}
+
 	// 存储到 ./uploads/
 	fname := "msg_" + uuid.Must(uuid.NewV4()).String() + "_" + header.Filename
-	path := "./uploads/" + fname
+	path := filepath.Join(baseDir, fname)
 
 	out, err := os.Create(path)
 	if err != nil {

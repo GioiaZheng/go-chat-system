@@ -89,7 +89,7 @@
             <div class="actions">
               <button class="icon-btn" title="Reply" @click="setReplyTarget(m)">↩️</button>
               <button class="icon-btn" @click="toggleCommentBox(m)">💬</button>
-              <button class="icon-btn" title="Forward" @click="forward(m)">🔗</button>
+              <button class="icon-btn" title="Forward" @click="openForwardPicker(m)">🔗</button>
               <button
                 class="icon-btn"
                 :class="{ active: m._myReactions.includes('👍') }"
@@ -179,12 +179,67 @@
           </button>
         </div>
       </div>
+
+      <!-- Forward picker -->
+      <div v-if="forwardPanelOpen" class="forward-overlay">
+        <div class="forward-modal">
+          <header class="forward-header">
+            <div>
+              <strong>Forward message</strong>
+              <div class="muted small">Select a chat to forward this message.</div>
+            </div>
+            <button class="close-btn" type="button" @click="closeForwardPicker">✕</button>
+          </header>
+
+          <input
+            v-model="forwardSearch"
+            class="forward-search"
+            type="text"
+            placeholder="Search chats"
+          />
+
+          <div class="forward-body">
+            <p v-if="forwardLoading" class="muted">Loading conversations…</p>
+            <ErrorMsg v-else-if="forwardError" :text="forwardError" />
+
+            <template v-else>
+              <button
+                v-for="c in filteredForwardList"
+                :key="c.id"
+                class="forward-item"
+                type="button"
+                @click="forwardToConversation(c.id)"
+              >
+                <div
+                  class="forward-avatar"
+                  :style="
+                    avatarForConversation(c, meId) ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` } : {}
+                  "
+                >
+                  <span v-if="!avatarForConversation(c, meId)">
+                    {{ titleForConversation(c, meId)[0] || 'C' }}
+                  </span>
+                </div>
+
+                <div class="forward-meta">
+                  <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
+                  <div class="forward-type muted small">
+                    {{ c.type === 'group' ? 'Group chat' : 'Direct chat' }}
+                  </div>
+                </div>
+              </button>
+
+              <p v-if="!filteredForwardList.length" class="muted">No conversations found.</p>
+            </template>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import {
@@ -200,6 +255,8 @@ import {
   uncommentMessage,
   forwardMessage,
   ticksFor,
+  titleForConversation,
+  avatarForConversation,
 } from '@/services/api'
 
 const route = useRoute()
@@ -227,6 +284,14 @@ const participants = computed(() => currentConv.value?.participants || [])
 const peer = computed(
   () => participants.value.find(u => String(u.id) !== meId.value) || null
 )
+
+// forward modal state
+const forwardPanelOpen = ref(false)
+const forwardLoading = ref(false)
+const forwardError = ref('')
+const forwardSearch = ref('')
+const forwardList = ref([])
+const forwardTargetMessage = ref(null)
 
 // ---- Avatar helpers ----
 function avatarFor(m) {
@@ -264,6 +329,12 @@ const headerAvatar = computed(() => {
 })
 
 const showSenderName = computed(() => isGroup.value)
+
+async function refreshProfile() {
+  // 兼容 me profile envelope
+  const prof = await getMyProfile()
+  me.value = prof?.data?.user || prof?.user || prof || null
+}
 
 // load conversation meta (for title, participants, type)
 async function loadConversationMeta() {
@@ -459,16 +530,55 @@ async function toggleReaction(m, emoji) {
 }
 
 
-async function forward(m) {
-  const target = prompt('Forward to conversation ID:')
-  if (!target) return
-  notice.value = ''
-  err.value = ''
+async function loadForwardList() {
+  forwardLoading.value = true
+  forwardError.value = ''
   try {
-    await forwardMessage(m.id, target)
-    notice.value = 'Message forwarded successfully.'
+    const raw = await getMyConversations()
+    forwardList.value =
+      raw?.data?.items || raw?.items || (Array.isArray(raw) ? raw : []) || []
   } catch (e) {
-    err.value = e?.response?.data?.message || 'Failed to forward message'
+    forwardError.value =
+      e?.response?.data?.message || e?.message || 'Failed to load conversations'
+  } finally {
+    forwardLoading.value = false
+  }
+}
+
+function openForwardPicker(m) {
+  forwardTargetMessage.value = m
+  forwardPanelOpen.value = true
+  forwardSearch.value = ''
+  forwardError.value = ''
+  loadForwardList()
+}
+
+function closeForwardPicker() {
+  forwardPanelOpen.value = false
+  forwardTargetMessage.value = null
+}
+
+const filteredForwardList = computed(() => {
+  const q = forwardSearch.value.trim().toLowerCase()
+  if (!q) return forwardList.value
+  return forwardList.value.filter(c => {
+    const title = titleForConversation(c, meId.value).toLowerCase()
+    const type = (c.type || '').toLowerCase()
+    return title.includes(q) || type.includes(q)
+  })
+})
+
+async function forwardToConversation(targetConvId) {
+  if (!forwardTargetMessage.value) return
+  forwardError.value = ''
+  notice.value = ''
+  try {
+    await forwardMessage(forwardTargetMessage.value.id, targetConvId)
+    notice.value = 'Message forwarded successfully.'
+    closeForwardPicker()
+  } catch (e) {
+    forwardError.value =
+      e?.response?.data?.message || e?.message || 'Failed to forward message'
   }
 }
 
@@ -496,15 +606,25 @@ async function bootstrap() {
     return router.replace('/login')
   }
 
-  // 兼容 me profile envelope
-  const prof = await getMyProfile()
-  me.value = prof?.data?.user || prof?.user || prof || null
+  await refreshProfile()
 
   await loadConversationMeta()
   await loadMessages()
 }
 
-onMounted(bootstrap)
+function handleAuthChanged() {
+  refreshProfile().catch(() => {})
+}
+
+onMounted(() => {
+  window.addEventListener('auth:changed', handleAuthChanged)
+  bootstrap()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('auth:changed', handleAuthChanged)
+})
+
 watch(convId, async () => {
   await loadConversationMeta()
   await loadMessages()
@@ -791,4 +911,102 @@ watch(convId, async () => {
 .attach {
   font-size: 1.2rem;
 }
+
+
+.forward-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 12px;
+}
+
+.forward-modal {
+  width: min(460px, 92vw);
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.forward-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.forward-search {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+}
+
+.forward-body {
+  overflow-y: auto;
+  max-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.forward-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.forward-item:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.forward-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #475569;
+}
+
+.forward-meta {
+  text-align: left;
+}
+
+.forward-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.forward-type {
+  margin-top: 2px;
+}
+
+.close-btn {
+  border: none;
+  background: #f1f5f9;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
 </style>
