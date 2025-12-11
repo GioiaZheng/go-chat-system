@@ -1,183 +1,133 @@
-# WASA Text – Chat Application (Course Project)
+# WASA Text – Chat Application
 
-This repository contains the implementation of a full-stack chat system developed for the **Web and Software Architecture (WASA)** course  
-taught by *Prof. Emanuele Panizzi* at *Sapienza University of Rome*.  
+A full-stack chat system built for the *Web and Software Architecture (WASA)* course at Sapienza University of Rome. The project exposes a REST API written in Go, persists data with SQLite, and ships with an optional Vue 3 web interface that can be served separately or embedded in the backend binary.
 
-The project builds upon the official **"Fantastic Coffee (Decaffeinated)"** template provided in class and extends it into a working multi-user chat platform with RESTful APIs, SQLite storage, and an optional Vue-based WebUI.
+## Features
+- RESTful API for sessions, users, conversations, and messages.
+- SQLite-backed persistence with automatic schema migrations on startup.
+- Optional Vue 3 + Vite web interface (can be embedded with Go build tags).
+- Dockerfiles for backend and frontend images, plus Nginx configuration for proxying.
 
----
+## Requirements
+- Go **1.17+**
+- Node.js **18+** and Yarn **3.x** (for the web UI)
+- SQLite3 (shared library used by the Go `sqlite3` driver)
+- Docker (optional, for container builds)
 
-## 1. Overview
-
-The project’s objective is to design, implement, and deploy a web application following the principles of **modern software architecture**.  
-The focus is on building a **RESTful API** backend, integrating it with a web frontend, and packaging the entire system into Docker containers.
-
-**Key Learning Goals**
-- Apply web architecture concepts (client–server model, REST APIs)
-- Use standard web technologies (HTML, CSS, JS, Go, Vue.js)
-- Implement data persistence using SQLite
-- Manage software with Git and containerization tools (Docker)
-- Deploy and test a complete web application
-
----
-
-## 2. Technologies
-
-| Component | Technology |
-|------------|-------------|
-| **Backend** | Go (Golang) |
-| **Frontend** | Vue.js + Vite |
-| **Database** | SQLite3 |
-| **API Format** | REST / JSON |
-| **Containerization** | Docker |
-| **Documentation** | OpenAPI (YAML format) |
-
----
-
-## 3. Project Structure
-
+## Repository layout
 ```
-
 Wasa_proj/
-├── cmd/webapi/             # Main backend executable
-│   └── main.go             # Entry point for web server
-├── service/api/            # REST API handlers (users, messages, groups)
-├── service/database/       # SQLite database abstraction layer
-├── service/models/         # Common data models
-├── webui/                  # Optional Vue.js frontend
-├── data/                   # SQLite database storage
-├── uploads/                # Uploaded images and avatars
-├── doc/                    # OpenAPI documentation and API specs
-├── Dockerfile.backend      # Backend container build
-├── Dockerfile.frontend     # Frontend container build
-├── nginx.conf              # Proxy configuration (frontend → backend)
-├── go.mod / go.sum         # Go module dependencies
-└── README.md               # Project documentation
-
-````
-
----
-
-## 4. Setup and Execution
-
-### Run Locally
-
-```bash
-go mod tidy
-go run ./cmd/webapi --db-filename ./data/app.sqlite
-````
-
-Then visit: [http://localhost:3000](http://localhost:3000)
-
----
-
-### API Test Example
-
-```bash
-# Check service health
-curl http://localhost:3000/liveness
-
-# Register or log in
-curl -X POST http://localhost:3000/session \
-  -H "Content-Type: application/json" \
-  -d '{"name":"alice"}'
+├── cmd/webapi/        # Backend entrypoint and configuration
+├── service/           # API handlers, database layer, and models
+├── webui/             # Vue 3 single-page app (Vite)
+├── doc/               # OpenAPI document (api.yaml) and Spectral config
+├── Dockerfile.backend # Backend image definition
+├── Dockerfile.frontend# Frontend image definition
+├── nginx.conf         # Example reverse-proxy for the frontend
+└── README.md
 ```
 
----
+## Backend quick start
+1. Fetch dependencies:
+   ```bash
+   go mod tidy
+   ```
+2. Start the API server (listens on `0.0.0.0:3000` by default):
+   ```bash
+   CFG_DB_FILENAME=./data/wasatext.db \
+   go run ./cmd/webapi
+   ```
+3. Verify health:
+   ```bash
+   curl http://localhost:3000/liveness
+   ```
 
-### Run with Docker
+### Configuration
+Configuration values can come from environment variables (prefix `CFG_`), CLI flags, or a YAML file (`/conf/config.yml` by default). Key options:
 
-#### Backend
+| Name | Default | Notes |
+| ---- | ------- | ----- |
+| `CFG_WEB_APIHOST` | `0.0.0.0:3000` | API listen address |
+| `CFG_WEB_DEBUGHOST` | `0.0.0.0:4000` | Debug/pprof listener |
+| `CFG_DB_FILENAME` | `/tmp/decaf.db` | SQLite database file |
+| `CFG_CONFIG_PATH` | `/conf/config.yml` | Optional config file |
 
+Example YAML (`config.yml`):
+```yaml
+config:
+  path: ./config.yml
+web:
+  apihost: 0.0.0.0:3000
+  readtimeout: 5s
+  writetimeout: 5s
+db:
+  filename: ./data/wasatext.db
+```
+
+## Web UI
+The Vue 3 frontend lives in `webui/`.
+
+- Install dependencies (Yarn 3 is already vendored via `yarn.lock`):
+  ```bash
+  cd webui
+  yarn install
+  ```
+- Run in development mode (defaults to Vite dev server on port 5173):
+  ```bash
+  yarn dev
+  ```
+- Build a static bundle (served by Nginx or any static host):
+  ```bash
+  yarn build-prod
+  ```
+
+### Embedding the web UI into the Go binary
+1. Build the embedded assets (outputs to `webui/dist`):
+   ```bash
+   cd webui
+   yarn build-embed
+   ```
+2. Build or run the backend with the `webui` tag to serve the SPA from `/` while keeping API routes intact:
+   ```bash
+   go run -tags webui ./cmd/webapi
+   # or
+   go build -tags webui -o webapi ./cmd/webapi
+   ./webapi
+   ```
+
+## Docker
+### Backend image
 ```bash
 docker build -f Dockerfile.backend -t wasa-backend:latest .
 docker run -d --name wasa-backend \
   -p 3000:3000 \
   -v $(pwd)/data:/data \
-  -e WASA_DB_FILENAME=/data/app.sqlite \
+  -e CFG_DB_FILENAME=/data/app.sqlite \
   wasa-backend:latest
 ```
 
-#### Frontend (Optional)
-
+### Frontend image
 ```bash
 docker build -f Dockerfile.frontend -t wasa-frontend:latest .
 docker run -d --name wasa-frontend -p 8080:80 wasa-frontend:latest
 ```
 
----
+## API reference
+The OpenAPI specification lives at `doc/api.yaml`. Some notable routes:
 
-## 5. API Endpoints
+- `GET /liveness` – service health check
+- `POST /session` – create or authenticate a session
+- `GET /users/me` – current user profile
+- `GET/POST /conversations` – list or create conversations
+- `GET/POST /messages` – fetch or send messages
 
-| Endpoint                 | Method       | Description                    |
-| ------------------------ | ------------ | ------------------------------ |
-| `/liveness`              | GET          | Health check                   |
-| `/session`               | POST         | Create or authenticate session |
-| `/users/me`              | GET          | Retrieve current user profile  |
-| `/conversations`         | GET / POST   | List or create conversations   |
-| `/messages`              | GET / POST   | Retrieve or send messages      |
-| `/messages/{id}`         | GET / DELETE | Get or delete specific message |
-| `/messages/{id}/forward` | POST         | Forward a message              |
-| `/messages/{id}/comment` | POST / GET   | Manage message comments        |
+## Development notes
+- Use `go test ./...` for backend unit tests. If you enable the embedded UI, ensure `webui/dist` exists before running tests/builds.
+- The backend logs to stdout and responds to `SIGTERM`/`SIGINT` with graceful shutdown.
+- Default ports: API `3000`, debug/pprof `4000`, Vite dev server `5173`, example Nginx frontend `8080`.
 
----
-
-## 6. Development Notes
-
-* The base architecture follows the **"Fantastic Coffee (Decaffeinated)"** template from the WASA course.
-* The **API logic, database layer, and message-handling features** were implemented and extended independently.
-* The frontend is built in **Vue.js (Vite)** and can be:
-
-  * served standalone via Nginx, or
-  * embedded in the backend binary (`-tags webui`).
-* The project supports full containerization with Docker for both backend and frontend services.
-
----
-
-## 7. Build and Deployment
-
-### Development Mode
-
-```bash
-go run ./cmd/webapi
-```
-
-If using the web interface:
-
-```bash
-./open-node.sh
-yarn run dev
-```
-
-### Production Mode
-
-```bash
-./open-node.sh
-yarn run build-prod
-yarn run preview
-```
-
----
-
-## 8. Known Limitations
-
-* This system is designed **for educational purposes only**.
-  It is not optimized for production use.
-* Security features such as encryption and rate-limiting are minimal.
-* Error handling and scalability are simplified to align with the course scope.
-
----
-
-## 9. Credits
-
-**Author:** Gioia Zheng
-**Course:** Web and Software Architecture (WASA)
-**Instructor:** Prof. Emanuele Panizzi
-**University:** Sapienza University of Rome
-**License:** MIT
-**Based on:** *Fantastic Coffee (Decaffeinated)* project template
-**Academic Year:** 2024–2025
-
----
-
-```
+## Credits
+- Author: Gioia Zheng
+- Course: Web and Software Architecture (WASA) — Prof. Emanuele Panizzi
+- University: Sapienza University of Rome
+- License: MIT
