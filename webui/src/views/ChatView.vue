@@ -52,6 +52,10 @@
 
             <!-- Bubble -->
             <div class="bubble" :class="{ mine: isMine(m) }">
+              <div v-if="m._replyPreview" class="inline-reply">
+                ↪ {{ m._replyPreview }}
+              </div>
+
               <template v-if="m.type === 'image' && m.fileAbsUrl">
                 <img :src="m.fileAbsUrl" class="img" />
               </template>
@@ -143,7 +147,13 @@
       <!-- COMPOSER -->
       <div class="composer">
         <div v-if="replyTarget" class="reply-banner">
-          Replying to: {{ replyTarget.content || replyTarget._replyPreview || 'message' }}
+          Replying to:
+          {{
+            replyTarget.content ||
+            replyTarget._replyPreview ||
+            (replyTarget.type === 'image' ? '[image]' : 'message')
+          }}
+
           <button class="btn-xs btn-secondary" type="button" @click="clearReplyTarget">Cancel</button>
         </div>
         <div class="composer-row">
@@ -371,6 +381,12 @@ function isMine(m) {
 function normalizeMessage(raw) {
   const senderId = raw.senderId || raw.sender_id || raw.userId
   const ts = raw.createdAt || raw.created_at || new Date().toISOString()
+  const replyToId =
+    raw.replyToId || raw.reply_to_id || raw.replyTo?.id || raw.replyTo || null
+
+  const replyContent = raw.replyTo?.content || raw.replyTo?.text || ''
+  const replyType = raw.replyTo?.type || ''
+  const replyPreview = replyContent || (replyType === 'image' ? '[image]' : '')
 
   // 处理图片：如果 type === 'image'，content 就是图片 URL
   const fileRel =
@@ -393,6 +409,8 @@ function normalizeMessage(raw) {
     _myLastComment: '',
     _myReactions: [],
     _replyPreview: raw.replyTo?.content || '',
+    replyToId: replyToId ? String(replyToId) : '',
+    _replyPreview: replyPreview,
   }
 }
 
@@ -410,9 +428,22 @@ async function loadMessages() {
       data?.messages ||
       (Array.isArray(data) ? data : [])
 
-    messages.value = list
+    const mapped = list
       .map(normalizeMessage)
       .sort((a, b) => a._ts.localeCompare(b._ts))
+    const byId = new Map(mapped.map(m => [String(m.id), m]))
+
+    mapped.forEach(m => {
+      if (!m._replyPreview && m.replyToId) {
+        const target = byId.get(String(m.replyToId))
+        if (target) {
+          const preview = target.content || (target.type === 'image' ? '[image]' : '')
+          m._replyPreview = preview
+        }
+      }
+    })
+
+    messages.value = mapped
 
     await nextTick()
     if (scrollbox.value) {
@@ -779,6 +810,16 @@ watch(convId, async () => {
 .bubble.mine {
   background: #95ec69;
   color: #000;
+}
+
+.inline-reply {
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border-left: 3px solid #3b82f6;
+  background: #eef2f7;
+  font-size: 0.86rem;
+  color: #334155;
+  border-radius: 8px;
 }
 
 .img {
