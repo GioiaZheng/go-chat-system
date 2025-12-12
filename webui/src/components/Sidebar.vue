@@ -34,9 +34,9 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '@/services/api' 
+import api from '@/services/api'
 import { getMyProfile, getAvatarUrl } from '@/services/api'
 
 const router = useRouter()
@@ -45,10 +45,24 @@ const me = ref(null)
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
 const initials = computed(() => (me.value?.name || me.value?.username || 'U')[0].toUpperCase())
 
-onMounted(async () => {
+async function loadProfile() {
   try {
-    me.value = await getMyProfile()
+     const prof = await getMyProfile()
+    me.value = prof?.data?.user || prof?.user || prof || null
   } catch {}
+}
+
+function handleAuthChanged() {
+  loadProfile()
+}
+
+onMounted(() => {
+  loadProfile()
+  window.addEventListener('auth:changed', handleAuthChanged)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('auth:changed', handleAuthChanged)
 })
 
 function logout() {

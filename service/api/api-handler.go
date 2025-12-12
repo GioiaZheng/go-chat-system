@@ -22,9 +22,6 @@ func (rt *_router) RegisterRoutes() {
 	// POST /session -> doLogin (returns 200 on success per spec)
 	rt.router.POST("/session", rt.doLogin)
 
-	// POST /register -> doRegister (returns 201 on success)
-	rt.router.POST("/register", rt.doRegister)
-
 	// GET /liveness -> simple service liveness check
 	rt.router.GET("/liveness", rt.liveness)
 

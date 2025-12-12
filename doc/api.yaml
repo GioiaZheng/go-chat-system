@@ -108,18 +108,6 @@ components:
                 errors: []
   
   schemas:
-    RegisterUserRequest:
-      type: object
-      description: User registration request model for creating new user accounts
-      required: [name]
-      properties:
-        name:
-          type: string
-          description: User's desired name
-          minLength: 3
-          maxLength: 50
-          pattern: '^[a-zA-Z0-9_-]+$'
-
     BaseSuccessResponse:
       type: object
       description: Base structure for all success responses
@@ -938,40 +926,6 @@ paths:
                     id: usr-999
                     name: maria
                     avatarUri: https://example.com/avatars/maria.jpg
-                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-
-  /register:
-    post:
-      security: []
-      tags: [auth]
-      operationId: doRegister
-      summary: Register a new user
-      description: Create a new user account with the provided information
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterUserRequest'
-      responses:
-        '201':
-          description: User registered successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthEnvelope'
-              example:
-                code: 201
-                message: User registered successfully
-                data:
-                  user:
-                    id: usr-123456
-                    name: john_doe
-                    avatarUri: https://example.com/avatars/john_doe.jpg
                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
