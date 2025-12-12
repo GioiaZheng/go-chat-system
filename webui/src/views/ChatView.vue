@@ -32,7 +32,8 @@
           v-for="m in messages"
           :key="m.id"
           class="row"
-          :class="{ mine: isMine(m) }"
+          :id="`msg-${m.id}`"
+          :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
         >
           <!-- LEFT AVATAR  -->
           <div v-if="!isMine(m)" class="avatar" :class="{ placeholder: !avatarFor(m) }">
@@ -53,9 +54,15 @@
 
             <!-- Bubble -->
             <div class="bubble" :class="{ mine: isMine(m) }">
-              <div v-if="m._replyPreview" class="inline-reply">
-                ↪ {{ m._replyPreview }}
-              </div>
+              <button
+                v-if="m._replyPreview"
+                class="inline-reply"
+                type="button"
+                @click="jumpToMessage(m.replyToId)"
+              >
+                <div v-if="m._replyFrom" class="reply-from">{{ m._replyFrom }}</div>
+                <div class="reply-text">{{ m._replyPreview }}</div>
+              </button>
 
               <template v-if="m.type === 'image' && m.fileAbsUrl">
                 <img :src="m.fileAbsUrl" class="img" />
@@ -81,19 +88,10 @@
               {{ m._myLastComment }}
             </div>
 
-            <!-- REMOVE COMMENT BUTTON -->
-            <button
-              v-if="m._myLastComment"
-              class="btn-xs btn-secondary"
-              @click="removeComment(m)"
-            >
-              Remove
-            </button>
-
-            <!-- REACTIONS -->
+            <!-- REACTIONS / ACTIONS -->
             <div class="actions">
               <button class="icon-btn" title="Reply" @click="setReplyTarget(m)">↩️</button>
-              <button class="icon-btn" @click="toggleCommentBox(m)">💬</button>
+              <button class="icon-btn" title="Reply in composer" @click="setReplyTarget(m)">💬</button>
               <button class="icon-btn" title="Forward" @click="openForwardPicker(m)">🔗</button>
               <button
                 class="icon-btn"
@@ -119,18 +117,6 @@
                 😂
               </button>
             </div>
-
-            <!-- COMMENT BOX -->
-            <div v-if="m._showCommentBox" class="comment-box">
-              <input
-                v-model="m._commentDraft"
-                class="comment-input"
-                type="text"
-                placeholder="Write a reply…"
-                @keyup.enter="sendComment(m)"
-              />
-              <button class="btn-xs" @click="sendComment(m)">Send</button>
-            </div>
           </div>
 
           <!-- RIGHT AVATAR (me) -->
@@ -149,18 +135,21 @@
       <!-- COMPOSER -->
       <div class="composer">
         <div v-if="replyTarget" class="reply-banner">
-          Replying to:
-          {{
-            replyTarget.content ||
-            replyTarget._replyPreview ||
-            (replyTarget.type === 'image' ? '[image]' : 'message')
-          }}
+          Replying to {{ nameForSender(replyTarget.senderId) || 'message' }}:
+          <span class="reply-snippet">
+            {{
+              replyTarget.content ||
+                replyTarget._replyPreview ||
+                (replyTarget.type === 'image' ? '[image]' : 'message')
+            }}
+          </span>
 
           <button class="btn-xs btn-secondary" type="button" @click="clearReplyTarget">Cancel</button>
         </div>
         <div class="composer-row">
           <textarea
             v-model="draft"
+            ref="composerInput"
             class="input"
             placeholder="Type a message…"
             rows="1"
@@ -286,6 +275,8 @@ const messages = ref([])
 const scrollbox = ref(null)
 const imageInput = ref(null)
 const replyTarget = ref(null)
+const composerInput = ref(null)
+const replyHighlightId = ref('')
 
 const me = ref(null)
 const meId = computed(() => String(me.value?.id || ''))
@@ -328,10 +319,21 @@ function displayNameFor(m) {
   return s?.name || 'User'
 }
 
+function nameForSender(userId) {
+  if (!userId) return ''
+  if (String(userId) === meId.value) return me.value?.name || 'Me'
+  const s = participants.value.find(u => String(u.id) === String(userId))
+  return s?.name || s?.username || 'User'
+}
+
 // ---- Header title ----
 const headerTitle = computed(() => {
   if (!currentConv.value) return 'Chat'
-  if (!isGroup.value) return peer.value?.name || 'Chat'
+  
+  const title = titleForConversation(currentConv.value, meId.value)
+  if (title && title !== 'Chat') return title
+
+  if (!isGroup.value) return peer.value?.name || peer.value?.username || 'Chat'
   return currentConv.value.name || 'Group'
 })
 
@@ -363,13 +365,19 @@ async function loadConversationMeta() {
     let conv = items.find(c => String(c.id) === convId.value)
 
     if (conv) {
-      const hasParticipants = Array.isArray(conv.participants) && conv.participants.length > 0
+      const hasParticipants = Array.isArray(conv.participants) && conv.participants.length >= 2
 
       if (!hasParticipants) {
         try {
           const members = await getConversationMembers(convId.value)
-          if (Array.isArray(members) && members.length > 0) {
-            conv = { ...conv, participants: members }
+          const memberList =
+            (Array.isArray(members) && members) ||
+            members?.data?.items ||
+            members?.items ||
+            []
+
+          if (Array.isArray(memberList) && memberList.length > 0) {
+            conv = { ...conv, participants: memberList }
           }
         } catch (memberErr) {
           console.error('loadConversationMeta members fallback failed', memberErr)
@@ -400,8 +408,7 @@ function isMine(m) {
 function normalizeMessage(raw) {
   const senderId = raw.senderId || raw.sender_id || raw.userId
   const ts = raw.createdAt || raw.created_at || new Date().toISOString()
-  const replyToId =
-    raw.replyToId || raw.reply_to_id || raw.replyTo?.id || raw.replyTo || null
+  const replyToId = raw.replyToId || raw.reply_to_id || null
 
   const replyContent = raw.replyTo?.content || raw.replyTo?.text || ''
   const replyType = raw.replyTo?.type || ''
@@ -423,13 +430,13 @@ function normalizeMessage(raw) {
     fileAbsUrl: fileRel ? absUrl(fileRel) : null,
     senderId: String(senderId),
     _ts: new Date(ts).toISOString(),
+    replyToId: replyToId ? String(replyToId) : '',
     _showCommentBox: false,
     _commentDraft: '',
     _myLastComment: '',
     _myReactions: [],
-    _replyPreview: raw.replyTo?.content || '',
-    replyToId: replyToId ? String(replyToId) : '',
     _replyPreview: replyPreview,
+    _replyFrom: raw.replyTo?.sender?.name || '',
   }
 }
 
@@ -497,7 +504,7 @@ async function onSend() {
     await sendMessage({
       conversationId: convId.value,
       content: t,
-      replyTo: replyTarget.value?.id,
+      replyToId: replyTarget.value?.id,
     })
     draft.value = ''
     replyTarget.value = null
@@ -522,7 +529,11 @@ async function onPickImage(e) {
 
   err.value = ''
   try {
-    await sendImageMessage({ conversationId: convId.value, file })
+    await sendImageMessage({
+      conversationId: convId.value,
+      file,
+      replyToId: replyTarget.value?.id,
+    })
     await loadMessages()
   } catch (e2) {
     err.value = e2?.response?.data?.message || 'Failed to send image'
