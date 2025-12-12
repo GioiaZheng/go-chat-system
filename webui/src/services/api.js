@@ -364,18 +364,23 @@ export async function getMessages({ conversationId, limit = 50, beforeCursor, af
   return unwrap(await get('/messages', { params }))
 }
 
-export async function sendMessage({ conversationId, content, type = 'text', replyTo } = {}) {
+export async function sendMessage({
+  conversationId,
+  content,
+  type = 'text',
+  replyTo,
+  replyToId,
+} = {}) {
   const body = {
     conversationId: String(conversationId || ''),
     content: String(content || ''),
     type,
   }
 
-  // 支持回复字段：兼容可能的键名
-  if (replyTo) {
-    body.replyTo = replyTo
-    body.replyToId = replyTo
-    body.reply_to_id = replyTo
+  // 支持回复字段：兼容可能的键名，replyToId 为后端字段名
+  const reply = replyToId || replyTo
+  if (reply) {
+    body.replyToId = reply
   }
 
   return unwrap(await post('/messages', body))
