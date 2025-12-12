@@ -116,6 +116,17 @@
               >
                 😂
               </button>
+
+              <button
+                v-if="isMine(m)"
+                class="icon-btn"
+                :disabled="deletingMessageId === String(m.id)"
+                title="Delete message"
+                @click="confirmDeleteMessage(m)"
+              >
+                {{ deletingMessageId === String(m.id) ? '⌛' : '🗑️' }}
+              </button>
+
             </div>
           </div>
 
@@ -253,6 +264,7 @@ import {
   sendImageMessage,
   getAvatarUrl,
   absUrl,
+  deleteMessage,
   commentMessage,
   uncommentMessage,
   forwardMessage,
@@ -277,6 +289,7 @@ const imageInput = ref(null)
 const replyTarget = ref(null)
 const composerInput = ref(null)
 const replyHighlightId = ref('')
+const deletingMessageId = ref('')
 
 const me = ref(null)
 const meId = computed(() => String(me.value?.id || ''))
@@ -492,6 +505,25 @@ async function loadMessages() {
 
 // ---- Send text ----
 const canSend = computed(() => !!draft.value.trim() && !sending.value)
+
+async function confirmDeleteMessage(m) {
+  if (!m || !m.id) return
+  if (!isMine(m)) return
+  const ok = window.confirm('Delete this message?')
+  if (!ok) return
+
+  deletingMessageId.value = String(m.id)
+  err.value = ''
+  notice.value = ''
+  try {
+    await deleteMessage(m.id)
+    await loadMessages()
+  } catch (e) {
+    err.value = e?.response?.data?.message || e?.message || 'Failed to delete message'
+  } finally {
+    deletingMessageId.value = ''
+  }
+}
 
 async function onSend() {
   const t = draft.value.trim()
