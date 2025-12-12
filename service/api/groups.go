@@ -31,6 +31,12 @@ type CreateGroupRequest struct {
 	LegacyMemberIDs []string `json:"member_ids,omitempty"` // legacy snake_case
 }
 
+
+// groupNamePattern accepts any unicode letters/numbers plus spaces, apostrophes,
+// underscores and dashes. This allows names such as 中文群组 or O'Connor-Team.
+var groupNamePattern = regexp.MustCompile(`^[\p{L}\p{N}\s'_\-]+$`)
+
+
 // createGroup creates a new group and adds the caller as a member.
 //
 // Flow:
@@ -67,7 +73,7 @@ func (rt *_router) createGroup(
 		rt.sendError(w, http.StatusBadRequest, "Name must be 1-100 characters long")
 		return
 	}
-	if !regexp.MustCompile(`^[a-zA-Z0-9\s'-]+$`).MatchString(groupName) {
+	if !groupNamePattern.MatchString(groupName) {
 		rt.sendError(w, http.StatusBadRequest, "Name contains invalid characters")
 		return
 	}

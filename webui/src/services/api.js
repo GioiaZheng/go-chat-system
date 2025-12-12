@@ -364,8 +364,20 @@ export async function getMessages({ conversationId, limit = 50, beforeCursor, af
   return unwrap(await get('/messages', { params }))
 }
 
-export async function sendMessage({ conversationId, content, type = 'text' }) {
-  const body = { conversationId: String(conversationId || ''), content: String(content || ''), type }
+export async function sendMessage({ conversationId, content, type = 'text', replyTo } = {}) {
+  const body = {
+    conversationId: String(conversationId || ''),
+    content: String(content || ''),
+    type,
+  }
+
+  // 支持回复字段：兼容可能的键名
+  if (replyTo) {
+    body.replyTo = replyTo
+    body.replyToId = replyTo
+    body.reply_to_id = replyTo
+  }
+
   return unwrap(await post('/messages', body))
 }
 

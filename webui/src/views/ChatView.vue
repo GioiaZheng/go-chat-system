@@ -258,6 +258,7 @@ import {
   isAuthed,
   getMyProfile,
   getMyConversations,
+  getConversationMembers,
   getMessages,
   sendMessage,
   sendImageMessage,
@@ -359,7 +360,23 @@ async function loadConversationMeta() {
       (Array.isArray(raw) ? raw : []) ||
       []
 
-    const conv = items.find(c => String(c.id) === convId.value)
+    let conv = items.find(c => String(c.id) === convId.value)
+
+    if (conv) {
+      const hasParticipants = Array.isArray(conv.participants) && conv.participants.length > 0
+
+      if (!hasParticipants) {
+        try {
+          const members = await getConversationMembers(convId.value)
+          if (Array.isArray(members) && members.length > 0) {
+            conv = { ...conv, participants: members }
+          }
+        } catch (memberErr) {
+          console.error('loadConversationMeta members fallback failed', memberErr)
+        }
+      }
+    }
+
     currentConv.value = conv || null
     isGroup.value = conv?.type === 'group'
   } catch (e) {
@@ -441,6 +458,14 @@ async function loadMessages() {
         if (target) {
           const preview = target.content || (target.type === 'image' ? '[image]' : '')
           m._replyPreview = preview
+          m._replyFrom = nameForSender(target.senderId)
+        }
+      }
+
+      if (m._replyPreview && !m._replyFrom && m.replyToId) {
+        const target = byId.get(String(m.replyToId))
+        if (target) {
+          m._replyFrom = nameForSender(target.senderId)
         }
       }
     })
@@ -505,37 +530,6 @@ async function onPickImage(e) {
     if (imageInput.value) {
       imageInput.value.value = ''
     }
-  }
-}
-
-// ---- Comments ----
-function toggleCommentBox(m) {
-  m._showCommentBox = !m._showCommentBox
-}
-
-async function sendComment(m) {
-  const c = m._commentDraft.trim()
-  if (!c) return
-
-  try {
-    await commentMessage(m.id, {
-      type: 'text',
-      content: c,
-    })
-    m._myLastComment = c
-    m._commentDraft = ''
-    m._showCommentBox = false
-  } catch (e) {
-    err.value = e?.response?.data?.message || 'Failed to add comment'
-  }
-}
-
-async function removeComment(m) {
-  try {
-    await uncommentMessage(m.id)
-    m._myLastComment = ''
-  } catch (e) {
-    err.value = e?.response?.data?.message || 'Failed to remove comment'
   }
 }
 
@@ -615,12 +609,39 @@ async function forwardToConversation(targetConvId) {
   }
 }
 
+function focusComposer() {
+  nextTick(() => {
+    if (composerInput.value) {
+      composerInput.value.focus()
+      composerInput.value.scrollTop = composerInput.value.scrollHeight
+    }
+  })
+}
+
 function setReplyTarget(m) {
   replyTarget.value = m
+  replyHighlightId.value = String(m?.id || '')
+  focusComposer()
 }
 
 function clearReplyTarget() {
   replyTarget.value = null
+  replyHighlightId.value = ''
+}
+
+function jumpToMessage(targetId) {
+  if (!targetId) return
+  const el = document.getElementById(`msg-${targetId}`)
+  if (!el) return
+
+  replyHighlightId.value = String(targetId)
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+  setTimeout(() => {
+    if (replyHighlightId.value === String(targetId)) {
+      replyHighlightId.value = ''
+    }
+  }, 1500)
 }
 
 function tickText(m) {
@@ -817,6 +838,13 @@ watch(convId, async () => {
 }
 
 .inline-reply {
+  width: 100%;
+  text-align: left;
+  border: none;
+  outline: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   margin-bottom: 6px;
   padding: 6px 10px;
   border-left: 3px solid #3b82f6;
@@ -824,6 +852,20 @@ watch(convId, async () => {
   font-size: 0.86rem;
   color: #334155;
   border-radius: 8px;
+  cursor: pointer;
+}
+
+.inline-reply:hover {
+  background: #e2e8f0;
+}
+
+.inline-reply .reply-from {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.inline-reply .reply-text {
+  color: #475569;
 }
 
 .img {
@@ -840,6 +882,10 @@ watch(convId, async () => {
 .ticks {
   margin-left: 6px;
   color: #0f766e;
+}
+
+.row.highlight .bubble {
+  box-shadow: 0 0 0 2px #22c55e, 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 .comment-chip {
@@ -938,6 +984,11 @@ watch(convId, async () => {
   padding: 6px 8px;
   margin-bottom: 6px;
   width: 100%;
+}
+
+.reply-snippet {
+  color: #0f172a;
+  font-weight: 500;
 }
 
 .btn {
