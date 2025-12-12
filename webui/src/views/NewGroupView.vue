@@ -199,11 +199,17 @@ async function create() {
   height: 56px;
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0 18px;
   border-bottom: 1px solid #e2e8f0;
   background: #fff;
+  position: relative;
 }
-.title { font-weight: 800; color: #0f172a; }
+.title {
+  font-weight: 800; color: #0f172a;
+  position: absolute; left: 50%; transform: translateX(-50%);
+}
+
 .content { max-width: 900px; margin: 0 auto; padding: 18px; }
 
 .form { display: flex; flex-direction: column; gap: 10px; }

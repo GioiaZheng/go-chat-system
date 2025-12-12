@@ -146,10 +146,15 @@ onMounted(() => {
     linear-gradient(180deg, #ffffff, #f7fafe);
 }
 .topbar{
-  height:56px; display:flex; align-items:center; justify-content:space-between;
+  height:56px; display:flex; align-items:center; justify-content:flex-end;
   padding:0 18px; border-bottom:1px solid rgba(20,100,60,.08); background:#fff8; backdrop-filter: blur(6px);
+   position:relative;
 }
-.title{ font-weight:800; color:#0f172a; }
+.title{
+  font-weight:800; color:#0f172a;
+  position:absolute; left:50%; transform:translateX(-50%);
+}
+
 .search{ display:flex; gap:8px; }
 .input{
   width:260px; border:1px solid #cbd5e1; border-radius:10px; padding:.5rem .75rem; outline:none;
