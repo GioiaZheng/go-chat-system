@@ -26,6 +26,7 @@ uploads/*
 # Temp / cache / misc
 # =========================
 tmp/
+*.pid
 *.tmp
 *.bak
 *.swp
