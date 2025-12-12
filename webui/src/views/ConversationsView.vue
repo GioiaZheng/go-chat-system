@@ -219,6 +219,30 @@ async function warnDelete(c) {
 // -----------------------------------------------------
 // mounted
 // -----------------------------------------------------
+const handleRefreshEvent = e => {
+  const detail = e?.detail || {}
+  const targetId = detail.conversationId ? String(detail.conversationId) : ''
+
+  if (targetId && Array.isArray(convs.value) && convs.value.length > 0) {
+    const bumpedTime = detail.lastTime || new Date().toISOString()
+    const bumpedPreview = detail.lastPreview
+
+    convs.value = convs.value
+      .map(c =>
+        String(c.id) === targetId
+          ? {
+              ...c,
+              last_time: bumpedTime,
+              ...(bumpedPreview ? { last_preview: bumpedPreview } : {}),
+            }
+          : c
+      )
+      .sort((a, b) => new Date(b.last_time || 0) - new Date(a.last_time || 0))
+  }
+
+  load()
+}
+
 onMounted(async () => {
   try {
     me.value = await getMyProfile()
@@ -226,10 +250,12 @@ onMounted(async () => {
 
   await load()
   window.addEventListener('auth:changed', load)
+  window.addEventListener('conversations:refresh', handleRefreshEvent)
 })
 
 onUnmounted(() => {
   window.removeEventListener('auth:changed', load)
+  window.removeEventListener('conversations:refresh', handleRefreshEvent)
 })
 </script>
 

@@ -648,6 +648,16 @@ async function forwardToConversation(targetConvId) {
   try {
     await forwardMessage(forwardTargetMessage.value.id, targetConvId)
     notice.value = 'Message forwarded successfully.'
+    const preview = forwardPreview(forwardTargetMessage.value)
+    window.dispatchEvent(
+      new CustomEvent('conversations:refresh', {
+        detail: {
+          conversationId: String(targetConvId),
+          lastTime: new Date().toISOString(),
+          lastPreview: preview,
+        },
+      })
+    )
     closeForwardPicker()
   } catch (e) {
     forwardError.value =
@@ -673,6 +683,17 @@ function setReplyTarget(m) {
 function clearReplyTarget() {
   replyTarget.value = null
   replyHighlightId.value = ''
+}
+
+function forwardPreview(m) {
+  if (!m) return ''
+  if (m.type === 'image') return '[Image]'
+  if (m.type === 'file') return '[File]'
+  if (typeof m.content === 'string' && m.content.trim()) return m.content
+  if (typeof m.body === 'string' && m.body.trim()) return m.body
+  if (typeof m.message === 'string' && m.message.trim()) return m.message
+  if (typeof m.text === 'string' && m.text.trim()) return m.text
+  return '[Forwarded message]'
 }
 
 function jumpToMessage(targetId) {
