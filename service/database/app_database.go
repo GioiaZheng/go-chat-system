@@ -162,8 +162,55 @@ func initializeTables(db *sql.DB) error {
 		);
 
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return ensureMessageReplyColumn(db)
 }
+
+func ensureMessageReplyColumn(db *sql.DB) error {
+	exists, err := columnExists(db, "messages", "reply_to_id")
+	if err != nil {
+		return fmt.Errorf("failed to inspect messages table: %w", err)
+	}
+	if exists {
+		return nil
+	}
+
+	if _, err := db.Exec(`ALTER TABLE messages ADD COLUMN reply_to_id TEXT;`); err != nil {
+		return fmt.Errorf("failed to add reply_to_id column: %w", err)
+	}
+	return nil
+}
+
+func columnExists(db *sql.DB, table, column string) (bool, error) {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s);", table))
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			cid     int
+			name    string
+			ctype   string
+			notnull int
+			dflt    sql.NullString
+			pk      int
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+
+	return false, rows.Err()
+}
+
 
 // lifecycle
 func (db *appdbimpl) Close() error { return db.c.Close() }

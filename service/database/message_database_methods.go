@@ -17,10 +17,20 @@ const defaultPrivateLimit = 50
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
+// nullableReplyID converts a possibly-nil reply pointer into a driver-friendly value.
+// database/sql does not accept *string directly, so we normalize to either a
+// trimmed string or nil.
+func nullableReplyID(reply *string) interface{} {
+	if reply == nil {
+		return nil
+	}
+	return NullIfEmpty(strings.TrimSpace(*reply))
+}
+
 func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
 	_, err := db.c.Exec(`
-        INSERT INTO messages (
-            id,
+		INSERT INTO messages (
+        	id,
             content,
             sender_id,
             receiver_id,
@@ -36,7 +46,7 @@ func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
 		message.Content,
 		message.SenderID,
 		message.ReceiverID,
-		message.ReplyToID,
+		nullableReplyID(message.ReplyToID),
 		NullIfEmpty(message.CreatedAt),
 	)
 	return err
@@ -61,7 +71,7 @@ func (db *appdbimpl) SendMessageToConversation(message models.Message) error {
 		message.Content,
 		message.SenderID,
 		message.ConversationID,
-		message.ReplyToID,
+		nullableReplyID(message.ReplyToID),
 		NullIfEmpty(message.CreatedAt),
 	)
 	return err
