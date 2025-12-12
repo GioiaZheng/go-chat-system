@@ -31,6 +31,7 @@ type MessageDTO struct {
 	CreatedAt      string `json:"createdAt"`
 	Type           string `json:"type,omitempty"`
 	Status         string `json:"status,omitempty"`
+	ReplyToID      *string `json:"replyToId,omitempty"`
 }
 
 // toMessageDTO maps internal models.Message (snake_case tags) to public MessageDTO.
@@ -43,6 +44,7 @@ func toMessageDTO(m models.Message) MessageDTO {
 		CreatedAt:      m.CreatedAt,
 		Type:           m.Type,
 		Status:         m.Status,
+		ReplyToID:      m.ReplyToID,
 	}
 }
 
@@ -112,7 +114,8 @@ func timeAfter(a, b string) bool  { return a > b }
 type sendMessageRequest struct {
 	ConversationID string `json:"conversationId"`
 	Content        string `json:"content"`
-	Type           string `json:"type,omitempty"` // default: text
+	Type           string `json:"type,omitempty"`
+	ReplyToID      *string `json:"replyToId"`
 }
 
 // sendMessage sends a message to a conversation and returns MessageResourceEnvelope.
@@ -160,6 +163,7 @@ func (rt *_router) sendMessage(
 		CreatedAt:      now,
 		Type:           req.Type,
 		Status:         "sent",
+		ReplyToID:      req.ReplyToID,
 	}
 	if err := rt.db.SendMessageToConversation(msg); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to send message")

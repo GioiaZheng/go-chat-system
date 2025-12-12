@@ -135,6 +135,7 @@ func initializeTables(db *sql.DB) error {
 			receiver_id     TEXT,
 			group_id        TEXT,
 			conversation_id TEXT,
+			reply_to_id     TEXT,
 			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
 			FOREIGN KEY(sender_id)       REFERENCES users(id)         ON DELETE CASCADE,

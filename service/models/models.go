@@ -48,32 +48,26 @@ type GroupMember struct {
 // - conversation messages (OpenAPI Message)
 // - comment rows (comment API returns Message-like shape)
 // Only ReceiverID / GroupID are internal-only.
+// Message is the internal database model for messages.
 type Message struct {
-	ID             string `json:"id"`
-	Content        string `json:"content"`
-	SenderID       string `json:"senderId"`
-	ConversationID string `json:"conversationId,omitempty"`
-	CreatedAt      string `json:"createdAt"`
+	ID             string  `db:"id"`
+	Content        string  `db:"content"`
+	SenderID       string  `db:"sender_id"`
+	ConversationID string  `db:"conversation_id"`
+	CreatedAt      string  `db:"created_at"`
 
-	// Type can be:
-	// - "text"
-	// - "image"
-	// - "file"
-	// - "emoji" (for comment reactions)
-	Type string `json:"type,omitempty"`
+	// message type: text | image | file
+	Type   string `db:"type"`
+	Status string `db:"status"`
 
-	// Status: "sent", "delivered", "read"
-	Status string `json:"status,omitempty"`
+	// 微信式 reply（指向另一条 message）
+	ReplyToID *string `db:"reply_to_id"`
 
-	// Internal-only (NOT exposed in JSON)
-	ReceiverID string `json:"-"`
-	GroupID    string `json:"-"`
-
-	// Optional for UI:
-	// (not stored in DB — filled by API/FE if needed)
-	FileUrl  string `json:"fileUrl,omitempty"`
-	FileName string `json:"filename,omitempty"`
+	// Internal-only routing fields
+	ReceiverID string `db:"receiver_id"`
+	GroupID    string `db:"group_id"`
 }
+
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
