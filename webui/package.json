@@ -8,7 +8,8 @@
     "build-prod": "vite build --mode production",
     "build-embed": "vite build --mode production --base=/dashboard/",
     "preview": "vite preview --port 4173",
-    "build": "vite build"
+    "build": "vite build",
+    "clean": "rm -rf dist node_modules .vite"
   },
   "resolutions": {
     "esbuild": "0.19.2",
