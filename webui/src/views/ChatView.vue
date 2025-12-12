@@ -36,14 +36,13 @@
           :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
         >
           <!-- LEFT AVATAR  -->
-          <div v-if="!isMine(m)" class="avatar" :class="{ placeholder: !avatarFor(m) }">
-            <img
-              v-if="avatarFor(m)"
-              class="avatar-img"
-              :src="avatarFor(m)"
-              :alt="avatarInitial(m)"
-            />
-            <span v-else class="avatar-initial">{{ avatarInitial(m) }}</span>
+          <div
+            v-if="!isMine(m)"
+            class="avatar"
+            :class="{ placeholder: !avatarFor(m) }"
+            :style="avatarBg(avatarFor(m))"
+          >
+            <span v-if="!avatarFor(m)" class="avatar-initial">{{ avatarInitial(m) }}</span>
           </div>
           <!-- MESSAGE BLOCK -->
           <div class="bubble-wrap" :class="{ mine: isMine(m) }">
@@ -130,14 +129,13 @@
           </div>
 
           <!-- RIGHT AVATAR (me) -->
-          <div v-if="isMine(m)" class="avatar mine" :class="{ placeholder: !myAvatar }">
-            <img
-              v-if="myAvatar"
-              class="avatar-img"
-              :src="myAvatar"
-              :alt="avatarInitial(m)"
-            />
-            <span v-else class="avatar-initial">{{ avatarInitial(m) }}</span>
+          <div
+            v-if="isMine(m)"
+            class="avatar mine"
+            :class="{ placeholder: !myAvatar }"
+            :style="avatarBg(myAvatar)"
+          >
+            <span v-if="!myAvatar" class="avatar-initial">{{ avatarInitial(m) }}</span>
           </div>
         </div>
       </div>
@@ -326,6 +324,11 @@ function avatarInitial(m) {
   const name = sender?.name || sender?.username || 'U'
   return (name[0] || 'U').toUpperCase()
 }
+
+function avatarBg(src) {
+  return src ? { backgroundImage: `url('${src}')` } : {}
+}
+
 
 function displayNameFor(m) {
   const s = participants.value.find(u => String(u.id) === String(m.senderId))
@@ -822,9 +825,8 @@ watch(convId, async () => {
   justify-content: flex-end;
 }
 .avatar {
-  width: 36px;
-  height: 36px;
-  aspect-ratio: 1;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   overflow: hidden;
 
@@ -832,6 +834,9 @@ watch(convId, async () => {
   display: grid;
   place-items: center;
   background: #e2e8f0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .avatar.mine {
@@ -842,16 +847,6 @@ watch(convId, async () => {
   border: 1px solid #e2e8f0;
   color: #475569;
   font-weight: 700;
-}
-
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #e2e8f0;
-  object-position: center;
-  display: block;
 }
 
 .avatar-initial {
