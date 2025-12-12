@@ -856,6 +856,7 @@ watch(convId, async () => {
 .bubble-wrap {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   max-width: 70%;
 }
 
@@ -870,9 +871,12 @@ watch(convId, async () => {
 }
 
 .bubble {
+  display: inline-flex;
+  flex-direction: column;
   padding: 8px 12px;
   border-radius: 14px;
   background: #ffffff;
+  width: fit-content;
   max-width: 100%;
   word-wrap: break-word;
 }
