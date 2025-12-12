@@ -735,6 +735,7 @@ watch(convId, async () => {
 }
 
 .topbar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -752,6 +753,9 @@ watch(convId, async () => {
 }
 
 .title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   font-weight: 800;
   color: #1e293b;
   display: flex;
@@ -762,6 +766,7 @@ watch(convId, async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: center;
 }
 
 .header-avatar {
