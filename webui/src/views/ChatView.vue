@@ -144,10 +144,6 @@
 
       <!-- COMPOSER -->
       <div class="composer">
-        <div class="chat-target">
-          <span class="muted small">Chatting with</span>
-          <strong>{{ headerTitle }}</strong>
-        </div>
 
         <div v-if="replyTarget" class="reply-banner">
           Replying to {{ nameForSender(replyTarget.senderId) || 'message' }}:
@@ -846,10 +842,10 @@ watch(convId, async () => {
 .avatar-img {
   width: 100%;
   height: 100%;
-  aspect-ratio: 1;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid #e2e8f0;
+  object-position: center;
   display: block;
 }
 
@@ -1007,13 +1003,6 @@ watch(convId, async () => {
   background: white;
   border-radius: 12px;
   border: 1px solid #e1e5eb;
-}
-
-.chat-target {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-bottom: 2px;
 }
 
 .composer-row {

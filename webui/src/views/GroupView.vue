@@ -7,6 +7,7 @@
 
     <section class="content">
       <ErrorMsg v-if="err" :text="err" class="mb-2" />
+      <p v-else-if="notice" class="notice">{{ notice }}</p>
 
       <!-- Create group -->
       <section class="card">
@@ -28,7 +29,7 @@
         <div class="actions">
           <button
             class="btn"
-            :disabled="creating || !groupName || !memberIdsRaw"
+            :disabled="creating || !groupName"
             @click="createGroup"
           >
             {{ creating ? 'Creating…' : 'Create' }}
@@ -132,6 +133,7 @@ async function loadMe () {
 
 /* ---------- page state ---------- */
 const err = ref('')
+const notice = ref('')
 const creating = ref(false)
 const loadingList = ref(false)
 const groups = ref([])
@@ -167,6 +169,7 @@ function normalizeGroups(list) {
 async function loadList() {
   loadingList.value = true
   err.value = ''
+  notice.value = ''
   try {
     const data = await getGroupsList()
     groups.value = normalizeGroups(data)
@@ -185,6 +188,7 @@ async function loadList() {
 /* ---------- create group ---------- */
 async function createGroup() {
   err.value = ''
+  notice.value = ''
   const list = memberIdsRaw.value
     .split(',')
     .map(s => s.trim())
@@ -193,8 +197,8 @@ async function createGroup() {
   // auto include self
   if (meId.value && !list.includes(meId.value)) list.unshift(meId.value)
 
-  if (!groupName.value || list.length === 0) {
-    err.value = 'Group name and member list are required.'
+  if (!groupName.value) {
+    err.value = 'Group name is required.'
     return
   }
 
@@ -203,6 +207,7 @@ async function createGroup() {
     await apiCreateGroup({ name: groupName.value, memberIds: list })
     groupName.value = ''
     memberIdsRaw.value = ''
+    notice.value = 'Group created successfully.'
     await loadList()
   } catch (e) {
     if (e?.response?.status === 401) {
@@ -348,6 +353,7 @@ onMounted(async () => {
 
 .muted{ color:#64748b; font-size:.9rem }
 .tip{ margin-top:6px }
+.notice{ background:#ecfdf3; color:#166534; border:1px solid #bbf7d0; padding:8px 10px; border-radius:10px; }
 
 .list{ list-style:none; padding:0; margin:10px 0 0; display:grid; gap:10px }
 .item{

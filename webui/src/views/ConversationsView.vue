@@ -130,22 +130,55 @@ async function load() {
 
   try {
     const res = await getMyConversations()
-    const items = res?.items ?? res ?? []
+    const root = res?.data?.items || res?.data || res
+    const items = Array.isArray(root) ? root : (root?.items ?? root?.list ?? [])
 
-    convs.value = items
+    const pickLastMessage = c => {
+      if (!c) return null
+
+      const fromKnownFields =
+        c.lastMessage ||
+        c.last_message ||
+        c.last ||
+        c.lastmessage ||
+        c.lastMsg ||
+        c.last_msg ||
+        (Array.isArray(c.messages) ? c.messages[c.messages.length - 1] : null)
+
+      if (fromKnownFields) return fromKnownFields
+
+      if (typeof c.lastMessageContent === 'string') return { content: c.lastMessageContent }
+      if (typeof c.last_message_content === 'string') return { content: c.last_message_content }
+
+      return null
+    }
+
+    convs.value = (items || [])
       .map(c => {
-        const last = c.lastMessage || {}
-        const preview =
+        const last = pickLastMessage(c) || {}
+        const previewContent =
           last.type === 'image' ? '[Image]' :
           last.type === 'file'  ? '[File]'  :
-          last.content || ''
+          last.content ||
+          last.text ||
+          last.body ||
+          last.message ||
+          last.Content ||
+          last.Text ||
+          last.Body || ''
 
         const time =
-          last.createdAt || c.updatedAt || c.createdAt || null
+          last.createdAt ||
+          last.created_at ||
+          last.CreatedAt ||
+          last.timestamp ||
+          last.Timestamp ||
+          c.updatedAt || c.updated_at || c.UpdatedAt ||
+          c.createdAt || c.created_at || c.CreatedAt || null
 
         return {
           ...c,
-          last_preview: preview,
+          last_preview: previewContent || 'No messages yet',
           last_time: time,
         }
       })
