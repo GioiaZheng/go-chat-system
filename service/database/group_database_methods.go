@@ -4,6 +4,8 @@ package database
 import (
 	"database/sql"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
@@ -16,17 +18,30 @@ import (
 // Matches interface: GetGroup(groupID string) (models.Group, error)
 func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 	var g models.Group
+	var createdAt sql.NullString
+
 	err := db.c.QueryRow(`
-		SELECT id, name, avatar_url
+		SELECT id, name, avatar_url, conversation_id, created_at
 		FROM groups
 		WHERE id = ?
-	`, groupID).Scan(&g.ID, &g.Name, &g.AvatarUrl)
+	 `, groupID).Scan(&g.ID, &g.Name, &g.AvatarUrl, &g.ConversationID, &createdAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.Group{}, err
 		}
 		return models.Group{}, err
 	}
+
+	if createdAt.Valid {
+		g.CreatedAt = normalizeTimestamp(createdAt.String)
+	}
+
+	members, err := db.getGroupMembersWithRole(groupID)
+	if err != nil {
+		return models.Group{}, err
+	}
+	g.Members = members
+
 	return g, nil
 }
 
@@ -34,7 +49,7 @@ func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 // Matches interface: GetGroupsList(userID string) ([]models.Group, error)
 func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 	rows, err := db.c.Query(`
-		SELECT g.id, g.name, g.avatar_url
+		SELECT g.id, g.name, g.avatar_url, g.conversation_id, g.created_at
 		FROM groups g
 		JOIN group_members gm ON g.id = gm.group_id
 		WHERE gm.user_id = ?
@@ -48,12 +63,66 @@ func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 	var result []models.Group
 	for rows.Next() {
 		var g models.Group
-		if err := rows.Scan(&g.ID, &g.Name, &g.AvatarUrl); err != nil {
+		var createdAt sql.NullString
+
+		if err := rows.Scan(&g.ID, &g.Name, &g.AvatarUrl, &g.ConversationID, &createdAt); err != nil {
 			return nil, err
 		}
+
+		if createdAt.Valid {
+			g.CreatedAt = normalizeTimestamp(createdAt.String)
+		}
+
 		result = append(result, g)
 	}
 	return result, rows.Err()
+}
+func (db *appdbimpl) getGroupMembersWithRole(groupID string) ([]models.GroupMember, error) {
+	rows, err := db.c.Query(`
+                SELECT gm.user_id, u.name, COALESCE(gm.role, ''), COALESCE(u.avatar_url, '')
+                FROM group_members gm
+                JOIN users u ON u.id = gm.user_id
+                WHERE gm.group_id = ?
+                ORDER BY u.name COLLATE NOCASE ASC
+        `, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	members := make([]models.GroupMember, 0, 8)
+	for rows.Next() {
+		var gm models.GroupMember
+		var role, avatar string
+		if err := rows.Scan(&gm.UserID, &gm.Name, &role, &avatar); err != nil {
+			return nil, err
+		}
+		gm.Role = strings.TrimSpace(role)
+		if gm.Role == "" {
+			gm.Role = "member"
+		}
+		gm.AvatarUrl = strings.TrimSpace(avatar)
+		members = append(members, gm)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return members, nil
+}
+
+func normalizeTimestamp(ts string) string {
+	ts = strings.TrimSpace(ts)
+	if ts == "" {
+		return ts
+	}
+
+	if t, err := time.Parse(time.RFC3339, ts); err == nil {
+		return t.UTC().Format(time.RFC3339)
+	}
+	if t, err := time.Parse("2006-01-02 15:04:05", ts); err == nil {
+		return t.UTC().Format(time.RFC3339)
+	}
+	return ts
 }
 
 // GetGroupMembers lists the users in a given group.
@@ -108,9 +177,9 @@ func (db *appdbimpl) GetGroupByName(name string) (models.Group, error) {
 // Members are NOT inserted here; the API will call AddGroupMembers afterwards.
 func (db *appdbimpl) CreateGroup(group models.Group) error {
 	_, err := db.c.Exec(`
-		INSERT INTO groups (id, name, avatar_url)
+		INSERT INTO groups (id, name, avatar_url, conversation_id)
 		VALUES (?, ?, COALESCE(?, NULL))
-	`, group.ID, group.Name, group.AvatarUrl)
+	`, group.ID, group.Name, group.AvatarUrl, group.ConversationID)
 	return err
 }
 
@@ -119,8 +188,8 @@ func (db *appdbimpl) CreateGroup(group models.Group) error {
 // NOTE: Ensure duplicates are handled by schema constraints (PRIMARY KEY or UNIQUE on (group_id,user_id)).
 func (db *appdbimpl) AddGroupMembers(groupID string, memberIDs []string) error {
 	stmt, err := db.c.Prepare(`
-		INSERT OR IGNORE INTO group_members (group_id, user_id)
-		VALUES (?, ?)
+		INSERT OR IGNORE INTO group_members (group_id, user_id, role)
+		VALUES (?, ?, 'member')
 	`)
 	if err != nil {
 		return err

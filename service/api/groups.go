@@ -31,11 +31,9 @@ type CreateGroupRequest struct {
 	LegacyMemberIDs []string `json:"member_ids,omitempty"` // legacy snake_case
 }
 
-
 // groupNamePattern accepts any unicode letters/numbers plus spaces, apostrophes,
 // underscores and dashes. This allows names such as 中文群组 or O'Connor-Team.
 var groupNamePattern = regexp.MustCompile(`^[\p{L}\p{N}\s'_\-]+$`)
-
 
 // createGroup creates a new group and adds the caller as a member.
 //
@@ -105,6 +103,13 @@ func (rt *_router) createGroup(
 	push(userID)
 	sort.Strings(members)
 
+	conv, err := rt.db.StartConversation(r.Context(), userID, members, groupName)
+	if err != nil {
+		ctx.Logger.WithError(err).Error("failed to create conversation for group")
+		rt.sendError(w, http.StatusInternalServerError, "Failed to create conversation")
+		return
+	}
+
 	// Generate group ID (our schema stores TEXT primary keys).
 	gid, err := uuid.NewV4()
 	if err != nil {
@@ -112,7 +117,7 @@ func (rt *_router) createGroup(
 		rt.sendError(w, http.StatusInternalServerError, "Failed to generate group id")
 		return
 	}
-	group := models.Group{ID: gid.String(), Name: groupName}
+	group := models.Group{ID: gid.String(), Name: groupName, ConversationID: conv.ID}
 
 	// Persist group then its members.
 	if err := rt.db.CreateGroup(group); err != nil {

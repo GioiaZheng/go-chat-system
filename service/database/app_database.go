@@ -166,7 +166,15 @@ func initializeTables(db *sql.DB) error {
 		return err
 	}
 
-	return ensureMessageReplyColumn(db)
+	if err := ensureMessageReplyColumn(db); err != nil {
+		return err
+	}
+
+	if err := ensureGroupConversationColumn(db); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func ensureMessageReplyColumn(db *sql.DB) error {
@@ -180,6 +188,21 @@ func ensureMessageReplyColumn(db *sql.DB) error {
 
 	if _, err := db.Exec(`ALTER TABLE messages ADD COLUMN reply_to_id TEXT;`); err != nil {
 		return fmt.Errorf("failed to add reply_to_id column: %w", err)
+	}
+	return nil
+}
+
+func ensureGroupConversationColumn(db *sql.DB) error {
+	exists, err := columnExists(db, "groups", "conversation_id")
+	if err != nil {
+		return fmt.Errorf("failed to inspect groups table: %w", err)
+	}
+	if exists {
+		return nil
+	}
+
+	if _, err := db.Exec(`ALTER TABLE groups ADD COLUMN conversation_id TEXT;`); err != nil {
+		return fmt.Errorf("failed to add conversation_id to groups: %w", err)
 	}
 	return nil
 }
@@ -210,7 +233,6 @@ func columnExists(db *sql.DB, table, column string) (bool, error) {
 
 	return false, rows.Err()
 }
-
 
 // lifecycle
 func (db *appdbimpl) Close() error { return db.c.Close() }
