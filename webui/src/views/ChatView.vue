@@ -27,222 +27,317 @@
     <section class="content">
       <ErrorMsg v-if="err" :text="err" class="mb-2" />
       <p v-else-if="notice" class="notice">{{ notice }}</p>
-      <div ref="scrollbox" class="scroll">
-        <div
-          v-for="m in messages"
-          :key="m.id"
-          class="row"
-          :id="`msg-${m.id}`"
-          :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
-        >
-          <!-- LEFT AVATAR  -->
-          <div
-            v-if="!isMine(m)"
-            class="avatar"
-            :class="{ placeholder: !avatarFor(m) }"
-            :style="avatarBg(avatarFor(m))"
-          >
-            <span v-if="!avatarFor(m)" class="avatar-initial">{{ avatarInitial(m) }}</span>
-          </div>
-          <!-- MESSAGE BLOCK -->
-          <div class="bubble-wrap" :class="{ mine: isMine(m) }">
-            <!-- Sender Name (group only) -->
-            <div class="who" v-if="showSenderName && !isMine(m)">
-              {{ displayNameFor(m) }}
-            </div>
-
-            <!-- Bubble -->
-            <div class="bubble" :class="{ mine: isMine(m) }">
-              <button
-                v-if="m._replyPreview"
-                class="inline-reply"
-                type="button"
-                @click="jumpToMessage(m.replyToId)"
-              >
-                <div v-if="m._replyFrom" class="reply-from">{{ m._replyFrom }}</div>
-                <div class="reply-text">{{ m._replyPreview }}</div>
-              </button>
-
-              <template v-if="m.type === 'image' && m.fileAbsUrl">
-                <img :src="m.fileAbsUrl" class="img" />
-              </template>
-
-              <template v-else>
-                {{ m.content }}
-              </template>
-            </div>
-
-            <!-- Timestamp -->
-            <div class="meta">
-              {{ fmtTime(m._ts) }}
-              <span v-if="tickText(m)" class="ticks">{{ tickText(m) }}</span>
-            </div>
-
-            <!-- COMMENT CHIP -->
+      <div class="chat-layout">
+        <div class="chat-main">
+          <div ref="scrollbox" class="scroll">
             <div
-              v-if="m._myLastComment"
-              class="comment-chip"
-              :class="{ mine: isMine(m) }"
+              v-for="m in messages"
+              :key="m.id"
+              class="row"
+              :id="`msg-${m.id}`"
+              :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
             >
-              {{ m._myLastComment }}
-            </div>
-
-            <!-- REACTIONS / ACTIONS -->
-            <div class="actions">
-              <button class="icon-btn" title="Reply" @click="setReplyTarget(m)">↩️</button>
-              <button class="icon-btn" title="Forward" @click="openForwardPicker(m)">🔗</button>
-              <button
-                class="icon-btn"
-                :class="{ active: m._myReactions.includes('👍') }"
-                @click="toggleReaction(m, '👍')"
+              <!-- LEFT AVATAR  -->
+              <div
+                v-if="!isMine(m)"
+                class="avatar"
+                :class="{ placeholder: !avatarFor(m) }"
+                :style="avatarBg(avatarFor(m))"
               >
-                👍
-              </button>
+                <span v-if="!avatarFor(m)" class="avatar-initial">{{ avatarInitial(m) }}</span>
+              </div>
+              <!-- MESSAGE BLOCK -->
+              <div class="bubble-wrap" :class="{ mine: isMine(m) }">
+                <!-- Sender Name (group only) -->
+                <div class="who" v-if="showSenderName && !isMine(m)">
+                  {{ displayNameFor(m) }}
+                </div>
+                <!-- Bubble -->
+                <div class="bubble" :class="{ mine: isMine(m) }">
+                  <button
+                    v-if="m._replyPreview"
+                    class="inline-reply"
+                    type="button"
+                    @click="jumpToMessage(m.replyToId)"
+                  >
+                    <div v-if="m._replyFrom" class="reply-from">{{ m._replyFrom }}</div>
+                    <div class="reply-text">{{ m._replyPreview }}</div>
+                  </button>
 
-              <button
-                class="icon-btn"
-                :class="{ active: m._myReactions.includes('❤️') }"
-                @click="toggleReaction(m, '❤️')"
-              >
-                ❤️
-              </button>
+                  <template v-if="m.type === 'image' && m.fileAbsUrl">
+                    <img :src="m.fileAbsUrl" class="img" />
+                  </template>
 
-              <button
-                class="icon-btn"
-                :class="{ active: m._myReactions.includes('😂') }"
-                @click="toggleReaction(m, '😂')"
-              >
-                😂
-              </button>
+                  <template v-else>
+                    {{ m.content }}
+                  </template>
+                </div>
+                  <!-- Timestamp -->
+                <div class="meta">
+                  {{ fmtTime(m._ts) }}
+                  <span v-if="tickText(m)" class="ticks">{{ tickText(m) }}</span>
+                </div>
 
-              <button
-                v-if="isMine(m)"
-                class="icon-btn"
-                :disabled="deletingMessageId === String(m.id)"
-                title="Delete message"
-                @click="confirmDeleteMessage(m)"
-              >
-                {{ deletingMessageId === String(m.id) ? '⌛' : '🗑️' }}
-              </button>
-
-            </div>
-          </div>
-
-          <!-- RIGHT AVATAR (me) -->
-          <div
-            v-if="isMine(m)"
-            class="avatar mine"
-            :class="{ placeholder: !myAvatar }"
-            :style="avatarBg(myAvatar)"
-          >
-            <span v-if="!myAvatar" class="avatar-initial">{{ avatarInitial(m) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- COMPOSER -->
-      <div class="composer">
-
-        <div v-if="replyTarget" class="reply-banner">
-          Replying to {{ nameForSender(replyTarget.senderId) || 'message' }}:
-          <span class="reply-snippet">
-            {{
-              replyTarget.content ||
-                replyTarget._replyPreview ||
-                (replyTarget.type === 'image' ? '[image]' : 'message')
-            }}
-          </span>
-
-          <button class="btn-xs btn-secondary" type="button" @click="clearReplyTarget">Cancel</button>
-        </div>
-        <div class="composer-row">
-          <textarea
-            v-model="draft"
-            ref="composerInput"
-            class="input"
-            placeholder="Type a message…"
-            rows="1"
-            @keyup.enter.exact.prevent="onSend"
-          ></textarea>
-
-          <!-- Attach button for images -->
-          <button
-            type="button"
-            class="icon-btn attach"
-            @click="triggerImagePicker"
-            title="Send image"
-          >
-            📎
-          </button>
-
-          <!-- Hidden file input -->
-          <input
-            ref="imageInput"
-            type="file"
-            class="filepick"
-            accept="image/*"
-            @change="onPickImage"
-          />
-
-          <button class="btn" :disabled="!canSend" @click="onSend">
-            {{ sending ? 'Sending…' : 'Send' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Forward picker -->
-      <div v-if="forwardPanelOpen" class="forward-overlay">
-        <div class="forward-modal">
-          <header class="forward-header">
-            <div>
-              <strong>Forward message</strong>
-              <div class="muted small">Select a chat to forward this message.</div>
-            </div>
-            <button class="close-btn" type="button" @click="closeForwardPicker">✕</button>
-          </header>
-
-          <input
-            v-model="forwardSearch"
-            class="forward-search"
-            type="text"
-            placeholder="Search chats"
-          />
-
-          <div class="forward-body">
-            <p v-if="forwardLoading" class="muted">Loading conversations…</p>
-            <ErrorMsg v-else-if="forwardError" :text="forwardError" />
-
-            <template v-else>
-              <button
-                v-for="c in filteredForwardList"
-                :key="c.id"
-                class="forward-item"
-                type="button"
-                @click="forwardToConversation(c.id)"
-              >
+                <!-- COMMENT CHIP -->
                 <div
-                  class="forward-avatar"
-                  :style="
-                    avatarForConversation(c, meId) ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` } : {}
-                  "
+                  v-if="m._myLastComment"
+                  class="comment-chip"
+                  :class="{ mine: isMine(m) }"
                 >
-                  <span v-if="!avatarForConversation(c, meId)">
-                    {{ titleForConversation(c, meId)[0] || 'C' }}
-                  </span>
+                  {{ m._myLastComment }}
                 </div>
 
-                <div class="forward-meta">
-                  <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
-                  <div class="forward-type muted small">
-                    {{ c.type === 'group' ? 'Group chat' : 'Direct chat' }}
-                  </div>
+                <!-- REACTIONS / ACTIONS -->
+                <div class="actions">
+                  <button class="icon-btn" title="Reply" @click="setReplyTarget(m)">↩️</button>
+                  <button class="icon-btn" title="Forward" @click="openForwardPicker(m)">🔗</button>
+                  <button
+                    class="icon-btn"
+                    :class="{ active: m._myReactions.includes('👍') }"
+                    @click="toggleReaction(m, '👍')"
+                  >
+                    👍
+                  </button>
+
+                  <button
+                    class="icon-btn"
+                    :class="{ active: m._myReactions.includes('❤️') }"
+                    @click="toggleReaction(m, '❤️')"
+                  >
+                    ❤️
+                  </button>
+
+                  <button
+                    class="icon-btn"
+                    :class="{ active: m._myReactions.includes('😂') }"
+                    @click="toggleReaction(m, '😂')"
+                  >
+                    😂
+                  </button>
+
+                  <button
+                    v-if="isMine(m)"
+                    class="icon-btn"
+                    :disabled="deletingMessageId === String(m.id)"
+                    title="Delete message"
+                    @click="confirmDeleteMessage(m)"
+                  >
+                    {{ deletingMessageId === String(m.id) ? '⌛' : '🗑️' }}
+                  </button>
                 </div>
+              </div>
+
+              <!-- RIGHT AVATAR (me) -->
+              <div
+                v-if="isMine(m)"
+                class="avatar mine"
+                :class="{ placeholder: !myAvatar }"
+                :style="avatarBg(myAvatar)"
+              >
+                <span v-if="!myAvatar" class="avatar-initial">{{ avatarInitial(m) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- COMPOSER -->
+          <div class="composer">
+
+            <div v-if="replyTarget" class="reply-banner">
+              Replying to {{ nameForSender(replyTarget.senderId) || 'message' }}:
+              <span class="reply-snippet">
+                {{
+                  replyTarget.content ||
+                    replyTarget._replyPreview ||
+                    (replyTarget.type === 'image' ? '[image]' : 'message')
+                }}
+              </span>
+
+              <button class="btn-xs btn-secondary" type="button" @click="clearReplyTarget">Cancel</button>
+            </div>
+            <div class="composer-row">
+              <textarea
+                v-model="draft"
+                ref="composerInput"
+                class="input"
+                placeholder="Type a message…"
+                rows="1"
+                @keyup.enter.exact.prevent="onSend"
+              ></textarea>
+
+              <!-- Attach button for images -->
+              <button
+                type="button"
+                class="icon-btn attach"
+                @click="triggerImagePicker"
+                title="Send image"
+              >
+              📎
               </button>
+              <!-- Hidden file input -->
+              <input
+                ref="imageInput"
+                type="file"
+                class="filepick"
+                accept="image/*"
+                @change="onPickImage"
+              />
 
-              <p v-if="!filteredForwardList.length" class="muted">No conversations found.</p>
-            </template>
+              <button class="btn" :disabled="!canSend" @click="onSend">
+                {{ sending ? 'Sending…' : 'Send' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Forward picker -->
+          <div v-if="forwardPanelOpen" class="forward-overlay">
+            <div class="forward-modal">
+              <header class="forward-header">
+                <div>
+                  <strong>Forward message</strong>
+                  <div class="muted small">Select a chat to forward this message.</div>
+                </div>
+                <button class="close-btn" type="button" @click="closeForwardPicker">✕</button>
+              </header>
+
+              <input
+                v-model="forwardSearch"
+                class="forward-search"
+                type="text"
+                placeholder="Search chats"
+              />
+
+              <div class="forward-body">
+                <p v-if="forwardLoading" class="muted">Loading conversations…</p>
+                <ErrorMsg v-else-if="forwardError" :text="forwardError" />
+
+                <template v-else>
+                  <button
+                    v-for="c in filteredForwardList"
+                    :key="c.id"
+                    class="forward-item"
+                    type="button"
+                    @click="forwardToConversation(c.id)"
+                  >
+                    <div
+                      class="forward-avatar"
+                      :style="
+                        avatarForConversation(c, meId) ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` } : {}
+                      "
+                    >
+                      <span v-if="!avatarForConversation(c, meId)">
+                        {{ titleForConversation(c, meId)[0] || 'C' }}
+                      </span>
+                    </div>
+
+                    <div class="forward-meta">
+                      <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
+                      <div class="forward-type muted small">
+                        {{ c.type === 'group' ? 'Group chat' : 'Direct chat' }}
+                      </div>
+                    </div>
+                  </button>
+
+                  <p v-if="!filteredForwardList.length" class="muted">No conversations found.</p>
+                </template>
+              </div>
+            </div>
           </div>
         </div>
+
+        <aside v-if="isGroup" class="group-panel">
+          <div class="group-card">
+            <div class="group-header">
+              <div
+                class="group-avatar"
+                :class="{ placeholder: !groupInfo?.avatar }"
+                :style="groupInfo?.avatar ? { backgroundImage: `url('${groupInfo.avatar}')` } : {}"
+              >
+                <span v-if="!groupInfo?.avatar">{{ (groupInfo?.name || headerTitle)[0] || 'G' }}</span>
+              </div>
+              <div class="group-meta">
+                <div class="group-name">{{ groupInfo?.name || headerTitle }}</div>
+                <div class="group-sub">Conversation ID: {{ convId }}</div>
+                <div class="group-sub">Members: {{ groupMembers.length }}</div>
+              </div>
+              <button class="link" type="button" @click="triggerGroupPhoto">Change photo</button>
+              <input
+                ref="groupPhotoInput"
+                type="file"
+                class="filepick"
+                accept="image/*"
+                @change="onPickGroupPhoto"
+              />
+            </div>
+
+            <div class="field inline">
+              <input
+                v-model.trim="groupNameDraft"
+                class="input"
+                placeholder="Group name"
+                :disabled="groupBusy"
+              />
+              <button class="btn sm" type="button" :disabled="groupBusy || !groupNameDraft" @click="onRenameGroup">
+                {{ groupBusy ? 'Saving…' : 'Save' }}
+              </button>
+            </div>
+
+            <div class="members-block">
+              <div class="members-title">Members ({{ groupMembers.length }})</div>
+              <p v-if="groupLoading" class="muted">Loading group info…</p>
+              <ErrorMsg v-else-if="groupErr" :text="groupErr" />
+              <ul v-else class="member-list">
+                <li v-for="u in groupMembers" :key="u.id" class="member-item">
+                  <div class="member-left">
+                    <div
+                      class="member-avatar"
+                      :class="{ placeholder: !u.avatar }"
+                      :style="u.avatar ? { backgroundImage: `url('${u.avatar}')` } : {}"
+                    >
+                      <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
+                    </div>
+                    <div class="member-info">
+                      <div class="member-name">{{ u.name || 'User' }}</div>
+                      <div class="member-sub">ID: {{ u.id }}</div>
+                    </div>
+                  </div>
+                  <button
+                    v-if="String(u.id) !== meId"
+                    class="link danger"
+                    type="button"
+                    :disabled="groupBusy"
+                    @click="onRemoveMember(u.id)"
+                  >
+                    Remove
+                  </button>
+                </li>
+                <li v-if="!groupMembers.length" class="muted">No members found.</li>
+              </ul>
+            </div>
+
+            <div class="field inline">
+              <input
+                v-model.trim="addMemberInput"
+                class="input"
+                placeholder="User IDs (comma separated)"
+                :disabled="groupBusy"
+              />
+
+              <button
+                class="btn sm"
+                type="button"
+                :disabled="groupBusy || !addMemberInput"
+                @click="onAddMembers"
+              >
+                {{ groupBusy ? 'Working…' : 'Add' }}
+              </button>
+            </div>
+
+            <button class="btn danger leave" type="button" :disabled="groupBusy" @click="onLeaveGroup">
+              Leave group
+            </button>
+            <p v-if="groupNotice" class="notice small">{{ groupNotice }}</p>
+          </div>
+        </aside>
       </div>
     </section>
   </div>
@@ -258,6 +353,13 @@ import {
   getMyConversations,
   getConversationMembers,
   getMessages,
+  getGroupsList,
+  getGroupDetail,
+  setGroupName,
+  setGroupPhoto,
+  addToGroup,
+  removeFromGroup,
+  leaveGroup,
   sendMessage,
   sendImageMessage,
   getAvatarUrl,
@@ -295,6 +397,28 @@ const myAvatar = computed(() => getAvatarUrl(me.value || {}))
 
 const currentConv = ref(null)
 const isGroup = ref(false)
+const groupInfo = ref(null)
+const groupLoading = ref(false)
+const groupBusy = ref(false)
+const groupErr = ref('')
+const groupNotice = ref('')
+const groupNameDraft = ref('')
+const addMemberInput = ref('')
+const groupPhotoInput = ref(null)
+const groupMembers = computed(() => {
+  const src = groupInfo.value?.members?.length ? groupInfo.value.members : participants.value
+  return normalizeMembers(src)
+})
+const groupId = computed(() => {
+  if (!isGroup.value) return ''
+  return (
+    groupInfo.value?.id ||
+    currentConv.value?.groupId ||
+    currentConv.value?.group_id ||
+    currentConv.value?.group?.id ||
+    ''
+  )
+})
 const participants = computed(() => currentConv.value?.participants || [])
 const peer = computed(
   () => participants.value.find(u => String(u.id) !== meId.value) || null
@@ -403,6 +527,11 @@ async function loadConversationMeta() {
 
     currentConv.value = conv || null
     isGroup.value = conv?.type === 'group'
+    if (isGroup.value) {
+      await loadGroupPanel()
+    } else {
+      groupInfo.value = null
+    }
   } catch (e) {
     // 不阻止消息加载，只在控制台看问题
     console.error('loadConversationMeta failed', e)
@@ -503,6 +632,86 @@ async function loadMessages() {
     err.value = e?.response?.data?.message || e?.message || 'Failed to load messages'
   } finally {
     loading.value = false
+  }
+}
+
+function normalizeMembers(list) {
+  return (list || [])
+    .map(u => ({
+      id: String(u?.id ?? u?.userId ?? u?.user_id ?? ''),
+      name: u?.name || u?.username || 'User',
+      avatar: getAvatarUrl({
+        avatarUri: u?.avatarUri ?? u?.avatar_uri ?? u?.avatar_url ?? u?.avatar,
+        updatedAt: u?.updatedAt ?? u?.updated_at ?? Date.now(),
+      }),
+    }))
+    .filter(u => u.id)
+}
+
+async function resolveGroupId() {
+  if (!isGroup.value) return ''
+  if (groupId.value) return groupId.value
+
+  try {
+    const list = await getGroupsList()
+    const arr = Array.isArray(list) ? list : (list?.items ?? list?.groups ?? list?.list ?? [])
+    const hit = (arr || []).find(
+      g => String(g?.conversationId ?? g?.conversation_id ?? '') === convId.value
+    )
+    if (hit?.id || hit?.group_id) {
+      groupInfo.value = {
+        id: String(hit.id ?? hit.group_id ?? ''),
+        name: hit.name || '',
+        avatar: getAvatarUrl(hit || {}),
+        members: normalizeMembers(hit.members || []),
+      }
+      return groupInfo.value.id
+    }
+  } catch (e) {
+    console.error('resolveGroupId failed', e)
+  }
+  return ''
+}
+
+async function loadGroupPanel() {
+  if (!isGroup.value) return
+  groupLoading.value = true
+  groupErr.value = ''
+  groupNotice.value = ''
+
+  try {
+    const gid = groupId.value || (await resolveGroupId())
+    if (!gid) {
+      groupErr.value = 'Group info unavailable.'
+      return
+    }
+
+    const detail = await getGroupDetail(gid)
+    const membersRaw =
+      detail?.members ||
+      detail?.participants ||
+      detail?.data?.members ||
+      detail?.data?.items ||
+      []
+
+    const members = normalizeMembers(membersRaw)
+
+    if (membersRaw?.length) {
+      currentConv.value = { ...(currentConv.value || {}), participants: membersRaw }
+    }
+
+    groupInfo.value = {
+      id: String(detail?.id ?? detail?.group_id ?? gid),
+      name: detail?.name || detail?.title || headerTitle.value,
+      avatar: getAvatarUrl(detail || {}),
+      members,
+    }
+
+    groupNameDraft.value = groupInfo.value.name || ''
+  } catch (e) {
+    groupErr.value = e?.response?.data?.message || e?.message || 'Failed to load group info'
+  } finally {
+    groupLoading.value = false
   }
 }
 
@@ -720,6 +929,99 @@ function tickText(m) {
   return ''
 }
 
+// ---- Group management ----
+function triggerGroupPhoto() {
+  if (groupPhotoInput.value) groupPhotoInput.value.click()
+}
+
+async function onPickGroupPhoto(e) {
+  const file = e?.target?.files?.[0]
+  if (e?.target) e.target.value = ''
+  if (!file || !groupId.value) return
+
+  groupErr.value = ''
+  groupNotice.value = ''
+  groupBusy.value = true
+  try {
+    await setGroupPhoto(groupId.value, file)
+    groupNotice.value = 'Group photo updated.'
+    await loadGroupPanel()
+  } catch (er) {
+    groupErr.value = er?.response?.data?.message || er?.message || 'Failed to update group photo'
+  } finally {
+    groupBusy.value = false
+  }
+}
+
+async function onRenameGroup() {
+  if (!groupId.value) return
+  if (!groupNameDraft.value) { groupErr.value = 'Name is required.'; return }
+  groupBusy.value = true
+  groupErr.value = ''
+  groupNotice.value = ''
+  try {
+    await setGroupName(groupId.value, groupNameDraft.value)
+    currentConv.value = { ...(currentConv.value || {}), name: groupNameDraft.value }
+    groupNotice.value = 'Group name saved.'
+    await loadGroupPanel()
+  } catch (e) {
+    groupErr.value = e?.response?.data?.message || e?.message || 'Failed to rename group'
+  } finally {
+    groupBusy.value = false
+  }
+}
+
+async function onAddMembers() {
+  if (!groupId.value) return
+  const ids = addMemberInput.value.split(',').map(s => s.trim()).filter(Boolean)
+  if (!ids.length) { groupErr.value = 'Please enter user IDs.'; return }
+  groupBusy.value = true
+  groupErr.value = ''
+  groupNotice.value = ''
+  try {
+    await addToGroup(groupId.value, ids)
+    addMemberInput.value = ''
+    groupNotice.value = 'Members added.'
+    await loadGroupPanel()
+  } catch (e) {
+    groupErr.value = e?.response?.data?.message || e?.message || 'Failed to add members'
+  } finally {
+    groupBusy.value = false
+  }
+}
+
+async function onRemoveMember(userId) {
+  if (!groupId.value || !userId) return
+  if (!confirm('Remove this member from the group?')) return
+  groupBusy.value = true
+  groupErr.value = ''
+  groupNotice.value = ''
+  try {
+    await removeFromGroup(groupId.value, userId)
+    groupNotice.value = 'Member removed.'
+    await loadGroupPanel()
+  } catch (e) {
+    groupErr.value = e?.response?.data?.message || e?.message || 'Failed to remove member'
+  } finally {
+    groupBusy.value = false
+  }
+}
+
+async function onLeaveGroup() {
+  if (!groupId.value) return
+  if (!confirm('Leave this group?')) return
+  groupBusy.value = true
+  groupErr.value = ''
+  groupNotice.value = ''
+  try {
+    await leaveGroup(groupId.value)
+    router.push('/conversations')
+  } catch (e) {
+    groupErr.value = e?.response?.data?.message || e?.message || 'Failed to leave group'
+  } finally {
+    groupBusy.value = false
+  }
+}
 
 // ---- Bootstrap ----
 async function bootstrap() {
@@ -812,9 +1114,168 @@ watch(convId, async () => {
 }
 
 .content {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 16px;
+}
+
+.chat-layout {
+  display: grid;
+  grid-template-columns: 2.2fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.chat-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group-panel {
+  position: sticky;
+  top: 68px;
+}
+
+.group-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
+  display: grid;
+  gap: 10px;
+}
+
+.group-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.group-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: #e2e8f0;
+  display: grid;
+  place-items: center;
+  background-size: cover;
+  background-position: center;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.group-avatar.placeholder {
+  border: 1px solid #e2e8f0;
+}
+
+.group-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.group-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.group-sub {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.field.inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.field .input {
+  flex: 1;
+}
+
+.members-block {
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 6px;
+  display: grid;
+  gap: 8px;
+}
+
+.members-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.member-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px;
+  background: #f8fafc;
+}
+
+.member-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.member-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #e2e8f0;
+  display: grid;
+  place-items: center;
+  background-size: cover;
+  background-position: center;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.member-avatar.placeholder {
+  border: 1px solid #e2e8f0;
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.member-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.member-sub {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.link {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 0;
+}
+
+.link.danger {
+  color: #dc2626;
 }
 
 .notice {
@@ -1068,6 +1529,25 @@ watch(convId, async () => {
   padding: 10px 16px;
   color: white;
   white-space: nowrap;
+}
+
+.btn.sm {
+  padding: 8px 12px;
+  font-size: 0.92rem;
+}
+
+.btn.danger {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+
+.btn.leave {
+  width: 100%;
+  text-align: center;
+}
+
+.notice.small {
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .filepick {
