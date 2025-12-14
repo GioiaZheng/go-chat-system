@@ -56,12 +56,17 @@ func (db *appdbimpl) StartConversation(
 
 		var existingID string
 		err := db.c.QueryRowContext(ctx, `
-			SELECT conversation_id
-			  FROM conversation_members
-			 WHERE user_id IN (?, ?)
-			 GROUP BY conversation_id
-			HAVING COUNT(*) = 2
-			LIMIT 1
+			SELECT conversation_id 
+			FROM conversation_members cm
+			WHERE cm.user_id IN (?, ?)
+			GROUP BY cm.conversation_id
+			HAVING COUNT(DISTINCT cm.user_id) = 2
+			AND COUNT(DISTINCT cm.user_id) = (
+				SELECT COUNT(*)
+					FROM conversation_members cm2
+					WHERE cm2.conversation_id = cm.conversation_id
+		)
+		LIMIT 1
 		`, userID, otherID).Scan(&existingID)
 
 		if err == nil && existingID != "" {

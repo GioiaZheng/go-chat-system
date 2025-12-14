@@ -42,8 +42,9 @@
       <ul v-else class="list">
         <li v-for="g in groups" :key="g.id" class="item">
           <div class="left">
+            <span v-if="!g.avatar" class="avatar-fallback">{{ initials(g) }}</span>
             <img
-              v-if="g.avatar"
+              v-else
               class="avatar"
               :src="g.avatar"
               alt="group avatar"
@@ -164,6 +165,12 @@ function normalizeGroups(list) {
       }
     })
     .filter(g => !!g.id)
+}
+
+function initials(g) {
+  const src = g?.name || g?.title || 'G'
+  const match = String(src).match(/\b\w/g) || ['G']
+  return match.slice(0, 2).join('').toUpperCase()
 }
 
 async function loadList() {
@@ -374,6 +381,12 @@ onMounted(async () => {
 .avatar{
   width:36px; height:36px; border-radius:50%; object-fit:cover;
   border:1px solid #e2e8f0; background:#fff;
+}
+
+.avatar-fallback{
+  width:36px; height:36px; border-radius:50%; display:inline-flex;
+  align-items:center; justify-content:center;
+  background:#e2e8f0; color:#334155; font-weight:700; border:1px solid #cbd5e1;
 }
 
 .manage{

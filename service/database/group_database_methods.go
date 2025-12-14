@@ -214,21 +214,58 @@ func (db *appdbimpl) AddMemberToGroup(groupID, userID, role string) error {
 // UpdateGroupName updates the name of a group.
 // Matches interface: UpdateGroupName(groupID, name string) error
 func (db *appdbimpl) UpdateGroupName(groupID, newName string) error {
-	_, err := db.c.Exec(`
-		UPDATE groups SET name = ? WHERE id = ?
-	`, newName, groupID)
-	return err
+	tx, err := db.c.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.Exec(`
+                UPDATE groups SET name = ? WHERE id = ?
+        `, newName, groupID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
+                UPDATE conversations
+                   SET name = ?
+                 WHERE id = (
+                         SELECT conversation_id FROM groups WHERE id = ?
+                 )
+        `, newName, groupID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // UpdateGroupPhoto updates the avatar/photo URL of a group.
 // Matches interface: UpdateGroupPhoto(groupID, photoPath string) error
 func (db *appdbimpl) UpdateGroupPhoto(groupID, photoURL string) error {
-	_, err := db.c.Exec(`
-		UPDATE groups SET avatar_url = ? WHERE id = ?
-	`, photoURL, groupID)
-	return err
-}
+	tx, err := db.c.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
 
+	if _, err := tx.Exec(`
+                UPDATE groups SET avatar_url = ? WHERE id = ?
+        `, photoURL, groupID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
+                UPDATE conversations
+                   SET avatar_url = ?
+                 WHERE id = (
+                         SELECT conversation_id FROM groups WHERE id = ?
+                 )
+        `, photoURL, groupID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
 // SetGroupPhoto is a backward-compatible alias to UpdateGroupPhoto.
 // Matches interface: SetGroupPhoto(groupID, photoUrl string) error
 func (db *appdbimpl) SetGroupPhoto(groupID, photoUrl string) error {

@@ -52,7 +52,8 @@
             class="chip"
             :title="u.username || u.name || ''"
           >
-            <img :src="avatar(u)" class="chip-avatar" alt="avatar" />
+            <div v-if="!avatar(u)" class="chip-avatar fallback">{{ initials(u) }}</div>
+            <img v-else :src="avatar(u)" class="chip-avatar" alt="avatar" />
             <span class="chip-name">{{ u.name || u.username || '(user)' }}</span>
             <button class="chip-x" @click="removePicked(u)">×</button>
           </div>
@@ -98,6 +99,11 @@ const avatarPreview = ref('')
 const fileInput = ref(null)
 
 const avatar = (u) => getAvatarUrl(u)
+const initials = (u) => {
+  const name = u?.name || u?.username || 'U'
+  const match = String(name).match(/\b\w/g) || ['U']
+  return match.slice(0, 2).join('').toUpperCase()
+}
 const memberIds = computed(() => {
   const ids = new Set(pickedUsers.value.map(u => String(u.id)).filter(Boolean))
   if (me.value?.id) ids.add(String(me.value.id))
@@ -252,7 +258,11 @@ async function create() {
   display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px;
   background: #fff; border: 1px solid #e2e8f0; border-radius: 999px;
 }
-.chip-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+.chip-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; }
+.chip-avatar.fallback {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #e2e8f0; color: #334155; font-weight: 700;
+}
 .chip-name { color: #0f172a; font-weight: 600; }
 .chip-x {
   border: 0; background: transparent; cursor: pointer; font-size: 1rem; line-height: 1;
