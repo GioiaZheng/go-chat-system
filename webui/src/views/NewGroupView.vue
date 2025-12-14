@@ -164,7 +164,12 @@ async function create() {
     const groupId =
       res?.group?.id || res?.id || res?.group_id || res?._id || res?.gid || null
     const conversationId =
-      res?.conversation_id || res?.conversationId || res?.conversation?.id || null
+      res?.conversation_id ||
+      res?.conversationId ||
+      res?.conversation?.id ||
+      res?.group?.conversation_id ||
+      res?.group?.conversationId ||
+      null
 
     if (!groupId) throw new Error('No group id returned')
     // 2) 如选择了群头像，立即上传

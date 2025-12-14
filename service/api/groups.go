@@ -1,6 +1,8 @@
 package api
 
 import (
+	"database/sql"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -267,11 +269,11 @@ func (rt *_router) setGroupName(
 		rt.sendError(w, http.StatusBadRequest, "Name is required")
 		return
 	}
-	if ln := len(req.Name); ln > 100 {
+	if ln := len(req.Name); ln < 1 || ln > 100 {
 		rt.sendError(w, http.StatusBadRequest, "Name must be 1-100 characters long")
 		return
 	}
-	if !regexp.MustCompile(`^[a-zA-Z0-9\s_-]+$`).MatchString(req.Name) {
+	if !groupNamePattern.MatchString(req.Name) {
 		rt.sendError(w, http.StatusBadRequest, "Name contains invalid characters")
 		return
 	}
@@ -310,8 +312,36 @@ func (rt *_router) leaveGroup(
 		return
 	}
 
-	if err := rt.db.LeaveGroup(groupID, uid); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "Failed to leave group")
+	var req struct {
+		UserID string `json:"userId,omitempty"`
+	}
+	if err := readJSON(r, &req); err != nil && !errors.Is(err, io.EOF) {
+		rt.sendError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	targetID := strings.TrimSpace(req.UserID)
+	if targetID == "" {
+		targetID = uid
+	}
+
+	// Ensure caller is at least part of the group before modifying it.
+	isMember, err := rt.db.IsGroupMember(uid, groupID)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to inspect membership")
+		return
+	}
+	if !isMember {
+		rt.sendError(w, http.StatusForbidden, "You are not a member of this group")
+		return
+	}
+
+	if err := rt.db.LeaveGroup(groupID, targetID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			rt.sendError(w, http.StatusNotFound, "User is not a member of this group")
+			return
+		}
+		rt.sendError(w, http.StatusInternalServerError, "Failed to update group membership")
 		return
 	}
 

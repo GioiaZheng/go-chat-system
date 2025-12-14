@@ -35,6 +35,7 @@ type AppDatabase interface {
 	UpdateGroupName(groupID, name string) error
 	UpdateGroupPhoto(groupID, publicURL string) error
 	LeaveGroup(groupID, userID string) error
+	IsGroupMember(userID, groupID string) (bool, error)
 
 	// --- conversations ---
 	StartConversation(ctx context.Context, userID string, memberIDs []string, name string) (models.Conversation, error)

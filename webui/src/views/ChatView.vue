@@ -313,23 +313,14 @@
                 <li v-if="!groupMembers.length" class="muted">No members found.</li>
               </ul>
             </div>
-
-            <div class="field inline">
-              <input
-                v-model.trim="addMemberInput"
-                class="input"
-                placeholder="User IDs (comma separated)"
-                :disabled="groupBusy"
+            <div class="members-add">
+              <div class="members-title">Add members</div>
+              <UserSearch
+                placeholder="Search users to add"
+                :class="{ disabled: addingMember }"
+                @select="onSelectNewMember"
+                @error="groupErr = $event || ''"
               />
-
-              <button
-                class="btn sm"
-                type="button"
-                :disabled="groupBusy || !addMemberInput"
-                @click="onAddMembers"
-              >
-                {{ groupBusy ? 'Working…' : 'Add' }}
-              </button>
             </div>
 
             <button class="btn danger leave" type="button" :disabled="groupBusy" @click="onLeaveGroup">
@@ -347,6 +338,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
+import UserSearch from '@/components/UserSearch.vue'
 import {
   isAuthed,
   getMyProfile,
@@ -403,7 +395,7 @@ const groupBusy = ref(false)
 const groupErr = ref('')
 const groupNotice = ref('')
 const groupNameDraft = ref('')
-const addMemberInput = ref('')
+const addingMember = ref(false)
 const groupPhotoInput = ref(null)
 const groupMembers = computed(() => {
   const src = groupInfo.value?.members?.length ? groupInfo.value.members : participants.value
@@ -686,12 +678,14 @@ async function loadGroupPanel() {
       return
     }
 
-    const detail = await getGroupDetail(gid)
+    const rawDetail = await getGroupDetail(gid)
+    const detail = rawDetail?.group || rawDetail || {}
     const membersRaw =
       detail?.members ||
       detail?.participants ||
       detail?.data?.members ||
       detail?.data?.items ||
+      detail?.group?.members ||
       []
 
     const members = normalizeMembers(membersRaw)
@@ -702,8 +696,8 @@ async function loadGroupPanel() {
 
     groupInfo.value = {
       id: String(detail?.id ?? detail?.group_id ?? gid),
-      name: detail?.name || detail?.title || headerTitle.value,
-      avatar: getAvatarUrl(detail || {}),
+      name: detail?.name || detail?.title || detail?.group?.name || headerTitle.value,
+      avatar: getAvatarUrl(detail || detail?.group || {}),
       members,
     }
 
@@ -971,22 +965,20 @@ async function onRenameGroup() {
   }
 }
 
-async function onAddMembers() {
-  if (!groupId.value) return
-  const ids = addMemberInput.value.split(',').map(s => s.trim()).filter(Boolean)
-  if (!ids.length) { groupErr.value = 'Please enter user IDs.'; return }
-  groupBusy.value = true
+async function onSelectNewMember(user) {
+  const userId = String(user?.id || user?.userId || user?.user_id || '')
+  if (!groupId.value || !userId) return
+  addingMember.value = true
   groupErr.value = ''
   groupNotice.value = ''
   try {
-    await addToGroup(groupId.value, ids)
-    addMemberInput.value = ''
-    groupNotice.value = 'Members added.'
+    await addToGroup(groupId.value, [userId])
+    groupNotice.value = 'Member added.'
     await loadGroupPanel()
   } catch (e) {
-    groupErr.value = e?.response?.data?.message || e?.message || 'Failed to add members'
+    groupErr.value = e?.response?.data?.message || e?.message || 'Failed to add member'
   } finally {
-    groupBusy.value = false
+    addingMember.value = false
   }
 }
 
@@ -1202,6 +1194,18 @@ watch(convId, async () => {
   padding-top: 6px;
   display: grid;
   gap: 8px;
+}
+
+.members-add {
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.members-add .disabled {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .members-title {
