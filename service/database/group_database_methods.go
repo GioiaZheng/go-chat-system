@@ -178,7 +178,7 @@ func (db *appdbimpl) GetGroupByName(name string) (models.Group, error) {
 func (db *appdbimpl) CreateGroup(group models.Group) error {
 	_, err := db.c.Exec(`
 		INSERT INTO groups (id, name, avatar_url, conversation_id)
-		VALUES (?, ?, COALESCE(?, NULL))
+		VALUES (?, ?, COALESCE(?, NULL), ?)
 	`, group.ID, group.Name, group.AvatarUrl, group.ConversationID)
 	return err
 }
