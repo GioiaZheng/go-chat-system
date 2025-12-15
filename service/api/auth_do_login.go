@@ -38,8 +38,9 @@ func toAPIUser(u models.User) apiUser {
 	}
 }
 
-// POST /session
-// Spec: login by name only; create if not exists; return 200 with {user, token} (token == userID)
+// doLogin implements POST /session.
+// It authenticates by display name only, creating the user on first login,
+// and always returns a 200 response containing {user, token} where token == userID.
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var req loginRequest
 	if err := readJSON(r, &req); err != nil {
@@ -56,10 +57,10 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		return
 	}
 
-	// exists?
-	exists, err := rt.db.CheckUserExists(name)
-	if err != nil {
-		rt.writeErrorResponse(w, http.StatusInternalServerError, "Database error")
+        // Check whether the username is already registered.
+        exists, err := rt.db.CheckUserExists(name)
+        if err != nil {
+                rt.writeErrorResponse(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
