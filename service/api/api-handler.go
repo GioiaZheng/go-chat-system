@@ -1,4 +1,5 @@
-// file: service/api/api-handler.go
+// api-handler.go centralizes route registration so OpenAPI endpoints stay
+// consistent and easy to audit in one place.
 package api
 
 import (

@@ -1,3 +1,5 @@
+// upload_utils.go contains helpers for sanitizing upload paths and validating
+// basic file properties before persisting user-supplied content.
 package api
 
 import (

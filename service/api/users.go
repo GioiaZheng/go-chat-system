@@ -1,3 +1,5 @@
+// users.go exposes user profile endpoints, covering display name updates, photo
+// uploads, user search, and profile retrieval per the OpenAPI spec.
 package api
 
 import (
@@ -12,9 +14,9 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-//
-// Helpers (request bodies)
-//
+// -----------------------------------------------------------------------------
+// Section: Helpers (request bodies)
+// -----------------------------------------------------------------------------
 
 // setUsernameBody accepts both the OpenAPI field {"name":"..."} and the legacy {"username":"..."}.
 type setUsernameBody struct {

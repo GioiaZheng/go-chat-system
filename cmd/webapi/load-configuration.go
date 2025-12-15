@@ -1,14 +1,17 @@
+// load-configuration.go defines the configuration structures and helpers used
+// to assemble runtime settings for the web API server from flags, environment
+// variables, and optional YAML files.
 package main
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"os"
-	"time"
+        "errors"
+        "fmt"
+        "io"
+        "os"
+        "time"
 
-	"github.com/ardanlabs/conf"
-	"gopkg.in/yaml.v2"
+        "github.com/ardanlabs/conf"
+        "gopkg.in/yaml.v2"
 )
 
 // WebAPIConfiguration describes the web API configuration. This structure is automatically parsed by

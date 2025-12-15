@@ -1,3 +1,5 @@
+// api.go constructs the HTTP router for the service API and centralizes shared
+// dependencies such as logging and database connectivity.
 package api
 
 import (

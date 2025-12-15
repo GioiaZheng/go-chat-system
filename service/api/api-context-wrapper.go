@@ -1,4 +1,5 @@
-// file: service/api/api-context-wrapper.go
+// api-context-wrapper.go enriches httprouter handlers with request metadata and
+// authentication details so business handlers receive consistent context.
 package api
 
 import (

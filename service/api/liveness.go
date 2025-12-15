@@ -1,3 +1,5 @@
+// liveness.go hosts minimal health probes used by load balancers and nginx
+// routing checks.
 package api
 
 import (

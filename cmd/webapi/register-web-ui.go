@@ -1,5 +1,8 @@
 //go:build webui
 
+// register-web-ui.go mounts the compiled frontend assets when the binary is
+// built with the `webui` tag, while forwarding API paths to the existing API
+// handler.
 package main
 
 import (
@@ -8,10 +11,11 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/webui"
 )
 
-// When built with -tags webui, mount the embedded frontend assets at "/"
-// and route all remaining paths to the API handler.
+// registerWebUI mounts the embedded frontend assets at the root path when the
+// webui build tag is enabled, while delegating API routes back to the provided
+// handler. This keeps routing concerns localized to a single place.
 func registerWebUI(api http.Handler) (http.Handler, error) {
-	mux := http.NewServeMux()
+        mux := http.NewServeMux()
 
         // Frontend entrypoint
         mux.Handle("/", webui.Handler())

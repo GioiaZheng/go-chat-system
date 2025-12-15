@@ -1,3 +1,5 @@
+// groups.go contains the group management endpoints, including creation,
+// membership updates, and media uploads while enforcing OpenAPI constraints.
 package api
 
 import (
@@ -18,11 +20,9 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-//
-// -------------------------------
-// Group: Create
-// POST /groups
-// -------------------------------
+// -----------------------------------------------------------------------------
+// Section: Group create (POST /groups)
+// -----------------------------------------------------------------------------
 
 // CreateGroupRequest matches the OpenAPI field (memberIds) and also accepts
 // a couple of legacy aliases for backward compatibility.
@@ -151,11 +151,9 @@ func (rt *_router) createGroup(
 	})
 }
 
-//
-// -------------------------------
-// Group: Get by ID / Detail
-// GET /groups/:id
-// -------------------------------
+// -----------------------------------------------------------------------------
+// Section: Group detail (GET /groups/:id)
+// -----------------------------------------------------------------------------
 
 // getGroup returns a single group as GroupEnvelope.
 func (rt *_router) getGroup(
@@ -199,11 +197,9 @@ func (rt *_router) getGroupDetail(
 	rt.getGroup(w, r, ps, ctx)
 }
 
-//
-// -------------------------------
-// Group: List mine
-// GET /groups
-// -------------------------------
+// -----------------------------------------------------------------------------
+// Section: Group listing (GET /groups)
+// -----------------------------------------------------------------------------
 
 // getGroupsList returns all groups of the current user as GroupEnvelopeCollection.
 func (rt *_router) getGroupsList(
@@ -233,11 +229,9 @@ func (rt *_router) getGroupsList(
 	})
 }
 
-//
-// -------------------------------
-// Group: Rename
-// PUT /groups/:id/name
-// -------------------------------
+// -----------------------------------------------------------------------------
+// Section: Group rename (PUT /groups/:id/name)
+// -----------------------------------------------------------------------------
 
 type UpdateGroupNameRequest struct {
 	Name string `json:"name"`
@@ -289,11 +283,9 @@ func (rt *_router) setGroupName(
 	})
 }
 
-//
-// -------------------------------
-// Group: Leave (current user)
-// DELETE /groups/:id/members
-// -------------------------------
+// -----------------------------------------------------------------------------
+// Section: Group leave (DELETE /groups/:id/members)
+// -----------------------------------------------------------------------------
 
 func (rt *_router) leaveGroup(
 	w http.ResponseWriter,
@@ -351,11 +343,9 @@ func (rt *_router) leaveGroup(
 	})
 }
 
-//
-// -------------------------------
-// Group: Add members
-// POST /groups/:id/members
-// -------------------------------
+// -----------------------------------------------------------------------------
+// Section: Group add members (POST /groups/:id/members)
+// -----------------------------------------------------------------------------
 
 type AddGroupMembersRequest struct {
 	MemberIDs       []string `json:"memberIds,omitempty"`  // OpenAPI (camelCase)
@@ -430,17 +420,13 @@ func (rt *_router) addToGroup(
 	})
 }
 
-//
-// -------------------------------
-// Group: Set/Update photo
-// PUT /groups/:id/photo
-//
+// -----------------------------------------------------------------------------
+// Section: Group photo (PUT /groups/:id/photo)
+// -----------------------------------------------------------------------------
 // Two modes:
 //   - Preset:  ?preset=avatar7   => /uploads/photos/avatar7.jpg
 //   - Upload:  multipart/form-data with file field "upload"
-//
 // Response matches FileUploadEnvelope: data.file{ filename, uri, size? }.
-// -------------------------------
 
 func (rt *_router) setGroupPhoto(
 	w http.ResponseWriter,
