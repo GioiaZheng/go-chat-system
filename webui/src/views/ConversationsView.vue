@@ -1,7 +1,10 @@
 <template>
   <div class="page">
     <header class="topbar">
-      <div class="title">Chats</div>
+      <div>
+        <div class="title">Chats</div>
+        <p class="subtitle">Stay close to your private and group conversations.</p>
+      </div>
     </header>
 
     <section class="content">
@@ -317,7 +320,7 @@ onUnmounted(() => {
   height: 56px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   padding: 0 18px;
   border-bottom: 1px solid rgba(20, 100, 60, 0.08);
   background: #fff8;
@@ -328,7 +331,13 @@ onUnmounted(() => {
 }
 .title {
   font-weight: 800;
+  font-size: 1.35rem;
   color: #0f172a;
+}
+.subtitle {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
 }
 .content {
   max-width: 1100px;
@@ -359,6 +368,7 @@ onUnmounted(() => {
   margin: 0;
   font-weight: 700;
   color: #0f172a;
+  font-size: 1.05rem;
 }
 .badge {
   display: inline-flex;

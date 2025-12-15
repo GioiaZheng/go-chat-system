@@ -28,6 +28,25 @@
           </div>
         </div>
 
+
+        <div class="summary-grid">
+          <div class="summary-card">
+            <p class="summary-label">Display name</p>
+            <p class="summary-value">{{ me.name || '(unset)' }}</p>
+            <p class="summary-hint">Shown to friends across private and group chats.</p>
+          </div>
+          <div class="summary-card">
+            <p class="summary-label">Account ID</p>
+            <p class="summary-value">{{ me.id }}</p>
+            <p class="summary-hint">Share this if someone needs to add you directly.</p>
+          </div>
+          <div class="summary-card">
+            <p class="summary-label">Profile photo</p>
+            <p class="summary-value">{{ avatarUrl && !imgBroken ? 'Custom image' : 'Default badge' }}</p>
+            <p class="summary-hint">Use a friendly photo to keep your chats recognizable.</p>
+          </div>
+        </div>
+
         <div class="grid">
           <!-- Change name -->
           <div class="field">
@@ -216,6 +235,39 @@ function handleError(e, fallback) {
 .val {
   color: #0f172a;
   word-break: break-all;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.summary-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.04);
+}
+
+.summary-label {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.summary-value {
+  margin: 4px 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summary-hint {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
 }
 
 .grid {
