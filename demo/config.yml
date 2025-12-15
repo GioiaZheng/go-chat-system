@@ -1,17 +1,16 @@
-# This is the configuration file for the API service
-# Description of this part is present in the `main.go` file
+# Sample configuration for the API service; see `cmd/webapi/main.go` for wiring defaults.
 
 log:
   level: debug
-#  methodname: false
-#  json: false
-#  destination: stderr
-#  file: /tmp/debug.log
-#  combinedtostdout: true
+#  methodname: false      # Include the calling method in log entries.
+#  json: false            # Emit JSON lines instead of plain text.
+#  destination: stderr    # Redirect logs to a file path when needed.
+#  file: /tmp/debug.log   # Example file path for persistent logging.
+#  combinedtostdout: true # Mirror log output to stdout for container logs.
 #web:
-#  apihost: 0.0.0.0:3000
-#  debughost: 0.0.0.0:4000
-#  readtimeout: 5s
-#  writetimeout: 5s
-#  shutdowntimeout: 5s
-#  behindproxy: false
+#  apihost: 0.0.0.0:3000   # Address for the API listener.
+#  debughost: 0.0.0.0:4000 # Address for the debug/pprof listener.
+#  readtimeout: 5s         # Maximum duration for reading the full request.
+#  writetimeout: 5s        # Maximum duration before timing out writes.
+#  shutdowntimeout: 5s     # Grace period before forceful shutdown.
+#  behindproxy: false      # Enable when running behind a reverse proxy.

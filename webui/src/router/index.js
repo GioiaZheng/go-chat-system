@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// === Views ===
+// View components used in the route map.
 import LoginView from '../views/LoginView.vue'
 import ConversationsView from '../views/ConversationsView.vue'
 import ContactsView from '../views/ContactsView.vue'
@@ -8,9 +8,9 @@ import ChatView from '../views/ChatView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import NewGroupView from '../views/NewGroupView.vue'
 
-// === Route definitions ===
+// Routes grouped by access level and legacy redirects.
 const routes = [
-  // Root path → default redirect; auth guard will apply.
+  // Root path redirects to login; the guard will handle auth flow.
   {
     path: '/',
     redirect: '/login',
@@ -22,7 +22,7 @@ const routes = [
     component: { template: '<div style="padding:12px">Router OK</div>' },
   },
 
-  // === Public ===
+  // Public routes
   {
     path: '/login',
     name: 'login',
@@ -33,7 +33,7 @@ const routes = [
     },
   },
 
-  // === Protected ===
+  // Authenticated routes
   {
     path: '/conversations',
     name: 'conversations',
@@ -68,7 +68,7 @@ const routes = [
     meta: { requiresAuth: true },
   },
 
-  // === Legacy & Redirects ===
+  // Legacy and redirect helpers
   {
     path: '/conversations/:id',
     redirect: (to) => ({
@@ -80,18 +80,18 @@ const routes = [
   { path: '/groups', redirect: '/new-group' },
   { path: '/me', redirect: '/profile' },
 
-  // Fallback
+  // Fallback for unknown routes
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
-// === Router instance ===
+// Router instance with scroll reset behavior.
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior: () => ({ top: 0 }),
 })
 
-// === Auth Guard ===
+// Navigation guard enforcing authentication and login redirects.
 const isAuthed = () =>
   !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 
@@ -101,7 +101,7 @@ router.beforeEach((to, from, next) => {
     sessionStorage.getItem('authToken') || localStorage.getItem('token')
   )
 
-  // 1) Redirect unauthenticated users away from protected routes.
+  // Step 1: Redirect unauthenticated users away from protected routes.
   if (needsAuth && !authed) {
     next({
       path: '/login',
@@ -110,13 +110,13 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // 2) Send authenticated users away from the login page.
+  // Step 2: Send authenticated users away from the login page.
   if (to.path === '/login' && authed) {
     next('/conversations')
     return
   }
 
-  // 3) Emit a global event when the route actually changes (optional).
+  // Step 3: Emit a global event when the route actually changes (optional).
   if (from.name && from.name !== to.name) {
     try {
       window.dispatchEvent(new Event('auth:changed'))

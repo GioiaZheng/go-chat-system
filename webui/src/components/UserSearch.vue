@@ -1,4 +1,4 @@
-<!-- src/components/UserSearch.vue -->
+<!-- User search helper: wraps the search API, displays results, and emits selections with basic error feedback. -->
 <template>
   <div class="user-search">
     <div class="bar">
@@ -41,7 +41,7 @@ import ErrorMsg from '@/components/ErrorMsg.vue'
 import { searchUsers, getAvatarUrl } from '@/services/api'
 
 const props = defineProps({
-  placeholder: String
+  placeholder: String,
 })
 const emit = defineEmits(['select', 'error'])
 
@@ -77,37 +77,82 @@ async function onSearch() {
 </script>
 
 <style scoped>
-.user-search { display:flex; flex-direction:column; gap:8px; }
-.bar { display:flex; gap:8px; }
+.user-search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bar {
+  display: flex;
+  gap: 8px;
+}
 .input {
-  flex:1; border:1px solid #cbd5e1; border-radius:10px; padding:.5rem .75rem;
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
 }
 .btn {
-  border:0; border-radius:10px; color:#fff; padding:.5rem .9rem;
-  background-image: linear-gradient(135deg,#22c55e 0%, #16a34a 45%, #3b82f6 120%);
-  box-shadow:0 .3rem .8rem rgba(34,197,94,.25);
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  padding: 0.5rem 0.9rem;
+  background-image: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #3b82f6 120%);
+  box-shadow: 0 0.3rem 0.8rem rgba(34, 197, 94, 0.25);
 }
-.list { list-style:none; padding:0; margin:0; display:grid; gap:6px; }
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
 .item {
-  display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #e2e8f0;
-  border-radius:10px; padding:8px 10px; cursor:pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
 }
-.item:hover { background:#f1f5f9; }
-.avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid #e2e8f0; }
+.item:hover {
+  background: #f1f5f9;
+}
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
+}
 .avatar-fallback {
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background:#e0f7ee;
-  color:#0f766e;
-  font-weight:700;
-  border:1px solid #a7f3d0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0f7ee;
+  color: #0f766e;
+  font-weight: 700;
+  border: 1px solid #a7f3d0;
 }
-.meta { flex:1; min-width:0; }
-.name { font-weight:600; color:#0f172a; }
-.sub { color:#64748b; font-size:.9rem; }
-.empty { text-align:center; color:#64748b; }
+.meta {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-weight: 600;
+  color: #0f172a;
+}
+.sub {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+.empty {
+  text-align: center;
+  color: #64748b;
+}
 </style>

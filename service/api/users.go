@@ -14,9 +14,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// -----------------------------------------------------------------------------
 // Section: Helpers (request bodies)
-// -----------------------------------------------------------------------------
 
 // setUsernameBody accepts both the OpenAPI field {"name":"..."} and the legacy {"username":"..."}.
 type setUsernameBody struct {
@@ -24,11 +22,8 @@ type setUsernameBody struct {
 	Name     string `json:"name,omitempty"`
 }
 
-//
-// Get my info  (GET /users/me)
-//
-
-// getUserInfo returns the profile of the authenticated user (UserEnvelope).
+// getUserInfo handles GET /users/me and returns the authenticated user's
+// profile as a UserEnvelope.
 func (rt *_router) getUserInfo(
 	w http.ResponseWriter,
 	_ *http.Request,
@@ -41,7 +36,7 @@ func (rt *_router) getUserInfo(
 		return
 	}
 
-        // Support either DB method name
+	// Support either DB method name
 	u, err := rt.db.GetUser(uid)
 	if err != nil {
 		u, err = rt.db.GetUserByID(uid)
@@ -58,11 +53,8 @@ func (rt *_router) getUserInfo(
 	})
 }
 
-//
-// Get user profile by id  (GET /users/profile/{userId})
-//
-
-// getUserProfile reads public profile data by :userId and keeps a minimal query-key fallback.
+// getUserProfile handles GET /users/profile/{userId} and returns public profile
+// data. A minimal query-key fallback is kept for older clients.
 func (rt *_router) getUserProfile(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -72,7 +64,7 @@ func (rt *_router) getUserProfile(
 	// Path param
 	userID := strings.TrimSpace(ps.ByName("userId"))
 	if userID == "" {
-                // Minimal compatibility: also allow :id or ?id= style fallbacks (non-OpenAPI)
+		// Minimal compatibility: also allow :id or ?id= style fallbacks (non-OpenAPI)
 		userID = strings.TrimSpace(ps.ByName("id"))
 		if userID == "" {
 			userID = strings.TrimSpace(r.URL.Query().Get("id"))
@@ -94,16 +86,13 @@ func (rt *_router) getUserProfile(
 		"code":    http.StatusOK,
 		"message": "User information retrieved",
 		"data": map[string]interface{}{
-                        "user": u, // Aligns with the OpenAPI UserEnvelope
+			"user": u, // Aligns with the OpenAPI UserEnvelope
 		},
 	})
 }
 
-//
-// Update username  (PUT /users/set_username)
-//
-
-// setUserUsername updates the display name (OpenAPI request field: name).
+// setUserUsername handles PUT /users/set_username to update the display name
+// (OpenAPI request field: name) while still accepting the legacy username key.
 func (rt *_router) setUserUsername(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -121,7 +110,7 @@ func (rt *_router) setUserUsername(
 		rt.sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-        // Prefer OpenAPI field name; fall back to legacy username
+	// Prefer OpenAPI field name; fall back to legacy username
 	newName := strings.TrimSpace(body.Name)
 	if newName == "" {
 		newName = strings.TrimSpace(body.Username)
@@ -132,19 +121,20 @@ func (rt *_router) setUserUsername(
 	}
 
 	if err := rt.db.UpdateUserName(uid, newName); err != nil {
-                // Let the DB enforce uniqueness/regex constraints; surface them as 400
+		// Let the DB enforce uniqueness/regex constraints; surface them as 400
 		rt.sendError(w, http.StatusBadRequest, "Failed to update user name")
 		return
 	}
 
-        // OpenAPI: BaseSuccessResponse (code and message only)
+	// OpenAPI: BaseSuccessResponse (code and message only)
 	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
 		"code":    http.StatusOK,
 		"message": "user name updated successfully",
 	})
 }
 
-// setMyUserName alias used by the router (see api-handler.go)
+// setMyUserName is the registered route handler that delegates to
+// setUserUsername for backwards compatibility.
 func (rt *_router) setMyUserName(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -154,11 +144,9 @@ func (rt *_router) setMyUserName(
 	rt.setUserUsername(w, r, ps, ctx)
 }
 
-//
-// Update avatar/photo  (PUT /users/set_photo)
-// Two modes: ?preset=avatar7 or multipart/form-data field "upload"
-// Returns FileUploadEnvelope: data.file { filename, uri, size? }
-//
+// setUserPhoto handles PUT /users/set_photo for avatar updates.
+// It supports preset query parameters or multipart uploads and returns a
+// FileUploadEnvelope: data.file { filename, uri, size? }.
 
 func (rt *_router) setUserPhoto(
 	w http.ResponseWriter,
@@ -172,7 +160,7 @@ func (rt *_router) setUserPhoto(
 		return
 	}
 
-        // 1) Preset avatar mode: ?preset=avatarX
+	// 1) Preset avatar mode: ?preset=avatarX
 	if preset := strings.TrimSpace(r.URL.Query().Get("preset")); preset != "" {
 		if !strings.HasPrefix(strings.ToLower(preset), "avatar") {
 			rt.sendError(w, http.StatusBadRequest, "Invalid preset name")
@@ -191,14 +179,14 @@ func (rt *_router) setUserPhoto(
 			"data": map[string]interface{}{
 				"file": map[string]interface{}{
 					"filename": derived,
-                                        "uri":      publicURI, // OpenAPI field is named uri
+					"uri":      publicURI, // OpenAPI field is named uri
 				},
 			},
 		})
 		return
 	}
 
-        // 2) Upload mode
+	// 2) Upload mode
 	const maxUploadSizeBytes = 10 << 20 // 10 MiB
 	if err := r.ParseMultipartForm(maxUploadSizeBytes); err != nil {
 		rt.sendError(w, http.StatusBadRequest, "Invalid multipart form")
@@ -227,7 +215,7 @@ func (rt *_router) setUserPhoto(
 		}
 	}
 
-        // Save the file to /uploads/users
+	// Save the file to /uploads/users
 	baseDir := filepath.Join("uploads", "users")
 	if err := ensureDir(baseDir); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to prepare upload dir")
@@ -271,13 +259,14 @@ func (rt *_router) setUserPhoto(
 			"file": map[string]interface{}{
 				"filename": origName,
 				"size":     written,
-                                "uri":      publicURI, // OpenAPI field is named uri
+				"uri":      publicURI, // OpenAPI field is named uri
 			},
 		},
 	})
 }
 
-// setMyPhoto alias used by the router (see api-handler.go)
+// setMyPhoto is the router alias that forwards to setUserPhoto to preserve
+// existing route names.
 func (rt *_router) setMyPhoto(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -287,7 +276,7 @@ func (rt *_router) setMyPhoto(
 	rt.setUserPhoto(w, r, ps, ctx)
 }
 
-// Search users  (GET /users/search?q=xxx)  — exclude myself
+// searchUsers handles GET /users/search and omits the caller from the result.
 func (rt *_router) searchUsers(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -300,10 +289,10 @@ func (rt *_router) searchUsers(
 		return
 	}
 
-        // q may be empty, which means "search all"
+	// q may be empty, which means "search all"
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
-                // Also accept the older ?query= variant
+		// Also accept the older ?query= variant
 		q = strings.TrimSpace(r.URL.Query().Get("query"))
 	}
 
@@ -317,7 +306,7 @@ func (rt *_router) searchUsers(
 		"code":    http.StatusOK,
 		"message": "Matching users found",
 		"data": map[string]interface{}{
-                        "items": users, // Matches the structure expected by api.js unwrap + searchUsers()
+			"items": users, // Matches the structure expected by api.js unwrap + searchUsers()
 		},
 	})
 }

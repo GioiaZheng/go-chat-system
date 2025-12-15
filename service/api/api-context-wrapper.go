@@ -25,16 +25,16 @@ var (
 type httpRouterHandler func(http.ResponseWriter, *http.Request, httprouter.Params, reqcontext.RequestContext)
 
 // wrap handles request-scoped concerns before calling the actual business handler:
-// 1) Generate a per-request UUID for tracing.
-// 2) Extract the auth token from the "Authorization" header.
-// 3) Build a RequestContext (logger + user identity) for downstream use.
+//  1. Generate a per-request UUID for tracing.
+//  2. Extract the auth token from the "Authorization" header.
+//  3. Build a RequestContext (logger + user identity) for downstream use.
 //
 // Authentication model used in this assignment:
 //   - Login/Register issue an "opaque token" equal to the user ID.
 //   - For convenience and to match the assignment scripts / existing clients,
 //     both "Authorization: Bearer <token>" and a bare "<token>" are accepted.
-//   - We treat "<token>" directly as the user ID to avoid a second lookup.
-//     (If you prefer, enable the optional DB existence check below.)
+//   - We treat "<token>" directly as the user ID to avoid a second lookup
+//     (uncomment the optional DB existence check below if stronger validation is desired).
 func (rt *_router) wrap(fn httpRouterHandler) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		reqUUID, err := uuid.NewV4()

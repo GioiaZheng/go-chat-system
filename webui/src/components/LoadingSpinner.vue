@@ -1,7 +1,4 @@
-<!-- Notes:
-     - Minimal loading indicator component.
-     - Kept intentionally small to avoid layout shifts.
-     - Can optionally accept a `text` prop for accessibility/UX. -->
+<!-- LoadingSpinner provides a minimal inline indicator with optional assistive text. -->
 
 <template>
   <span class="inline-block animate-spin" aria-live="polite" aria-busy="true">⏳</span>

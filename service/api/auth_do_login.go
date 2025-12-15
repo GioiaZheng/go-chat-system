@@ -1,5 +1,6 @@
 // auth_do_login.go implements the session login endpoint and its response
-// envelope to match the OpenAPI user/token contract.
+// envelope to match the OpenAPI user/token contract. Authentication is based on
+// a display name and returns a token equal to the user ID for simplicity.
 package api
 
 import (
@@ -10,18 +11,19 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// loginRequest for POST /session
+// loginRequest represents the POST /session payload.
 type loginRequest struct {
 	Name string `json:"name"`
 }
 
-// apiUser matches OpenAPI User (id, name, avatarUri)
+// apiUser mirrors the OpenAPI User shape (id, name, avatarUri).
 type apiUser struct {
 	ID        string `json:"id"`
 	Name      string `json:"name,omitempty"`
 	AvatarURI string `json:"avatarUri,omitempty"`
 }
 
+// authEnvelope is the response wrapper for successful login requests.
 type authEnvelope struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -41,7 +43,8 @@ func toAPIUser(u models.User) apiUser {
 
 // doLogin implements POST /session.
 // It authenticates by display name only, creating the user on first login,
-// and always returns a 200 response containing {user, token} where token == userID.
+// and always returns a 200 response containing {user, token} where token ==
+// userID.
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var req loginRequest
 	if err := readJSON(r, &req); err != nil {
@@ -58,16 +61,16 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		return
 	}
 
-        // Check whether the username is already registered.
-        exists, err := rt.db.CheckUserExists(name)
-        if err != nil {
-                rt.writeErrorResponse(w, http.StatusInternalServerError, "Database error")
+	// Check whether the username is already registered.
+	exists, err := rt.db.CheckUserExists(name)
+	if err != nil {
+		rt.writeErrorResponse(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	var user models.User
 	if exists {
-		// find by identifier (name) -> id -> load
+		// Find the user by identifier (name) then load its full record.
 		id, err := rt.db.GetUserIDFromIdentifier(name)
 		if err != nil {
 			rt.writeErrorResponse(w, http.StatusInternalServerError, "Failed to fetch user")
@@ -80,7 +83,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		}
 		user = u
 	} else {
-		// create
+		// Create a new user on first login.
 		u, err := rt.db.CreateUser(models.User{
 			Name: name,
 		})

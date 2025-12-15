@@ -1,4 +1,3 @@
-// file: service/database/app_database.go
 package database
 
 import (
@@ -10,13 +9,13 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// AppDatabase is the contract used by the API layer.
+// AppDatabase defines the database operations required by the API layer.
 type AppDatabase interface {
 	// lifecycle
 	Close() error
 	Ping() error
 
-	// --- users ---
+	// Section: users
 	GetUser(id string) (models.User, error)
 	GetUserByID(id string) (models.User, error)
 	CreateUser(user models.User) (models.User, error)
@@ -26,7 +25,7 @@ type AppDatabase interface {
 	SearchUsers(ctx context.Context, me, query string) ([]models.User, error)
 	GetUserIDFromIdentifier(identifier string) (string, error)
 
-	// --- groups ---
+	// Section: groups
 	CreateGroup(group models.Group) error
 	AddGroupMembers(groupID string, members []string) error
 	GetGroup(id string) (models.Group, error)
@@ -37,14 +36,14 @@ type AppDatabase interface {
 	LeaveGroup(groupID, userID string) error
 	IsGroupMember(userID, groupID string) (bool, error)
 
-	// --- conversations ---
+	// Section: conversations
 	StartConversation(ctx context.Context, userID string, memberIDs []string, name string) (models.Conversation, error)
 	GetMyConversations(userID string) ([]models.Conversation, error)
 	GetConversationMembers(conversationID string) ([]string, error)
 	GetMessagesByConversation(conversationID, before, after string, limit int) ([]models.Message, error)
 	DeleteConversation(conversationID string) error
 
-	// --- messages ---
+	// Section: messages
 	SendMessageToConversation(message models.Message) error
 	SendPrivateMessage(message models.Message) error
 	SendGroupMessage(message models.Message) error
@@ -63,12 +62,13 @@ type AppDatabase interface {
 	DeleteMessage(userID, messageID string) error
 }
 
-// Concrete implementation
+// appdbimpl is the concrete implementation backed by an SQLite connection.
 type appdbimpl struct {
 	c *sql.DB
 }
 
-// New wires a *sql.DB into our implementation, ensures PRAGMAs and schema exist.
+// New wires a *sql.DB into the implementation, enabling PRAGMAs and ensuring
+// that the schema is present before returning a ready-to-use database handle.
 func New(db *sql.DB) (*appdbimpl, error) {
 	// Verify connection
 	if err := db.Ping(); err != nil {
@@ -177,7 +177,7 @@ func initializeTables(db *sql.DB) error {
 		return err
 	}
 
-if err := ensureMessageTypeColumn(db); err != nil {
+	if err := ensureMessageTypeColumn(db); err != nil {
 		return err
 	}
 

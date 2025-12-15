@@ -1,43 +1,36 @@
+<!-- Chat bubble for an individual message, supporting text, images, inline replies, and reaction chips. -->
 <template>
   <div class="msg" :class="{ mine }">
-
-    <!-- Main message content -->
+    <!-- Main message content container -->
     <div class="bubble">
-
-      <!-- Image message -->
+      <!-- Render an image message when provided -->
       <template v-if="type === 'image' && imageUrl">
-        <img 
-          :src="imageUrl" 
-          alt="image message"
-          class="msg-img"
-        />
+        <img :src="imageUrl" alt="image message" class="msg-img" />
       </template>
 
-      <!-- Text message -->
+      <!-- Default text-only payload -->
       <template v-else>
         {{ text }}
       </template>
 
-      <!-- inline reply -->
+      <!-- Optional inline reply preview -->
       <div v-if="replyTo" class="reply-preview">
         ↪ {{ replyTo }}
       </div>
 
-      <!-- reactions -->
+      <!-- Emoji reactions associated with this message -->
       <div v-if="reactions && reactions.length" class="reactions">
-        <span v-for="(r,i) in reactions" :key="i" class="reaction">{{ r }}</span>
+        <span v-for="(r, i) in reactions" :key="i" class="reaction">{{ r }}</span>
       </div>
-
     </div>
 
-    <!-- Meta info (timestamp + checkmarks) -->
+    <!-- Footer metadata: timestamp and delivery ticks -->
     <div class="meta">
       {{ meta }}
       <span v-if="ticks === 1">✓</span>
       <span v-else-if="ticks === 2">✓✓</span>
       <span v-else-if="ticks === 3">✓✓</span>
     </div>
-
   </div>
 </template>
 
@@ -47,12 +40,12 @@ const props = defineProps({
 
   /* Content */
   text: { type: String, default: '' },
-  type: { type: String, default: 'text' },      
-  imageUrl: { type: String, default: '' }, 
+  type: { type: String, default: 'text' },
+  imageUrl: { type: String, default: '' },
 
   /* Meta */
   meta: { type: String, default: '' },
-  ticks: { type: Number, default: -1 },  
+  ticks: { type: Number, default: -1 },
 
   /* Inline reply */
   replyTo: { type: String, default: '' },

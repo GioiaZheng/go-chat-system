@@ -1,5 +1,5 @@
-// context-utils.go centralizes JSON helpers for reading request payloads and
-// sending structured responses and errors.
+// context-utils.go centralizes JSON helpers for decoding request payloads and
+// sending structured responses and error envelopes.
 package api
 
 import (

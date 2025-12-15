@@ -1,10 +1,10 @@
-<!-- src/components/Sidebar.vue -->
+<!-- Application sidebar: highlights the brand, the signed-in user summary, navigation shortcuts, and logout control. -->
 <template>
   <nav class="sidebar">
-    <!-- Brand -->
+    <!-- Brand mark for quick product recognition -->
     <div class="brand">Wa<span class="accent">SA</span>Text</div>
 
-    <!-- User info -->
+    <!-- Signed-in user overview with avatar fallback and handle -->
     <div class="me" v-if="me">
       <div
         class="me-avatar"
@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <!-- Navigation -->
+    <!-- Primary navigation links for core flows -->
     <div class="nav">
       <RouterLink to="/conversations" class="link" active-class="active">💬 Chats</RouterLink>
       <RouterLink to="/contacts" class="link" active-class="active">👥 Contacts</RouterLink>
@@ -26,7 +26,7 @@
       <RouterLink to="/profile" class="link" active-class="active">🪪 Profile</RouterLink>
     </div>
 
-    <!-- Footer -->
+    <!-- Session controls -->
     <div class="footer">
       <button class="logout" @click="logout">🚪 Logout</button>
     </div>
@@ -36,8 +36,7 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '@/services/api'
-import { getMyProfile, getAvatarUrl } from '@/services/api'
+import api, { getMyProfile, getAvatarUrl } from '@/services/api'
 
 const router = useRouter()
 const me = ref(null)
@@ -47,7 +46,7 @@ const initials = computed(() => (me.value?.name || me.value?.username || 'U')[0]
 
 async function loadProfile() {
   try {
-     const prof = await getMyProfile()
+    const prof = await getMyProfile()
     me.value = prof?.data?.user || prof?.user || prof || null
   } catch {}
 }
@@ -66,8 +65,8 @@ onBeforeUnmount(() => {
 })
 
 function logout() {
-  api.doLogout()            
-  router.replace('/login') 
+  api.doLogout()
+  router.replace('/login')
 }
 </script>
 
@@ -81,18 +80,20 @@ function logout() {
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
-  box-shadow: 4px 0 12px rgba(0,0,0,0.03);
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.03);
 }
 
 .brand {
   font-weight: 800;
   font-size: 1.4rem;
-  letter-spacing: .4px;
+  letter-spacing: 0.4px;
   text-align: center;
   color: #0f172a;
   margin-bottom: 24px;
 }
-.accent { color: #3b82f6; }
+.accent {
+  color: #3b82f6;
+}
 
 .me {
   display: flex;
@@ -124,8 +125,14 @@ function logout() {
   flex-direction: column;
 }
 
-.me-name { font-weight: 700; color: #0f172a; }
-.me-username { color: #475569; font-size: 0.9rem; }
+.me-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+.me-username {
+  color: #475569;
+  font-size: 0.9rem;
+}
 
 .nav {
   display: flex;
@@ -170,7 +177,6 @@ function logout() {
 .logout:hover {
   background: #dc2626;
 }
-
 
 @media (max-width: 992px) {
   .sidebar {
@@ -221,5 +227,4 @@ function logout() {
     white-space: nowrap;
   }
 }
-
 </style>

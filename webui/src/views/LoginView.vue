@@ -1,4 +1,4 @@
-<!-- src/views/LoginView.vue -->
+<!-- src/views/LoginView.vue: Sign-in form with minimal session bootstrap. -->
 <template>
   <div class="auth-wrap">
     <div class="auth-card">
@@ -79,7 +79,7 @@ async function login () {
   busy.value = true
 
   try {
-    // Remove any existing tokens before starting a new session.
+    // Clear any existing tokens before starting a new session.
     localStorage.removeItem('token')
     sessionStorage.removeItem('authToken')
 

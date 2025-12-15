@@ -1,3 +1,4 @@
+// axios.js configures the shared Axios instance used by the frontend API helpers.
 import axios from 'axios';
 
 const instance = axios.create({

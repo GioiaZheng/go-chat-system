@@ -5,7 +5,7 @@ package webui
 
 import "embed"
 
-// dist contains the compiled frontend assets.
+// distFS exposes the compiled frontend assets when the web UI is embedded at build time.
 //
 //go:embed dist/*
 var distFS embed.FS

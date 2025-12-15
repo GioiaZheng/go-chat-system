@@ -1,26 +1,15 @@
 package models
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  USER
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// User is the public-facing user object.
-// Internal DB fields (username, photo) are hidden.
+// User represents the minimal public profile returned by the API.
+// Internal-only fields such as usernames or photos are intentionally omitted.
 type User struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	AvatarUrl string `json:"avatarUri,omitempty"`
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  GROUP
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// Group returned to the frontend per OpenAPI: id, name, avatarUri, members, conversationId.
+// Group captures the OpenAPI representation of a group, including membership
+// and conversation linkage when available.
 type Group struct {
 	ID             string        `json:"id"`
 	Name           string        `json:"name"`
@@ -30,7 +19,7 @@ type Group struct {
 	ConversationID string        `json:"conversationId,omitempty"`
 }
 
-// GroupMember: public-facing structure.
+// GroupMember describes a user's role within a group that is returned to clients.
 type GroupMember struct {
 	UserID    string `json:"userId"`
 	Name      string `json:"name,omitempty"`
@@ -38,45 +27,29 @@ type GroupMember struct {
 	AvatarUrl string `json:"avatarUri,omitempty"` // user avatar
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  MESSAGE (supports both normal messages & comments)
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// Message is used for:
-// - conversation messages (OpenAPI Message)
-// - comment rows (comment API returns Message-like shape)
-// Only ReceiverID / GroupID are internal-only.
-// Message is the internal database model for messages.
+// Message is the internal representation used for both conversation messages
+// and comment rows while hiding routing-only fields from the public surface.
 type Message struct {
-	ID             string  `db:"id"`
-	Content        string  `db:"content"`
-	SenderID       string  `db:"sender_id"`
-	ConversationID string  `db:"conversation_id"`
-	CreatedAt      string  `db:"created_at"`
+	ID             string `db:"id"`
+	Content        string `db:"content"`
+	SenderID       string `db:"sender_id"`
+	ConversationID string `db:"conversation_id"`
+	CreatedAt      string `db:"created_at"`
 
-	// message type: text | image | file
+	// Type contains the message classification (text, image, or file).
 	Type   string `db:"type"`
 	Status string `db:"status"`
 
-        // Messaging-style reply that points to another message
+	// ReplyToID links to another message when the current one is a reply.
 	ReplyToID *string `db:"reply_to_id"`
 
-	// Internal-only routing fields
+	// ReceiverID and GroupID are internal routing hints and are not exposed.
 	ReceiverID string `db:"receiver_id"`
 	GroupID    string `db:"group_id"`
 }
 
-
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  CONVERSATION
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// Conversation matches OpenAPI Conversation:
-// required: id, type, participants
+// Conversation follows the OpenAPI contract and bundles participants and
+// optional metadata about recency and creation times.
 type Conversation struct {
 	ID           string `json:"id"`
 	Type         string `json:"type"`           // "private" | "group"

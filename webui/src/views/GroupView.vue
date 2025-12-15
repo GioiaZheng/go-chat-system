@@ -1,4 +1,4 @@
-<!-- src/views/GroupView.vue -->
+<!-- src/views/GroupView.vue: Group directory with creation and management panels. -->
 <template>
   <div class="page">
     <header class="topbar">
@@ -9,7 +9,7 @@
       <ErrorMsg v-if="err" :text="err" class="mb-2" />
       <p v-else-if="notice" class="notice">{{ notice }}</p>
 
-      <!-- Create group -->
+      <!-- Creation form -->
       <section class="card">
         <h3 class="h6">Create Group</h3>
         <div class="field">
@@ -23,7 +23,7 @@
           />
           <div class="muted tip">
             You can enter any user IDs (not limited to your contacts).<br />
-            If your own ID is missing, I’ll add you automatically.
+            Your own ID is appended automatically if it is missing.
           </div>
         </div>
         <div class="actions">
@@ -68,7 +68,7 @@
             </button>
           </div>
 
-          <!-- Manage panel -->
+          <!-- Inline management panel -->
           <div v-if="manageId === g.id" class="manage">
             <div class="row">
               <label class="lbl">Rename</label>
@@ -125,25 +125,25 @@ import {
 
 const router = useRouter()
 
-/* ---------- auth & me ---------- */
+// Authentication helpers and cached profile details.
 const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 const meId = ref('')
 async function loadMe () {
   try { const me = await getMyProfile(); meId.value = String(me?.id || '') } catch {}
 }
 
-/* ---------- page state ---------- */
+// Page-level error, notice, and loading indicators.
 const err = ref('')
 const notice = ref('')
 const creating = ref(false)
 const loadingList = ref(false)
 const groups = ref([])
 
-/* create form */
+// Create form inputs.
 const groupName = ref('')
 const memberIdsRaw = ref('')
 
-/* manage panel state (per group) */
+// Manage panel state scoped per group.
 const manageId = ref('')
 const editName = ref('')
 const addIds = ref('')
@@ -151,7 +151,7 @@ const busy = ref(false)
 const panelErr = ref('')
 const filePick = ref(null)
 
-/* ---------- helpers ---------- */
+// Helper utilities for normalizing API payloads.
 function normalizeGroups(list) {
   const arr = Array.isArray(list) ? list : (list?.items ?? list?.groups ?? [])
   return (arr || [])
@@ -192,7 +192,7 @@ async function loadList() {
   }
 }
 
-/* ---------- Group creation ---------- */
+// Group creation workflow.
 async function createGroup() {
   err.value = ''
   notice.value = ''
@@ -201,7 +201,7 @@ async function createGroup() {
     .map(s => s.trim())
     .filter(Boolean)
 
-  // Ensure the current user is always part of the new group.
+  // Always include the current user when creating the group.
   if (meId.value && !list.includes(meId.value)) list.unshift(meId.value)
 
   if (!groupName.value) {
@@ -228,7 +228,7 @@ async function createGroup() {
   }
 }
 
-/* ---------- Management panel actions ---------- */
+// Inline management actions for each group card.
 function toggleManage(id) {
   panelErr.value = ''
   if (manageId.value === id) {
@@ -314,7 +314,7 @@ async function onLeave(id) {
   }
 }
 
-/* ---------- bootstrap ---------- */
+// Bootstrap the page once authenticated.
 onMounted(async () => {
   if (!authed()) { router.replace('/login'); return }
   await loadMe()
