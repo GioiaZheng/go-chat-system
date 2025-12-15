@@ -1,133 +1,105 @@
 # WASA Text – Chat Application
 
-A full-stack chat system built for the *Web and Software Architecture (WASA)* course at Sapienza University of Rome. The project exposes a REST API written in Go, persists data with SQLite, and ships with an optional Vue 3 web interface that can be served separately or embedded in the backend binary.
+This repository hosts the **WASA Text – Chat Application**, built on top of the *Fantastic Coffee (decaffeinated)* starter shared in class. The goal is to provide a clean baseline for the Web and Software Architecture (WASA) homework while keeping production concerns out of scope. The original fully fledged reference remains in the "Fantastic Coffee" repository.
 
-## Features
-- RESTful API for sessions, users, conversations, and messages.
-- SQLite-backed persistence with automatic schema migrations on startup.
-- Optional Vue 3 + Vite web interface (can be embedded with Go build tags).
-- Dockerfiles for backend and frontend images, plus Nginx configuration for proxying.
+## Project structure
+- `cmd/` — all executables. Go programs here should focus on executable concerns (CLI/env parsing, wiring, etc.).
+  - `cmd/healthcheck/` — example daemon for checking the health of server processes; useful when the hypervisor lacks HTTP readiness/liveness probes (e.g., Docker engine).
+  - `cmd/webapi/` — example web API server daemon.
+- `demo/` — demo configuration file.
+- `doc/` — documentation (for APIs, this is typically an OpenAPI file).
+- `service/` — packages that implement project-specific functionality.
+  - `service/api/` — example API server.
+  - `service/globaltime/` — wrapper around `time.Time` (useful for unit testing).
+- `vendor/` — managed by Go; contains vendored dependencies.
+- `webui/` — example Vue.js web frontend including:
+  - Bootstrap JavaScript framework
+  - Customized "Bootstrap dashboard" template
+  - Feather icons as SVG
+  - Go code for release embedding
 
-## Requirements
-- Go **1.17+**
-- Node.js **18+** and Yarn **3.x** (for the web UI)
-- SQLite3 (shared library used by the Go `sqlite3` driver)
-- Docker (optional, for container builds)
+Other project files include:
 
-## Repository layout
-```
-Wasa_proj/
-├── cmd/webapi/        # Backend entrypoint and configuration
-├── service/           # API handlers, database layer, and models
-├── webui/             # Vue 3 single-page app (Vite)
-├── doc/               # OpenAPI document (api.yaml) and Spectral config
-├── Dockerfile.backend # Backend image definition
-├── Dockerfile.frontend# Frontend image definition
-├── nginx.conf         # Example reverse-proxy for the frontend
-└── README.md
-```
+- `open-node.sh` — starts a new (temporary) container using the `node:20` image for safe frontend development.
 
-## Backend quick start
-1. Fetch dependencies:
-   ```bash
-   go mod tidy
-   ```
-2. Start the API server (listens on `0.0.0.0:3000` by default):
-   ```bash
-   CFG_DB_FILENAME=./data/wasatext.db \
-   go run ./cmd/webapi
-   ```
-3. Verify health:
-   ```bash
-   curl http://localhost:3000/liveness
-   ```
+## Go vendoring
 
-### Configuration
-Configuration values can come from environment variables (prefix `CFG_`), CLI flags, or a YAML file (`/conf/config.yml` by default). Key options:
+This project uses Go vendoring. After changing dependencies (`go get` or `go mod tidy`), run:
 
-| Name | Default | Notes |
-| ---- | ------- | ----- |
-| `CFG_WEB_APIHOST` | `0.0.0.0:3000` | API listen address |
-| `CFG_WEB_DEBUGHOST` | `0.0.0.0:4000` | Debug/pprof listener |
-| `CFG_DB_FILENAME` | `/tmp/decaf.db` | SQLite database file |
-| `CFG_CONFIG_PATH` | `/conf/config.yml` | Optional config file |
-
-Example YAML (`config.yml`):
-```yaml
-config:
-  path: ./config.yml
-web:
-  apihost: 0.0.0.0:3000
-  readtimeout: 5s
-  writetimeout: 5s
-db:
-  filename: ./data/wasatext.db
-```
-
-## Web UI
-The Vue 3 frontend lives in `webui/`.
-
-- Install dependencies (Yarn 3 is already vendored via `yarn.lock`):
-  ```bash
-  cd webui
-  yarn install
-  ```
-- Run in development mode (defaults to Vite dev server on port 5173):
-  ```bash
-  yarn dev
-  ```
-- Build a static bundle (served by Nginx or any static host):
-  ```bash
-  yarn build-prod
-  ```
-
-### Embedding the web UI into the Go binary
-1. Build the embedded assets (outputs to `webui/dist`):
-   ```bash
-   cd webui
-   yarn build-embed
-   ```
-2. Build or run the backend with the `webui` tag to serve the SPA from `/` while keeping API routes intact:
-   ```bash
-   go run -tags webui ./cmd/webapi
-   # or
-   go build -tags webui -o webapi ./cmd/webapi
-   ./webapi
-   ```
-
-## Docker
-### Backend image
 ```bash
-docker build -f Dockerfile.backend -t wasa-backend:latest .
-docker run -d --name wasa-backend \
-  -p 3000:3000 \
-  -v $(pwd)/data:/data \
-  -e CFG_DB_FILENAME=/data/app.sqlite \
-  wasa-backend:latest
+go mod vendor
 ```
+Commit all files under the `vendor/` directory.
 
-### Frontend image
+- More information: <https://go.dev/ref/mod#vendoring>
+- Guidance: <https://www.ardanlabs.com/blog/2020/04/modules-06-vendoring.html>
+
+## Node/Yarn vendoring
+
+The repository uses Yarn with an offline mirror to vendor dependencies. Commit the files inside the `.yarn` directory.
+
+## How to customize for this chat project
+
+1. Confirm the Go module path for your environment in `go.mod`, `go.sum`, and any `*.go` files.
+2. Keep the API documentation current in `doc/api.yaml`, reflecting the chat endpoints and payloads.
+3. If you do not need the WebUI for a given exercise, you can remove `webui/` and `cmd/webapi/register-webui.go`; otherwise keep them for the chat frontend.
+4. Update the top-level package comment in `cmd/webapi/main.go` with the current project goal (WASA Text – Chat Application) and any environment notes.
+5. Extend the `run()` function (`cmd/webapi/main.go`) to wire databases or external resources used by the chat service.
+6. Implement chat-related API logic inside `service/api/` and add supporting packages under `service/` (or subdirectories).
+
+## How to build
+
+If you're **not** using the WebUI, or you don't want to embed the WebUI into the final executable:
+
 ```bash
-docker build -f Dockerfile.frontend -t wasa-frontend:latest .
-docker run -d --name wasa-frontend -p 8080:80 wasa-frontend:latest
+go build ./cmd/webapi/
 ```
 
-## API reference
-The OpenAPI specification lives at `doc/api.yaml`. Some notable routes:
+If you're using the WebUI **and** want to embed it into the final executable:
 
-- `GET /liveness` – service health check
-- `POST /session` – create or authenticate a session
-- `GET /users/me` – current user profile
-- `GET/POST /conversations` – list or create conversations
-- `GET/POST /messages` – fetch or send messages
+```bash
+./open-node.sh
+# inside the container
+yarn run build-embed
+exit
+# outside the container
+go build -tags webui ./cmd/webapi/
+```
 
-## Development notes
-- Use `go test ./...` for backend unit tests. If you enable the embedded UI, ensure `webui/dist` exists before running tests/builds.
-- The backend logs to stdout and responds to `SIGTERM`/`SIGINT` with graceful shutdown.
-- Default ports: API `3000`, debug/pprof `4000`, Vite dev server `5173`, example Nginx frontend `8080`.
+## How to run (development mode)
 
-## Credits
-- Author: Gioia Zheng
-- Course: Web and Software Architecture (WASA) — Prof. Emanuele Panizzi
-- University: Sapienza University of Rome
-- License: MIT
+Launch the backend only:
+
+```bash
+go run ./cmd/webapi/
+```
+Launch the WebUI (in a new tab):
+
+```bash
+./open-node.sh
+# inside the container
+yarn run dev
+```
+
+## How to build for production / homework delivery
+
+```bash
+./open-node.sh
+# inside the container
+yarn run build-prod
+```
+
+### My build works with `yarn run dev`, but there is a JavaScript crash in production/grading
+
+Some errors are not surfaced by Vite development mode. To preview the code that will be used in production/grading:
+
+```bash
+./open-node.sh
+# inside the container
+yarn run build-prod
+yarn run preview
+```
+
+## License
+
+See [LICENSE](LICENSE).
