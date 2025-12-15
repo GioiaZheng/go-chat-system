@@ -1,14 +1,14 @@
-<!-- src/views/NewConversationView.vue -->
+<!-- src/views/NewConversationView.vue: Lightweight flow to start a private chat. -->
 <template>
   <div class="wrap">
     <h2 class="title">Start a New Conversation</h2>
 
     <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
-    <!-- Search & pick user -->
+    <!-- Search and pick a user -->
     <section class="card">
       <h3 class="h6">Find a user</h3>
-      <!-- Existing search component: emits @select when a user is chosen -->
+      <!-- Reuses the shared search component (emits @select when a user is chosen). -->
       <UserSearch class="mb-2" @select="onPick" @error="onChildError" />
 
       <div v-if="picked" class="picked">
@@ -54,7 +54,7 @@ function onChildError(msg) {
   err.value = msg || ''
 }
 
-/** Create a private chat and navigate (via api.startPrivateConversation). */
+// Create a private chat and navigate using api.startPrivateConversation.
 async function start () {
   const id = String(picked.value?.id || '')
   if (!id) return

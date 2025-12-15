@@ -1,9 +1,9 @@
-// src/services/api.js
+// Client-side API helper functions used by the web UI.
 import axios from './axios'
 
-/* -------------------- Authentication helpers -------------------- */
+/* Authentication helpers */
 
-// Read token from either localStorage or sessionStorage.
+// Read the persisted token from either localStorage or sessionStorage.
 const readToken = () =>
   localStorage.getItem('token') || sessionStorage.getItem('authToken') || ''
 
@@ -43,9 +43,9 @@ const del   = (url, cfg)       => axios.delete(url, withAuthConfig(cfg))
 const post  = (url, data, cfg) => axios.post(url,   data, withAuthConfig(cfg))
 const put   = (url, data, cfg) => axios.put(url,    data, withAuthConfig(cfg))
 
-/* -------------------- API base URL helpers -------------------- */
+/* API base URL helpers */
 
-// Resolve API base URL using axios defaults, runtime override, or Vite env values.
+// Resolve the API base URL using axios defaults, runtime overrides, or Vite env values.
 export function resolveApiBase() {
   return (axios?.defaults?.baseURL)
       || (typeof window !== 'undefined' ? window.__API_URL__ : '')
@@ -60,13 +60,13 @@ export function absUrl(path) {
   return `${base}/${path}`
 }
 
-/* -------------------- Public endpoints and utilities -------------------- */
+/* Public endpoints and utilities */
 
 export async function doLogin(name) {
   // Basic login that posts the username to /session.
   const res = await axios.post('/session', { name })
 
-  // Typical axios response: res.data = { code, message, data: { user, token } }
+  // Typical axios response: res.data = { code, message, data: { user, token } }.
   const root = res && res.data ? res.data : res
 
   // Accept multiple wrapper shapes to keep the client tolerant.
@@ -79,7 +79,7 @@ export async function doLogin(name) {
     throw new Error('Login response missing token')
   }
 
-  // Persist token in both storage locations for compatibility.
+  // Persist the token in both storage locations for compatibility.
   localStorage.setItem('token', token)
   sessionStorage.setItem('authToken', token)
 
@@ -94,7 +94,7 @@ export async function doLogin(name) {
 export async function liveness() { return unwrap(await get('/liveness')) }
 export async function healthz()  { return unwrap(await get('/healthz')) }
 
-/* -------------------- Logout helper -------------------- */
+/* Logout helper */
 
 /**
  * Logout: clear all tokens and cached info.
@@ -111,7 +111,7 @@ export function doLogout() {
   } catch {}
 }
 
-/* -------------------- User profile -------------------- */
+/* User profile helpers */
 
 export async function getMyProfile() {
   const u = unwrap(await get('/users/me')) || {}
@@ -197,7 +197,7 @@ export async function listContacts() {
   return Array.from(uniq.values()).filter(u => String(u?.id ?? '') !== meId)
 }
 
-/* -------------------- Conversation helpers -------------------- */
+/* Conversation helpers */
 
 export function isGroupConversation(c) {
   return c?.type === 'group'
@@ -208,7 +208,7 @@ export function isGroupConversation(c) {
 export function titleForConversation(c, myId = '') {
   if (!c) return 'Chat'
 
-  // private chat: participants = 2
+  // Private chat: participants = 2.
   const isPrivate =
     Array.isArray(c.participants) &&
     c.participants.length === 2 &&
@@ -220,7 +220,7 @@ export function titleForConversation(c, myId = '') {
     return other?.name || 'Chat'
   }
 
-  // group
+  // Group conversation fallback.
   return c.name || 'Group'
 }
 
@@ -245,10 +245,10 @@ export function avatarForConversation(c, myId) {
 
 
 
-/* -------------------- Conversation endpoints -------------------- */
+/* Conversation endpoints */
 
 export async function startConversation(payload = {}) {
-  // OpenAPI: POST /conversations
+  // OpenAPI: POST /conversations.
   // Accept multiple key names and normalize to memberIds.
   const body = {}
   let memberIds = []
@@ -265,7 +265,7 @@ export async function startPrivateConversation(userOrId) {
   if (!id) throw new Error('userId required')
 
   return unwrap(await post('/conversations', {
-    name: 'private',   // Required to indicate a private conversation
+    name: 'private',   // Required to indicate a private conversation.
     memberIds: [id]
   }))
 }
@@ -281,13 +281,13 @@ export async function getConversationMembers(conversationId) {
   const id = String(conversationId || '').trim();
   if (!id) throw new Error('conversationId required');
 
-  // 1) Prefer the dedicated conversations members endpoint when available.
+  // Step 1: Prefer the dedicated conversations members endpoint when available.
   try {
     const v = unwrap(await get(`/conversations/${encodeURIComponent(id)}/members`));
     return Array.isArray(v) ? v : (v?.items ?? v?.members ?? v?.list ?? []);
   } catch {}
 
-  // 2) Fallback: locate the group by conversationId, then read its members.
+  // Step 2: Locate the group by conversationId, then read its members.
   try {
     const glist = unwrap(await get('/groups'));
     const arr = Array.isArray(glist) ? glist : (glist?.items ?? glist?.groups ?? glist?.list ?? []);
@@ -311,7 +311,7 @@ export async function deleteConversation(id) {
 
 
 
-/* -------------------- groups -------------------- */
+/* Group helpers */
 
 export async function createGroup({ name, memberIds = [] }) {
   return unwrap(await post('/groups', { name, memberIds: memberIds.map(String) }))
@@ -359,7 +359,7 @@ export async function leaveGroup(id) {
   return unwrap(await del(`/groups/${encodeURIComponent(String(id))}/members`))
 }
 
-/* -------------------- messages -------------------- */
+/* Message helpers */
 
 export async function getMessages({ conversationId, limit = 50, beforeCursor, afterCursor } = {}) {
   const params = { conversationId, limit }
@@ -409,7 +409,7 @@ export async function sendImageMessage({ conversationId, file }) {
     throw new Error('Upload failed: no fileUrl')
   }
 
-  // 2) Send a normal message referencing the uploaded image URL
+  // Step 2: Send a normal message referencing the uploaded image URL.
   return sendMessage({
     conversationId,
     content: fileUrl,
@@ -434,15 +434,15 @@ export async function forwardMessage(messageId, conversationId) {
   ))
 }
 
-/* ---- Comments, replies, and reactions ---- */
+/* Comments, replies, and reactions */
 
-// Retrieve comment list for a message
+// Retrieve the comment list for a message.
 export async function getMessageComments(id) {
   const mid = encodeURIComponent(String(id))
   return unwrap(await get(`/messages/${mid}/comment`))
 }
 
-// Create a comment or reply
+// Create a comment or reply.
 export async function commentMessage(msgId, payload) {
   const mid = encodeURIComponent(String(msgId))
   let body = { type: 'text', content: '' }
@@ -464,28 +464,28 @@ export async function commentMessage(msgId, payload) {
 
 
 
-// Remove comments: backend ignores the body and only expects a POST
+// Remove comments: backend ignores the body and only expects a POST.
 export async function uncommentMessage(id) {
   const mid = encodeURIComponent(String(id))
   return unwrap(await post(`/messages/${mid}/uncomment`))
 }
 
-// Semantic aliases for convenience
+// Semantic aliases for convenience.
 export const replyToMessage     = commentMessage
 export const getMessageReplies  = getMessageComments
 export const removeMessageReply = uncommentMessage
 
-// React with an emoji (content stored as :react:emoji with type=emoji)
+// React with an emoji (content stored as :react:emoji with type=emoji).
 export async function reactToMessage(id, emoji) {
   return commentMessage(id, { type: 'emoji', content: emoji })
 }
 
-// Remove reactions: backend currently deletes all emojis at once
+// Remove reactions: backend currently deletes all emojis at once.
 export async function unreactToMessage(id, emoji) {
   return uncommentMessage(id)
 }
 
-/* ---- Read receipt ticks (0=queued 1=sent 2=delivered 3=read; -1 for others) ---- */
+/* Read receipt ticks (0=queued 1=sent 2=delivered 3=read; -1 for others) */
 export function ticksFor(m, myId) {
   if (!m || String(m.senderId) !== String(myId)) return -1
   const s = (m.status || '').toLowerCase()
@@ -495,7 +495,7 @@ export function ticksFor(m, myId) {
   return 0
 }
 
-/* -------------------- default export -------------------- */
+/* Default export for convenience */
 
 const api = {
   // auth / ping / base

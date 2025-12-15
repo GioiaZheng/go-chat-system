@@ -1,3 +1,4 @@
+# Build a release-ready web API binary with SQLite support.
 FROM golang:1.17-alpine AS go-build
 RUN apk add --no-cache build-base sqlite-dev
 WORKDIR /src
@@ -10,6 +11,7 @@ ARG BUILD_TAGS=""
 ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
 RUN go build -tags "$BUILD_TAGS" -ldflags "-s -w" -o /out/webapi ./cmd/webapi
 
+# Run the API as a non-root user with only the required runtime libraries.
 FROM alpine:3.20
 RUN apk add --no-cache sqlite-libs tzdata ca-certificates && adduser -D -H -s /sbin/nologin app
 WORKDIR /app

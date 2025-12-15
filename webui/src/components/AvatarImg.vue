@@ -1,3 +1,4 @@
+<!-- AvatarImg renders a circular avatar with a placeholder fallback and optional sizing. -->
 <template>
   <img
     :src="srcFinal"

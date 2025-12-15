@@ -1,3 +1,4 @@
+<!-- src/views/ProfileView.vue: Profile settings for account identity and avatar. -->
 <template>
   <div class="page">
     <main class="wrap">
@@ -48,7 +49,7 @@
         </div>
 
         <div class="grid">
-          <!-- Change name -->
+          <!-- Display name editor -->
           <div class="field">
             <label class="label">Change name</label>
             <div class="hstack">
@@ -60,7 +61,7 @@
             </div>
           </div>
 
-          <!-- Set photo -->
+          <!-- Profile photo uploader -->
           <div class="field">
             <label class="label">Set photo</label>
             <div class="hstack">
@@ -91,7 +92,7 @@ const loading = ref(false)
 const err = ref('')
 const imgBroken = ref(false)
 
-// Lightweight auth helper to check for a stored token.
+// Lightweight auth helper to detect an existing token.
 const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 
 // Resolve avatar URLs through getAvatarUrl to avoid relative paths.
@@ -145,7 +146,7 @@ async function uploadPhoto() {
   loading.value = true
   err.value = ''
   try {
-    await setMyPhotoFile(file.value) // multipart field name: upload (handled in api layer)
+    await setMyPhotoFile(file.value) // Multipart field name is "upload"; handled in the API layer.
     file.value = null
     await loadProfile()
   } catch (e) {

@@ -1,5 +1,6 @@
-// conversation.go implements the conversation endpoints, including validation,
-// membership checks, and responses aligned with the OpenAPI contract.
+// conversation.go hosts the conversation creation endpoints, validating names
+// and member lists, normalizing identifiers, and delegating persistence while
+// keeping responses aligned with the OpenAPI contract.
 package api
 
 import (

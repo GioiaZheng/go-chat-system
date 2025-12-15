@@ -1,4 +1,4 @@
-<!-- src/views/ContactsView.vue -->
+<!-- src/views/ContactsView.vue: Contact directory for launching private chats. -->
 <template>
   <div class="page">
     <header class="topbar">
@@ -63,7 +63,7 @@ const q = ref('')
 const loading = ref(false)
 const err = ref('')
 const users = ref([])
-const creatingId = ref('') // Guard against double-click duplicate creation
+const creatingId = ref('') // Prevent duplicate conversation creation on rapid clicks
 
 const asId        = (u) => String(u.id ?? u.user_id ?? u._id ?? '')
 const displayName = (u) => String(u.name ?? u.username ?? '(user)')
@@ -75,7 +75,7 @@ async function load () {
   loading.value = true
   err.value = ''
   try {
-    const list = await listContacts()  // Backend already filters out myself
+    const list = await listContacts()  // Backend already excludes the current user
     users.value = Array.isArray(list) ? list : []
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to load contacts'

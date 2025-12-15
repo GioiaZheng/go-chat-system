@@ -1,25 +1,22 @@
 /*
-Webapi is the executable for the main web server.
-It builds a web server around APIs from `service/api`.
-Webapi connects to external resources needed (database) and starts two web servers: the API web server, and the debug.
-Everything is served via the API web server, except debug variables (/debug/vars) and profiler infos (pprof).
+Webapi boots the primary HTTP server for the project. It wires configuration,
+logging, database connectivity, CORS, and the embedded web UI (when built
+with the `webui` tag) into a single executable.
 
 Usage:
 
-	webapi [flags]
+webapi [flags]
 
-Flags and configurations are handled automatically by the code in `load-configuration.go`.
+Configuration values are loaded via loadConfiguration() from flags,
+environment variables, or the optional YAML file path.
 
-Return values (exit codes):
+Exit codes:
 
-	0
-		The program ended successfully (no errors, stopped by signal)
+0  graceful shutdown (signal or expected stop)
+>0 failure during startup, runtime, or shutdown
 
-	> 0
-		The program ended due to an error
-
-Note that this program will update the schema of the database to the latest version available (embedded in the
-executable during the build).
+The program migrates the embedded database schema to the latest version on
+startup before accepting requests.
 */
 package main
 
@@ -42,23 +39,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// main is the program entry point. The only purpose of this function is to call run() and set the exit code if there is
-// any error
+// main delegates to run() and exits with a non-zero status if initialization or
+// shutdown fail. Keeping the logic in run() simplifies testing and future reuse.
 func main() {
-	if err := run(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "error: ", err)
+        if err := run(); err != nil {
+                _, _ = fmt.Fprintln(os.Stderr, "error: ", err)
 		os.Exit(1)
 	}
 }
 
-// run executes the program. The body of this function should perform the following steps:
-// * reads the configuration
-// * creates and configure the logger
-// * connects to any external resources (like databases, authenticators, etc.)
-// * creates an instance of the service/api package
-// * starts the principal web server (using the service/api.Router.Handler() for HTTP handlers)
-// * waits for any termination event: SIGTERM signal (UNIX), non-recoverable server error, etc.
-// * closes the principal web server
+// run orchestrates the lifecycle of the API server:
+//   - read configuration values and apply defaults
+//   - initialize logging
+//   - connect to external dependencies (SQLite in this build)
+//   - construct the API router and wrap it with the web UI + CORS handlers
+//   - start the HTTP server and monitor for shutdown signals or fatal errors
+//   - gracefully shut down the server and connected resources
 func run() error {
 	rand.Seed(globaltime.Now().UnixNano())
 	// Load Configuration and defaults

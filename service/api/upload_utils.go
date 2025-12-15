@@ -1,5 +1,5 @@
-// upload_utils.go contains helpers for sanitizing upload paths and validating
-// basic file properties before persisting user-supplied content.
+// upload_utils.go centralizes helpers for sanitizing upload paths and
+// validating basic file properties before persisting user-supplied content.
 package api
 
 import (
@@ -12,9 +12,15 @@ import (
 	"strings"
 )
 
-// publicURL builds a public-facing URL (or absolute path) from a relative file path.
-// - If the input already looks absolute (http/https or starts with "/"), it is returned as-is.
-// - Otherwise we clean it, prevent path traversal, and prefix with "/" so it can be served by a static server.
+// publicURL builds a public-facing URL (or absolute path) from a relative file
+// path.
+//
+// Behavior:
+//   - If the input is already absolute (http/https or starts with "/"), it is
+//     returned as-is.
+//   - Otherwise the path is normalized, traversal is stripped, and a single
+//     leading slash is added so a static server can serve it directly.
+//
 // NOTE: Adjust this if you deploy behind a CDN or have an external base URL.
 func (rt *_router) publicURL(rel string) string {
 	rel = strings.TrimSpace(rel)
@@ -41,8 +47,8 @@ func (rt *_router) publicURL(rel string) string {
 	return "/" + rel
 }
 
-// allowedExt returns true if the filename extension is a JPEG/PNG.
-// This is a coarse filter; callers should still verify Content-Type.
+// allowedExt performs a coarse extension whitelist for JPEG/PNG files. Callers
+// should still verify Content-Type and size limits.
 func allowedExt(filename string) bool {
 	ext := strings.ToLower(strings.TrimSpace(filepath.Ext(filename)))
 	switch ext {
@@ -54,8 +60,9 @@ func allowedExt(filename string) bool {
 }
 
 // detectContentType inspects up to the first 512 bytes using http.DetectContentType.
-// It attempts to restore the file offset afterwards so downstream readers start from 0.
-// If the file is not seekable, we do NOT hard-fail; callers should not assume rewind succeeded.
+// It then attempts a best-effort rewind so downstream readers can start from
+// offset 0. If the file is not seekable, we avoid hard failures but callers
+// should not assume the offset was restored.
 func detectContentType(f multipart.File) (string, error) {
 	buf := make([]byte, 512)
 	n, readErr := f.Read(buf)
@@ -78,7 +85,8 @@ func detectContentType(f multipart.File) (string, error) {
 	return http.DetectContentType(buf[:n]), nil
 }
 
-// ensureDir creates the directory tree if it does not exist (idempotent).
+// ensureDir creates the directory tree for uploads if it does not exist
+// (idempotent).
 func ensureDir(path string) error {
 	return os.MkdirAll(path, 0o755)
 }

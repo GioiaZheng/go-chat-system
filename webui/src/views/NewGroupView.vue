@@ -1,4 +1,4 @@
-<!-- src/views/NewGroupView.vue -->
+<!-- src/views/NewGroupView.vue: Guided flow for creating a new group chat. -->
 <template>
   <div class="page">
     <header class="topbar">
@@ -9,11 +9,11 @@
       <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
       <div class="form">
-        <!-- Group name -->
+        <!-- Group name input -->
         <label class="label">Group Name</label>
         <input v-model.trim="groupName" placeholder="Enter group name" class="input" />
 
-        <!-- Avatar upload (optional) -->
+        <!-- Optional avatar upload -->
         <label class="label mt">Group Avatar (optional)</label>
         <div class="avatar-row">
           <div class="avatar-preview" v-if="avatarPreview">
@@ -36,7 +36,7 @@
           </button>
         </div>
 
-        <!-- Member search + picked list -->
+        <!-- Member search and selection -->
         <label class="label mt">Add Members</label>
         <UserSearch
           placeholder="Search users by name/username"
@@ -93,7 +93,8 @@ const me = ref(null)
 
 const groupName = ref('')
 
-const pickedUsers = ref([]) // [{id, name, username, ...}]
+// Selected users displayed as chips with avatar/name metadata.
+const pickedUsers = ref([])
 const avatarFile = ref(null)
 const avatarPreview = ref('')
 const fileInput = ref(null)

@@ -1,10 +1,10 @@
 <template>
   <div class="app-shell" :class="{ 'no-sidebar': hideSidebar }">
-    <!-- Sidebar is visible only when authenticated -->
+    <!-- Show the sidebar only when the user is authenticated. -->
     <Sidebar v-if="!hideSidebar" />
 
     <main class="flex-fill p-3">
-      <!-- Transitional notice while auth is being checked -->
+      <!-- Transitional notice while authentication status is being checked. -->
       <div v-if="checking" class="checking">
         <div class="spinner"></div>
         <p>Checking session…</p>
@@ -14,7 +14,7 @@
         <p>You are not logged in. Redirecting to login…</p>
       </div>
 
-      <!-- Primary content -->
+      <!-- Render the active route content. -->
       <RouterView v-else />
     </main>
   </div>
@@ -28,7 +28,7 @@ import Sidebar from '@/components/Sidebar.vue'
 const route = useRoute()
 const router = useRouter()
 
-/* ---------- Auth state monitoring ---------- */
+/* Track authentication state across navigation. */
 const hasToken = () =>
   !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 
@@ -39,19 +39,19 @@ function refreshAuth() {
   isAuthed.value = hasToken()
 }
 
-/* ---------- Lifecycle ---------- */
+/* Lifecycle hooks manage authentication redirects and listeners. */
 onMounted(() => {
   refreshAuth()
 
-  // Redirect to /login when unauthenticated
+  // Redirect unauthenticated visitors to the login page.
   if (!hasToken() && route.path !== '/login') {
     router.replace('/login')
   }
 
-  // Listen for login/logout events
+  // Listen for login/logout events emitted elsewhere in the app.
   window.addEventListener('auth:changed', refreshAuth)
 
-  // Refresh auth status when the page becomes visible again
+  // Refresh auth status when the page becomes visible again.
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refreshAuth()
   })
@@ -63,7 +63,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('auth:changed', refreshAuth)
 })
 
-/* ---------- Validate again on route changes ---------- */
+/* Validate authentication whenever the route changes. */
 watch(
   () => route.fullPath,
   () => {
@@ -75,7 +75,7 @@ watch(
   { immediate: true }
 )
 
-/* ---------- Determine whether the sidebar should hide ---------- */
+/* Hide the sidebar on routes that request it or when unauthenticated. */
 const hideSidebar = computed(() => !!route.meta?.hideSidebar || !isAuthed.value)
 </script>
 

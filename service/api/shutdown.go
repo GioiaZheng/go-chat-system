@@ -1,5 +1,5 @@
 // shutdown.go provides a dev-only POST /shutdown hook so integration tests can
-// stop the server gracefully.
+// stop the server gracefully without resorting to process signals.
 //go:build dev
 
 package api

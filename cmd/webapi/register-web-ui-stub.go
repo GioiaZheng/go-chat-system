@@ -9,8 +9,8 @@ import (
 )
 
 // registerWebUI is a stub that simply returns the provided handler when the
-// webui build tag is not enabled so the API server can run without embedded
-// frontend assets.
+// webui build tag is not enabled, allowing the API server to run without
+// embedded frontend assets.
 func registerWebUI(hdl http.Handler) (http.Handler, error) {
-        return hdl, nil
+	return hdl, nil
 }

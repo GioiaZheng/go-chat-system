@@ -1,42 +1,45 @@
-<!-- Notes:
-     - Simple input + send button; emits "send" with trimmed text.
-     - Keeps internal state minimal; styling is scoped to avoid bleed. -->
+<!-- Compact message composer; emits "send" with trimmed text and resets the field after submission. -->
 
 <template>
   <form @submit.prevent="submit" class="flex gap-2">
-    <input v-model="text" class="flex-1 input" placeholder="Type a message..." />
-    <button class="btn">Send</button>
+    <input
+      v-model="text"
+      class="flex-1 input"
+      type="text"
+      autocomplete="off"
+      placeholder="Type a message..."
+    />
+    <button class="btn" type="submit">Send</button>
   </form>
 </template>
 
 <script setup>
-import { ref } from "vue";
-const emit = defineEmits(["send"]);
-const text = ref("");
+import { ref } from 'vue'
+
+const emit = defineEmits(['send'])
+const text = ref('')
 
 function submit() {
-  const t = text.value.trim();
-  if (!t) return;
-  emit("send", t);
-  text.value = "";
+  const value = text.value.trim()
+  if (!value) return
+  emit('send', value)
+  text.value = ''
 }
 </script>
 
 <style scoped>
-.input { width:100%; border:1px solid #ddd; padding:.5rem .75rem; border-radius:.375rem; }
-.btn { background:#111827; color:#fff; padding:.5rem .75rem; border-radius:.375rem; }
+.input {
+  width: 100%;
+  border: 1px solid #ddd;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+}
+
+.btn {
+  background: #111827;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: none;
+}
 </style>
-
-<script setup>
-import { getAvatarUrl } from '../services/api'
-const props = defineProps({ user: Object })
-</script>
-
-<template>
-  <img
-    :src="getAvatarUrl(user)"
-    alt=""
-    class="rounded-circle"
-    style="width:36px;height:36px;object-fit:cover;"
-  />
-</template>

@@ -1,3 +1,4 @@
+<!-- src/views/ConversationsView.vue: Conversation directory showing private and group chats. -->
 <template>
   <div class="page">
     <header class="topbar">
@@ -117,7 +118,7 @@ const myId = () => String(me.value?.id ?? '')
 const privateConvs = computed(() => convs.value.filter(c => c.type !== 'group'))
 const groupConvs = computed(() => convs.value.filter(c => c.type === 'group'))
 
-// ----- Date formatting -----
+// Format conversation timestamps for list display.
 function fmtTime(t) {
   if (!t) return ''
   const d = new Date(t)
@@ -127,7 +128,7 @@ function fmtTime(t) {
   return `${m}/${day}`
 }
 
-// ----- Conversation display name -----
+// Resolve the display name for a conversation.
 // Private chats show the peer name; groups show the conversation name.
 function displayName(c) {
   if (c.type === 'group') return c.name || 'Group'
@@ -138,7 +139,7 @@ function displayName(c) {
   return other?.name || 'Chat'
 }
 
-// ----- Conversation avatar -----
+// Resolve the avatar for private or group conversations.
 // Private chats mirror the peer avatar; groups use their own avatar.
 function avatarFor(c) {
   if (c.type === 'group') {
@@ -157,7 +158,6 @@ function initials(c) {
   return match.slice(0, 2).join('').toUpperCase()
 }
 
-// ----- Data loading -----
 // Load conversations and normalize varying backend payload shapes.
 async function load() {
   loading.value = true
@@ -225,7 +225,7 @@ async function load() {
   }
 }
 
-// ----- Navigation -----
+// Navigation helpers for the chat list.
 function open(c) {
   router.push({
     name: 'chat',
@@ -244,7 +244,7 @@ async function warnDelete(c) {
   }
 }
 
-// ----- Lifecycle -----
+// Lifecycle hooks and event subscriptions.
 const handleRefreshEvent = e => {
   const detail = e?.detail || {}
   const targetId = detail.conversationId ? String(detail.conversationId) : ''

@@ -12,10 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
-/*
-StartConversation — create a conversation and insert members.
-Handles private chat reuse automatically.
-*/
+// StartConversation creates a conversation, inserts all members, and reuses an
+// existing private chat when only two participants are involved.
 func (db *appdbimpl) StartConversation(
 	ctx context.Context,
 	userID string,
@@ -50,7 +48,7 @@ func (db *appdbimpl) StartConversation(
 	}
 	push(userID)
 
-	// Private chat detection: 1 other member
+	// Private chat detection: when exactly one other participant exists.
 	if len(all) == 2 && len(others) == 1 {
 		otherID := others[0]
 
@@ -74,7 +72,7 @@ func (db *appdbimpl) StartConversation(
 		}
 	}
 
-	// Create new conversation
+	// Create a new conversation because no reusable private chat was found.
 	convID := uuid.NewString()
 
 	tx, err := db.c.BeginTx(ctx, nil)
@@ -111,12 +109,11 @@ func (db *appdbimpl) StartConversation(
 	return db.buildConversationFromID(convID, userID)
 }
 
-/*
-buildConversationFromID — load full conversation info (name, participants, lastMessage, timestamps)
-*/
+// buildConversationFromID loads conversation metadata, participants, and the
+// most recent message to return a complete models.Conversation instance.
 func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (models.Conversation, error) {
 
-	// Conversation base info: created_at is TEXT, not datetime
+	// Conversation base info: created_at is stored as TEXT rather than a timestamp type.
 	var name string
 	var avatarURL sql.NullString
 	var createdAtStr string
@@ -161,22 +158,22 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 		return models.Conversation{}, err
 	}
 
-	// Determine type
+	// Determine conversation type and mirror peer details for private chats.
 	convType := "group"
 	if len(participants) == 2 {
 		convType = "private"
 
-                // Identify the peer for private conversations
-                for _, p := range participants {
-                        if p.ID != requesterID {
-                                name = p.Name                  // Conversation name mirrors the peer
-                                avatarURL.String = p.AvatarUrl // Conversation avatar mirrors the peer
-                                break
-                        }
-                }
+		// Identify the peer for private conversations
+		for _, p := range participants {
+			if p.ID != requesterID {
+				name = p.Name                  // Conversation name mirrors the peer
+				avatarURL.String = p.AvatarUrl // Conversation avatar mirrors the peer
+				break
+			}
+		}
 	}
 
-	// LastMessage
+	// Load the most recent message to populate LastMessage/UpdatedAt if present.
 	var msg models.Message
 	var msgCreatedStr string
 
@@ -197,7 +194,7 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 		lastMessage = &msg
 		updatedAt = t
 	} else {
-		// no messages → updatedAt = created_at
+		// No messages exist; updatedAt mirrors created_at.
 		updatedAt = createdAt
 		lastMessage = nil
 	}
@@ -214,9 +211,8 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 	}, nil
 }
 
-/*
-GetConversationMembers — ID only
-*/
+// GetConversationMembers returns the list of user IDs participating in the
+// specified conversation.
 func (db *appdbimpl) GetConversationMembers(conversationID string) ([]string, error) {
 	rows, err := db.c.Query(`
 		SELECT user_id
@@ -239,9 +235,7 @@ func (db *appdbimpl) GetConversationMembers(conversationID string) ([]string, er
 	return members, rows.Err()
 }
 
-/*
-DeleteConversation
-*/
+// DeleteConversation removes a conversation after verifying it exists.
 func (db *appdbimpl) DeleteConversation(conversationID string) error {
 	if conversationID == "" {
 		return fmt.Errorf("empty conversation id")
@@ -264,9 +258,8 @@ func (db *appdbimpl) DeleteConversation(conversationID string) error {
 	return err
 }
 
-/*
-GetMyConversations — correctly handle TEXT timestamps
-*/
+// GetMyConversations returns all conversations for a user, ordered by most
+// recent activity while handling the TEXT-based timestamp storage.
 func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {

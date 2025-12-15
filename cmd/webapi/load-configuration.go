@@ -1,21 +1,21 @@
 // load-configuration.go defines the configuration structures and helpers used
-// to assemble runtime settings for the web API server from flags, environment
-// variables, and optional YAML files.
+// to assemble runtime settings for the web API server from CLI flags,
+// environment variables, and optional YAML overlays.
 package main
 
 import (
-        "errors"
-        "fmt"
-        "io"
-        "os"
-        "time"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"time"
 
-        "github.com/ardanlabs/conf"
-        "gopkg.in/yaml.v2"
+	"github.com/ardanlabs/conf"
+	"gopkg.in/yaml.v2"
 )
 
-// WebAPIConfiguration describes the web API configuration. This structure is automatically parsed by
-// loadConfiguration and values from flags, environment variable or configuration file will be loaded.
+// WebAPIConfiguration captures the API server, debug, and database settings
+// parsed from flags, environment variables, or a YAML configuration file.
 type WebAPIConfiguration struct {
 	Config struct {
 		Path string `conf:"default:/conf/config.yml"`
@@ -34,15 +34,15 @@ type WebAPIConfiguration struct {
 	}
 }
 
-// loadConfiguration creates a WebAPIConfiguration starting from flags, environment variables and configuration file.
-// It works by loading environment variables first, then update the config using command line flags, finally loading the
-// configuration file (specified in WebAPIConfiguration.Config.Path).
-// So, CLI parameters will override the environment, and configuration file will override everything.
-// Note that the configuration file can be specified only via CLI or environment variable.
+// loadConfiguration builds a WebAPIConfiguration by parsing environment
+// variables and CLI flags, then optionally layering the YAML file specified at
+// Config.Path. CLI values override the environment, and the YAML file overrides
+// both. The configuration file path itself is provided through the environment
+// or CLI parameters.
 func loadConfiguration() (WebAPIConfiguration, error) {
 	var cfg WebAPIConfiguration
 
-	// Try to load configuration from environment variables and command line switches
+	// Parse configuration from environment variables and command line switches.
 	if err := conf.Parse(os.Args[1:], "CFG", &cfg); err != nil {
 		if errors.Is(err, conf.ErrHelpWanted) {
 			usage, err := conf.Usage("CFG", &cfg)
@@ -55,7 +55,7 @@ func loadConfiguration() (WebAPIConfiguration, error) {
 		return cfg, fmt.Errorf("parsing config: %w", err)
 	}
 
-	// Override values from YAML if specified and if it exists (useful in k8s/compose)
+	// Apply YAML overrides if the file exists (useful in k8s/compose scenarios).
 	fp, err := os.Open(cfg.Config.Path)
 	if err != nil && !os.IsNotExist(err) {
 		return cfg, fmt.Errorf("can't read the config file, while it exists: %w", err)

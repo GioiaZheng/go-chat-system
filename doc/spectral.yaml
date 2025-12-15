@@ -1,3 +1,4 @@
+# Spectral configuration relies on default OpenAPI rules with a single override.
 extends:
   - spectral:oas
 rules:

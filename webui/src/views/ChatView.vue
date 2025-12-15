@@ -1,7 +1,7 @@
-<!-- src/views/ChatView.vue -->
+<!-- src/views/ChatView.vue: Chat experience with in-place conversation switching. -->
 <template>
   <div class="page">
-    <!-- TOP BAR -->
+    <!-- Top bar: back navigation and counterpart details. -->
     <header class="topbar">
       <button
         class="back"
@@ -31,7 +31,7 @@
       </div>
     </header>
 
-    <!-- MAIN CONTENT -->
+    <!-- Main content area: errors/notices, conversation rail, and chat canvas. -->
     <section class="content">
       <ErrorMsg v-if="err" :text="err" class="mb-2" />
       <p v-else-if="notice" class="notice" role="status" aria-live="polite">{{ notice }}</p>
@@ -100,7 +100,7 @@
               :id="`msg-${m.id}`"
               :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
             >
-              <!-- LEFT AVATAR  -->
+              <!-- Left avatar for incoming messages. -->
               <div
                 v-if="!isMine(m)"
                 class="avatar"
@@ -109,13 +109,13 @@
               >
                 <span v-if="!avatarFor(m)" class="avatar-initial">{{ avatarInitial(m) }}</span>
               </div>
-              <!-- MESSAGE BLOCK -->
+              <!-- Message block with reply preview, content, and timestamp. -->
               <div class="bubble-wrap" :class="{ mine: isMine(m) }">
-                <!-- Sender Name (group only) -->
+                <!-- Sender label (group conversations only). -->
                 <div class="who" v-if="showSenderName && !isMine(m)">
                   {{ displayNameFor(m) }}
                 </div>
-                <!-- Bubble -->
+                <!-- Bubble content (text or image). -->
                 <div class="bubble" :class="{ mine: isMine(m) }">
                   <button
                     v-if="m._replyPreview"
@@ -135,13 +135,13 @@
                     {{ m.content }}
                   </template>
                 </div>
-                  <!-- Timestamp -->
+                <!-- Timestamp and delivery markers. -->
                 <div class="meta">
                   {{ fmtTime(m._ts) }}
                   <span v-if="tickText(m)" class="ticks">{{ tickText(m) }}</span>
                 </div>
 
-                <!-- COMMENT CHIP -->
+                <!-- Comment summary for the current user. -->
                 <div
                   v-if="m._myLastComment"
                   class="comment-chip"
@@ -162,7 +162,7 @@
                   </span>
                 </div>
 
-                <!-- REACTIONS / ACTIONS -->
+              <!-- Message actions: reply, forward, react, delete. -->
                 <div class="actions">
                   <button
                     class="icon-btn"
@@ -229,7 +229,7 @@
                 </div>
               </div>
 
-              <!-- RIGHT AVATAR (me) -->
+              <!-- Right avatar when the current user sent the message. -->
               <div
                 v-if="isMine(m)"
                 class="avatar mine"
@@ -241,7 +241,7 @@
             </div>
           </div>
 
-          <!-- COMPOSER -->
+          <!-- Composer for text and image messages. -->
           <div class="composer">
 
             <div v-if="replyTarget" class="reply-banner">
@@ -292,7 +292,7 @@
             </div>
           </div>
 
-          <!-- Forward picker -->
+          <!-- Forward picker for choosing a destination chat. -->
           <div v-if="forwardPanelOpen" class="forward-overlay">
             <div class="forward-modal">
               <header class="forward-header">
@@ -482,7 +482,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 
-// basic states
+// Core reactive state used across the page.
 const convId = computed(() => String(route.params.id || ''))
 const err = ref('')
 const notice = ref('')
@@ -497,7 +497,7 @@ const composerInput = ref(null)
 const replyHighlightId = ref('')
 const deletingMessageId = ref('')
 
-// conversation rail
+// Conversation rail data and filtering.
 const convList = ref([])
 const convLoading = ref(false)
 const convErr = ref('')
@@ -536,7 +536,7 @@ const peer = computed(
   () => participants.value.find(u => String(u.id) !== meId.value) || null
 )
 
-// forward modal state
+// Forward modal state.
 const forwardPanelOpen = ref(false)
 const forwardLoading = ref(false)
 const forwardError = ref('')
@@ -544,7 +544,7 @@ const forwardSearch = ref('')
 const forwardList = ref([])
 const forwardTargetMessage = ref(null)
 
-// ---- Conversation rail helpers ----
+// Conversation rail helpers.
 function convTime(t) {
   if (!t) return ''
   const d = new Date(t)
@@ -635,7 +635,7 @@ function switchConversation(c) {
   router.push({ name: 'chat', params: { type: c.type === 'group' ? 'group' : 'conv', id: c.id } })
 }
 
-// ---- Avatar helpers ----
+// Avatar helpers.
 function avatarFor(m) {
   if (isMine(m)) return myAvatar.value
 
@@ -669,7 +669,7 @@ function nameForSender(userId) {
   return s?.name || s?.username || 'User'
 }
 
-// ---- Header title ----
+// Header avatar and title helpers.
 const headerTitle = computed(() => {
   if (!currentConv.value) return 'Chat'
   
@@ -702,7 +702,7 @@ async function refreshProfile() {
   me.value = prof?.data?.user || prof?.user || prof || null
 }
 
-// load conversation meta (for title, participants, type)
+// Load conversation metadata (for title, participants, and type).
 async function loadConversationMeta() {
   try {
     if (!convList.value.length) {
@@ -758,18 +758,18 @@ async function loadConversationMeta() {
   }
 }
 
-// ---- Time format ----
+// Format ISO timestamps for UI display.
 function fmtTime(ts) {
   if (!ts) return ''
   return ts.replace('T', ' ').slice(0, 19)
 }
 
-// ---- Mine? ----
+// Determine whether the message belongs to the current user.
 function isMine(m) {
   return String(m.senderId) === meId.value
 }
 
-// ---- Normalize message from API ----
+// Normalize heterogeneous message payloads from the API.
 function normalizeMessage(raw) {
   const senderId = raw.senderId || raw.sender_id || raw.userId
   const ts = raw.createdAt || raw.created_at || new Date().toISOString()
@@ -825,7 +825,7 @@ function normalizeMessage(raw) {
   }
 }
 
-// ---- Load messages ----
+// Load messages for the active conversation and hydrate reply previews.
 async function loadMessages() {
   loading.value = true
   err.value = ''
@@ -971,7 +971,7 @@ async function loadGroupPanel() {
   }
 }
 
-// ---- Send text ----
+// Send text messages and handle deletion.
 const canSend = computed(() => !!draft.value.trim() && !sending.value)
 
 async function confirmDeleteMessage(m) {
@@ -1016,7 +1016,7 @@ async function onSend() {
   }
 }
 
-// ---- Send image ----
+// Send image messages via the file picker.
 function triggerImagePicker() {
   if (imageInput.value) {
     imageInput.value.click()
@@ -1044,7 +1044,7 @@ async function onPickImage(e) {
   }
 }
 
-// ---- Reactions (use comment/uncomment backend) ----
+// Toggle emoji reactions using the comment/uncomment endpoints.
 async function toggleReaction(m, emoji) {
   if (!Array.isArray(m._myReactions)) m._myReactions = []
 
@@ -1185,7 +1185,7 @@ function tickText(m) {
   return ''
 }
 
-// ---- Group management ----
+// Group management helpers.
 function triggerGroupPhoto() {
   if (groupPhotoInput.value) groupPhotoInput.value.click()
 }
@@ -1292,7 +1292,7 @@ function bumpConversationList(extra = {}) {
   )
 }
 
-// ---- Bootstrap ----
+// Initialize the view once authentication is confirmed.
 async function bootstrap() {
   if (!isAuthed()) {
     return router.replace('/login')

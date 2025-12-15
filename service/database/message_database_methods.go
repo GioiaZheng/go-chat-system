@@ -9,13 +9,14 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
 
+// defaultPrivateLimit caps legacy direct-message history retrieval when callers
+// rely on the compatibility helpers instead of paginated fetchers.
 const defaultPrivateLimit = 50
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   SEND (INSERTS)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// Message persistence helpers encapsulate insert, query, and ownership logic for
+// both private and group conversations.
+
+// Section: message send helpers that insert new private, conversation, or group rows.
 
 // nullableReplyID converts a possibly-nil reply pointer into a driver-friendly value.
 // database/sql does not accept *string directly, so we normalize to either a
@@ -98,16 +99,12 @@ func (db *appdbimpl) SendGroupMessage(message models.Message) error {
 	return db.SendMessageToConversation(message)
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   READ — BY CONVERSATION
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// Section: conversation reads with cursor support for paginating message history.
 
 // GetMessagesByConversation fetches messages for a conversation using optional
 // before/after cursors and a configurable limit. Results are ordered newest first.
 func (db *appdbimpl) GetMessagesByConversation(
-        convID, before, after string, limit int,
+	convID, before, after string, limit int,
 ) ([]models.Message, error) {
 
 	if limit <= 0 {
@@ -187,21 +184,17 @@ func (db *appdbimpl) GetMessagesByConversation(
 	return out, nil
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   PRIVATE & GROUP (legacy)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// Section: legacy private and group readers retained for backward-compatible callers.
 
 // GetPrivateConversation reads the recent direct-message history between two users.
 func (db *appdbimpl) GetPrivateConversation(userID1, userID2 string) ([]models.Message, error) {
-        return db.getPrivateConversationEx(context.Background(), userID1, userID2, defaultPrivateLimit, "")
+	return db.getPrivateConversationEx(context.Background(), userID1, userID2, defaultPrivateLimit, "")
 }
 
 // getPrivateConversationEx is the internal worker used by GetPrivateConversation;
 // it accepts a context for future cancellation support and allows overriding the limit.
 func (db *appdbimpl) getPrivateConversationEx(
-        _ context.Context, userID1, userID2 string, limit int, _ string,
+	_ context.Context, userID1, userID2 string, limit int, _ string,
 ) ([]models.Message, error) {
 
 	rows, err := db.c.Query(`
@@ -260,6 +253,7 @@ func (db *appdbimpl) getPrivateConversationEx(
 	return out, nil
 }
 
+// GetGroupConversation returns the ordered message history for a group conversation.
 func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, error) {
 	rows, err := db.c.Query(`
         SELECT
@@ -315,11 +309,7 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 	return out, nil
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   GET MESSAGE BY ID
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// Section: message lookup utilities.
 
 func (db *appdbimpl) GetMessageByID(messageID string) (models.Message, error) {
 	var m models.Message
@@ -424,12 +414,10 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 	return out, nil
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   COMMENTS / FORWARD / DELETE (kept as originally structured)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// Section: message forwarding plus ownership and deletion guards.
 
+// ForwardMessage duplicates a message into another conversation, retaining content
+// and metadata while assigning the current user as the sender.
 func (db *appdbimpl) ForwardMessage(userID, messageID, toUserID, toGroupID string) error {
 	orig, err := db.GetMessageByID(messageID)
 	if err != nil {
@@ -470,6 +458,7 @@ func (db *appdbimpl) ForwardMessage(userID, messageID, toUserID, toGroupID strin
 	return err
 }
 
+// IsMessageOwner verifies whether the provided user created the target message.
 func (db *appdbimpl) IsMessageOwner(userID, messageID string) (bool, error) {
 	var cnt int
 	if err := db.c.QueryRow(`
@@ -483,6 +472,7 @@ func (db *appdbimpl) IsMessageOwner(userID, messageID string) (bool, error) {
 	return cnt > 0, nil
 }
 
+// DeleteMessage removes a message if the caller is the original sender.
 func (db *appdbimpl) DeleteMessage(userID, messageID string) error {
 	ok, err := db.IsMessageOwner(userID, messageID)
 	if err != nil {
@@ -495,12 +485,9 @@ func (db *appdbimpl) DeleteMessage(userID, messageID string) error {
 	return err
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   COMMENTS
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// Section: comment retrieval and mutation helpers.
 
+// GetMessageComments returns the ordered list of comments attached to a message.
 func (db *appdbimpl) GetMessageComments(messageID string) ([]models.Message, error) {
 	rows, err := db.c.Query(`
         SELECT
@@ -535,6 +522,8 @@ func (db *appdbimpl) GetMessageComments(messageID string) ([]models.Message, err
 	return out, nil
 }
 
+// CommentMessage creates a new comment on a message, preserving the provided type
+// and content and assigning a server-generated timestamp.
 func (db *appdbimpl) CommentMessage(
 	messageID, userID, ctype, content string,
 ) error {
@@ -554,6 +543,7 @@ func (db *appdbimpl) CommentMessage(
 	return err
 }
 
+// UncommentMessage deletes all comments linked to a specific message.
 func (db *appdbimpl) UncommentMessage(messageID string) error {
 	_, err := db.c.Exec(
 		`DELETE FROM message_comments WHERE message_id = ?`,

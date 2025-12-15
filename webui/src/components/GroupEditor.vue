@@ -1,15 +1,12 @@
-<!-- Notes:
-     - Group editor panel (modal-like) to manage a single group.
-     - Aligns with our current frontend design (axios-only, no services/api module).
-     - Endpoints (aligned with backend handlers names):
-         GET    /groups/:id
-         PUT    /groups/:id/name           { name }
-         PUT    /groups/:id/photo          { preset }  OR  multipart/form-data with field "upload"
-         POST   /groups/:id/members        { member_ids: [...] }
-         POST   /groups/:id/leave
-     - Integrates with the existing <UserSearchBox /> that emits "select" only.
-       (We collect selected users locally and submit them via addMembers().)
-     - After each mutation, we re-fetch the group for a consistent UI.
+<!-- Group editor modal: fetches a single group, allows renaming, photo updates (preset or upload),
+     member additions, and leaving the group while keeping the view in sync after each mutation.
+     Uses axios directly against the backend endpoints:
+       GET    /groups/:id
+       PUT    /groups/:id/name           { name }
+       PUT    /groups/:id/photo          { preset }  OR  multipart/form-data with field "upload"
+       POST   /groups/:id/members        { member_ids: [...] }
+       POST   /groups/:id/leave
+     Integrates with <UserSearchBox /> (emits "select" only); selections are staged locally before submission.
 -->
 
 <template>

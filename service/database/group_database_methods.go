@@ -1,4 +1,3 @@
-// file: service/database/group_database_methods.go
 package database
 
 import (
@@ -10,12 +9,8 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
 
-// ----------------------------------------------------------------------------
-// Basic fetchers
-// ----------------------------------------------------------------------------
-
-// GetGroup fetches a group row by its ID.
-// Matches interface: GetGroup(groupID string) (models.Group, error)
+// GetGroup fetches a group row by its ID and populates member information.
+// Matches interface: GetGroup(groupID string) (models.Group, error).
 func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 	var g models.Group
 	var createdAt sql.NullString
@@ -46,7 +41,7 @@ func (db *appdbimpl) GetGroup(groupID string) (models.Group, error) {
 }
 
 // GetGroupsList lists groups where the given user is a member.
-// Matches interface: GetGroupsList(userID string) ([]models.Group, error)
+// Matches interface: GetGroupsList(userID string) ([]models.Group, error).
 func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 	rows, err := db.c.Query(`
 		SELECT g.id, g.name, g.avatar_url, g.conversation_id, g.created_at
@@ -77,6 +72,8 @@ func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 	}
 	return result, rows.Err()
 }
+
+// getGroupMembersWithRole returns group members along with their stored role.
 func (db *appdbimpl) getGroupMembersWithRole(groupID string) ([]models.GroupMember, error) {
 	rows, err := db.c.Query(`
                 SELECT gm.user_id, u.name, COALESCE(gm.role, ''), COALESCE(u.avatar_url, '')
@@ -110,6 +107,8 @@ func (db *appdbimpl) getGroupMembersWithRole(groupID string) ([]models.GroupMemb
 	return members, nil
 }
 
+// normalizeTimestamp converts supported timestamps to RFC3339 while preserving
+// any unrecognized formats unchanged.
 func normalizeTimestamp(ts string) string {
 	ts = strings.TrimSpace(ts)
 	if ts == "" {
@@ -126,9 +125,8 @@ func normalizeTimestamp(ts string) string {
 }
 
 // GetGroupMembers lists the users in a given group.
-// Matches interface: GetGroupMembers(groupID string) ([]models.User, error)
-//
-// NOTE: The users table only has id, name, and avatar_url columns (no username/photo fields).
+// Matches interface: GetGroupMembers(groupID string) ([]models.User, error).
+// The users table only includes id, name, and avatar_url columns.
 func (db *appdbimpl) GetGroupMembers(groupID string) ([]models.User, error) {
 	rows, err := db.c.Query(`
 		SELECT u.id, u.name, u.avatar_url
@@ -154,7 +152,7 @@ func (db *appdbimpl) GetGroupMembers(groupID string) ([]models.User, error) {
 }
 
 // GetGroupByName fetches a group by its unique name (if unique in your schema).
-// Matches interface: GetGroupByName(name string) (models.Group, error)
+// Matches interface: GetGroupByName(name string) (models.Group, error).
 func (db *appdbimpl) GetGroupByName(name string) (models.Group, error) {
 	var g models.Group
 	err := db.c.QueryRow(`
@@ -168,13 +166,9 @@ func (db *appdbimpl) GetGroupByName(name string) (models.Group, error) {
 	return g, nil
 }
 
-// ----------------------------------------------------------------------------
-// Mutations (create / add / update / leave)
-// ----------------------------------------------------------------------------
-
 // CreateGroup creates a new group using the provided string ID (UUID).
-// NOTE: The 'groups' table should define `id TEXT PRIMARY KEY`, so we insert the ID explicitly.
-// Members are NOT inserted here; the API will call AddGroupMembers afterwards.
+// The "groups" table should define id TEXT PRIMARY KEY, so the ID is inserted explicitly.
+// Members are not inserted here; the API will call AddGroupMembers afterwards.
 func (db *appdbimpl) CreateGroup(group models.Group) error {
 	_, err := db.c.Exec(`
 		INSERT INTO groups (id, name, avatar_url, conversation_id)
@@ -184,8 +178,8 @@ func (db *appdbimpl) CreateGroup(group models.Group) error {
 }
 
 // AddGroupMembers adds one or more users into a group.
-// Matches interface: AddGroupMembers(groupID string, userIDs []string) error
-// NOTE: Ensure duplicates are handled by schema constraints (PRIMARY KEY or UNIQUE on (group_id,user_id)).
+// Matches interface: AddGroupMembers(groupID string, userIDs []string) error.
+// Duplicates are ignored via schema constraints on (group_id, user_id).
 func (db *appdbimpl) AddGroupMembers(groupID string, memberIDs []string) error {
 	stmt, err := db.c.Prepare(`
 		INSERT OR IGNORE INTO group_members (group_id, user_id, role)
@@ -266,6 +260,7 @@ func (db *appdbimpl) UpdateGroupPhoto(groupID, photoURL string) error {
 
 	return tx.Commit()
 }
+
 // SetGroupPhoto is a backward-compatible alias to UpdateGroupPhoto.
 // Matches interface: SetGroupPhoto(groupID, photoUrl string) error
 func (db *appdbimpl) SetGroupPhoto(groupID, photoUrl string) error {

@@ -20,9 +20,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// -----------------------------------------------------------------------------
 // Section: Group create (POST /groups)
-// -----------------------------------------------------------------------------
 
 // CreateGroupRequest matches the OpenAPI field (memberIds) and also accepts
 // a couple of legacy aliases for backward compatibility.
@@ -151,9 +149,7 @@ func (rt *_router) createGroup(
 	})
 }
 
-// -----------------------------------------------------------------------------
 // Section: Group detail (GET /groups/:id)
-// -----------------------------------------------------------------------------
 
 // getGroup returns a single group as GroupEnvelope.
 func (rt *_router) getGroup(
@@ -197,9 +193,7 @@ func (rt *_router) getGroupDetail(
 	rt.getGroup(w, r, ps, ctx)
 }
 
-// -----------------------------------------------------------------------------
 // Section: Group listing (GET /groups)
-// -----------------------------------------------------------------------------
 
 // getGroupsList returns all groups of the current user as GroupEnvelopeCollection.
 func (rt *_router) getGroupsList(
@@ -229,9 +223,7 @@ func (rt *_router) getGroupsList(
 	})
 }
 
-// -----------------------------------------------------------------------------
 // Section: Group rename (PUT /groups/:id/name)
-// -----------------------------------------------------------------------------
 
 type UpdateGroupNameRequest struct {
 	Name string `json:"name"`
@@ -283,9 +275,7 @@ func (rt *_router) setGroupName(
 	})
 }
 
-// -----------------------------------------------------------------------------
 // Section: Group leave (DELETE /groups/:id/members)
-// -----------------------------------------------------------------------------
 
 func (rt *_router) leaveGroup(
 	w http.ResponseWriter,
@@ -343,9 +333,7 @@ func (rt *_router) leaveGroup(
 	})
 }
 
-// -----------------------------------------------------------------------------
 // Section: Group add members (POST /groups/:id/members)
-// -----------------------------------------------------------------------------
 
 type AddGroupMembersRequest struct {
 	MemberIDs       []string `json:"memberIds,omitempty"`  // OpenAPI (camelCase)
@@ -420,9 +408,7 @@ func (rt *_router) addToGroup(
 	})
 }
 
-// -----------------------------------------------------------------------------
 // Section: Group photo (PUT /groups/:id/photo)
-// -----------------------------------------------------------------------------
 // Two modes:
 //   - Preset:  ?preset=avatar7   => /uploads/photos/avatar7.jpg
 //   - Upload:  multipart/form-data with file field "upload"
@@ -440,7 +426,7 @@ func (rt *_router) setGroupPhoto(
 		return
 	}
 
-	// --- 1) PRESET MODE via query param (kept as convenience) ---
+        // Mode 1: preset via query param (kept for convenience).
 	if preset := strings.TrimSpace(r.URL.Query().Get("preset")); preset != "" {
 		if !strings.HasPrefix(strings.ToLower(preset), "avatar") {
 			rt.sendError(w, http.StatusBadRequest, "Invalid preset name")
@@ -466,7 +452,7 @@ func (rt *_router) setGroupPhoto(
 		return
 	}
 
-	// --- 2) UPLOAD MODE ---
+        // Mode 2: uploaded photo via multipart form.
 	const maxUploadSizeBytes = 10 << 20 // 10 MiB
 	if err := r.ParseMultipartForm(maxUploadSizeBytes); err != nil {
 		rt.sendError(w, http.StatusBadRequest, "Invalid multipart form")

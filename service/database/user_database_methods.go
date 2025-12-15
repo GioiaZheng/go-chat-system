@@ -12,12 +12,12 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 )
 
-// generate simple unique id (replace with UUID if you prefer)
+// newID generates a simple unique user identifier; swap with a UUID generator if needed.
 func newID() string {
 	return fmt.Sprintf("u_%d", time.Now().UnixNano())
 }
 
-// CreateUser: insert into users(id, name, avatar_url). Name must be unique.
+// CreateUser inserts a new user row, ensuring the display name is unique.
 func (db *appdbimpl) CreateUser(u models.User) (models.User, error) {
 	u.Name = strings.TrimSpace(u.Name)
 	if u.Name == "" {
@@ -40,7 +40,7 @@ func (db *appdbimpl) GetUser(userID string) (models.User, error) {
 	return db.GetUserByID(userID)
 }
 
-// Minimal helper used by API; implemented here for convenience.
+// GetUserByID resolves a user by identifier and returns its full record.
 func (db *appdbimpl) GetUserByID(userID string) (models.User, error) {
 	var u models.User
 	var name, avatarUrl sql.NullString
@@ -57,7 +57,7 @@ func (db *appdbimpl) GetUserByID(userID string) (models.User, error) {
 	return u, nil
 }
 
-// GetUserIDFromIdentifier: first try exact id, then match by lower(name)
+// GetUserIDFromIdentifier looks up a user ID directly or by case-insensitive name.
 func (db *appdbimpl) GetUserIDFromIdentifier(identifier string) (string, error) {
 	ident := strings.TrimSpace(identifier)
 	if ident == "" {
@@ -97,7 +97,7 @@ func (db *appdbimpl) CheckUserExists(name string) (bool, error) {
 	return cnt > 0, nil
 }
 
-// UpdateUserName updates display name.
+// UpdateUserName updates the user's display name.
 func (db *appdbimpl) UpdateUserName(userID string, name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -115,7 +115,7 @@ func (db *appdbimpl) UpdateUserName(userID string, name string) error {
 	return nil
 }
 
-// UpdateUserPhoto updates avatar_url only (OpenAPI: avatarUri).
+// UpdateUserPhoto replaces only the avatar URL (OpenAPI: avatarUri).
 func (db *appdbimpl) UpdateUserPhoto(userID string, publicURL string) error {
 	publicURL = strings.TrimSpace(publicURL)
 	if publicURL == "" {
