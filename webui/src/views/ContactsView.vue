@@ -169,7 +169,7 @@ onMounted(() => {
 .btn-outline{
   background:#fff; color:#334155; border:1px solid #cbd5e1; box-shadow:none;
 }
-.content{ max-width:900px; margin:0 auto; padding:18px; }
+.content{ max-width:1100px; margin:0 auto; padding:16px; }
 
 .loading{ color:#475569; display:flex; align-items:center; gap:.5rem }
 .spinner{

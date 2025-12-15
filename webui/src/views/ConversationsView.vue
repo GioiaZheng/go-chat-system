@@ -8,46 +8,88 @@
       <div v-if="loading" class="loading">
         <span class="spinner"></span> Loading conversations…
       </div>
+      <template v-else>
+        <ErrorMsg v-if="err" :text="err" class="mb-2" />
+        <button v-if="err" class="btn btn-sm btn-outline-secondary mb-3" @click="load">
+          Retry
+        </button>
 
-      <ErrorMsg v-else-if="err" :text="err" class="mb-2" />
-      <button v-if="err" class="btn btn-sm btn-outline-secondary mb-3" @click="load">
-        Retry
-      </button>
-
-      <ul v-else class="list">
-        <li
-          v-for="c in convs"
-          :key="c.id"
-          class="item"
-          @click="open(c)"
-        >
-          <!-- avatar -->
-          <div class="left">
-            <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
-            <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
-          </div>
-
-          <div class="info">
-            <div class="top">
-              <div class="name">{{ displayName(c) }}</div>
-              <div class="time">{{ fmtTime(c.last_time) }}</div>
+        <div v-else class="sections">
+          <div class="section">
+            <div class="section-head">
+              <h3 class="section-title">Private Chats</h3>
+              <span class="badge">{{ privateConvs.length }}</span>
             </div>
-            <div class="bottom">
-              <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-            </div>
+
+            <ul class="list">
+              <li
+                v-for="c in privateConvs"
+                :key="c.id"
+                class="item"
+                @click="open(c)"
+              >
+                <div class="left">
+                  <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
+                  <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <div class="name">{{ displayName(c) }}</div>
+                    <div class="time">{{ fmtTime(c.last_time) }}</div>
+                  </div>
+                  <div class="bottom">
+                    <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                  </div>
+                </div>
+
+                <button class="del" @click.stop="warnDelete(c)">Delete</button>
+              </li>
+
+              <li v-if="!privateConvs.length" class="empty">No private chats yet.</li>
+            </ul>
           </div>
+          <div class="section">
+            <div class="section-head">
+              <h3 class="section-title">Group Chats</h3>
+              <span class="badge badge--secondary">{{ groupConvs.length }}</span>
+            </div>
+            <ul class="list">
+              <li
+                v-for="c in groupConvs"
+                :key="c.id"
+                class="item"
+                @click="open(c)"
+              >
+                <div class="left">
+                  <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
+                  <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
+                </div>
 
-          <button class="del" @click.stop="warnDelete(c)">Delete</button>
-        </li>
+                <div class="info">
+                  <div class="top">
+                    <div class="name">{{ displayName(c) }}</div>
+                    <div class="time">{{ fmtTime(c.last_time) }}</div>
+                  </div>
+                  <div class="bottom">
+                    <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                  </div>
+                </div>
 
-        <li v-if="!convs.length && !loading" class="empty">No conversations yet.</li>
-      </ul>
+                <button class="del" @click.stop="warnDelete(c)">Delete</button>
+              </li>
+
+              <li v-if="!groupConvs.length" class="empty">No group chats yet.</li>
+            </ul>
+          </div>
+        </div>
+      </template>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 
@@ -68,6 +110,9 @@ const err = ref('')
 // 当前用户 id
 const myId = () => String(me.value?.id ?? '')
 
+// 分类：私聊 & 群聊
+const privateConvs = computed(() => convs.value.filter(c => c.type !== 'group'))
+const groupConvs = computed(() => convs.value.filter(c => c.type === 'group'))
 
 // -----------------------------------------------------
 // time format
@@ -263,7 +308,10 @@ onUnmounted(() => {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #ffffff, #f7fafe);
+  background:
+    radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
+    radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
+    linear-gradient(180deg, #ffffff, #f7fafe);
 }
 .topbar {
   height: 56px;
@@ -271,36 +319,78 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 0 18px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #fff;
-  position: relative;
+  border-bottom: 1px solid rgba(20, 100, 60, 0.08);
+  background: #fff8;
+  backdrop-filter: blur(6px);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 .title {
   font-weight: 800;
   color: #0f172a;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
 }
 .content {
-  max-width: 720px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+.sections {
+  display: grid;
+  gap: 18px;
+}
+.section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.section-title {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #e0f2fe;
+}
+.badge--secondary {
+  background: #ecfdf3;
+  color: #166534;
 }
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: grid;
+  gap: 10px;
 }
 .item {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #fff;
+  justify-content: space-between;
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 10px 12px;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(2, 6, 23, 0.05);
   transition: background 0.2s;

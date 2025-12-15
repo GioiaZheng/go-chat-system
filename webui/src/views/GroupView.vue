@@ -338,7 +338,7 @@ onMounted(async () => {
   padding:0 18px; border-bottom:1px solid rgba(20,100,60,.08); background:#fff8; backdrop-filter: blur(6px);
 }
 .title{ font-weight:800; color:#0f172a; }
-.content{ max-width:960px; margin:0 auto; padding:18px; }
+.content{ max-width:1100px; margin:0 auto; padding:16px; }
 
 .card{
   background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:14px; margin-bottom:12px;
