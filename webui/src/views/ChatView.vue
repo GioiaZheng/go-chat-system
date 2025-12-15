@@ -329,33 +329,35 @@
               <div class="members-title">Members ({{ groupMembers.length }})</div>
               <p v-if="groupLoading" class="muted">Loading group info…</p>
               <ErrorMsg v-else-if="groupErr" :text="groupErr" />
-              <ul v-else class="member-list">
-                <li v-for="u in groupMembers" :key="u.id" class="member-item">
-                  <div class="member-left">
-                    <div
-                      class="member-avatar"
-                      :class="{ placeholder: !u.avatar }"
-                      :style="u.avatar ? { backgroundImage: `url('${u.avatar}')` } : {}"
+              <div v-else class="member-scroll" role="list">
+                <ul class="member-list">
+                  <li v-for="u in groupMembers" :key="u.id" class="member-item" role="listitem">
+                    <div class="member-left">
+                      <div
+                        class="member-avatar"
+                        :class="{ placeholder: !u.avatar }"
+                        :style="u.avatar ? { backgroundImage: `url('${u.avatar}')` } : {}"
+                      >
+                        <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
+                      </div>
+                      <div class="member-info">
+                        <div class="member-name">{{ u.name || 'User' }}</div>
+                        <div class="member-sub">ID: {{ u.id }}</div>
+                      </div>
+                    </div>
+                    <button
+                      v-if="String(u.id) !== meId"
+                      class="link danger"
+                      type="button"
+                      :disabled="groupBusy"
+                      @click="onRemoveMember(u.id)"
                     >
-                      <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
-                    </div>
-                    <div class="member-info">
-                      <div class="member-name">{{ u.name || 'User' }}</div>
-                      <div class="member-sub">ID: {{ u.id }}</div>
-                    </div>
-                  </div>
-                  <button
-                    v-if="String(u.id) !== meId"
-                    class="link danger"
-                    type="button"
-                    :disabled="groupBusy"
-                    @click="onRemoveMember(u.id)"
-                  >
-                    Remove
-                  </button>
-                </li>
-                <li v-if="!groupMembers.length" class="muted">No members found.</li>
-              </ul>
+                      Remove
+                    </button>
+                  </li>
+                  <li v-if="!groupMembers.length" class="muted">No members found.</li>
+                </ul>
+              </div>
             </div>
             <div class="members-add">
               <div class="members-title">Add members</div>
@@ -745,6 +747,20 @@ async function loadGroupPanel() {
       members,
     }
 
+    currentConv.value = {
+      ...(currentConv.value || {}),
+      name: groupInfo.value.name,
+      avatar: groupInfo.value.avatar,
+      participants: membersRaw?.length ? membersRaw : currentConv.value?.participants || [],
+    }
+    
+    currentConv.value = {
+      ...(currentConv.value || {}),
+      name: groupInfo.value.name,
+      avatar: groupInfo.value.avatar,
+      participants: membersRaw?.length ? membersRaw : currentConv.value?.participants || [],
+    }
+
     groupNameDraft.value = groupInfo.value.name || ''
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to load group info'
@@ -984,6 +1000,7 @@ async function onPickGroupPhoto(e) {
     await setGroupPhoto(groupId.value, file)
     groupNotice.value = 'Group photo updated.'
     await loadGroupPanel()
+    bumpConversationList()
   } catch (er) {
     groupErr.value = er?.response?.data?.message || er?.message || 'Failed to update group photo'
   } finally {
@@ -1002,6 +1019,7 @@ async function onRenameGroup() {
     currentConv.value = { ...(currentConv.value || {}), name: groupNameDraft.value }
     groupNotice.value = 'Group name saved.'
     await loadGroupPanel()
+    bumpConversationList()
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to rename group'
   } finally {
@@ -1057,6 +1075,19 @@ async function onLeaveGroup() {
   } finally {
     groupBusy.value = false
   }
+}
+
+function bumpConversationList(extra = {}) {
+  if (!convId.value) return
+  window.dispatchEvent(
+    new CustomEvent('conversations:refresh', {
+      detail: {
+        conversationId: convId.value,
+        lastTime: new Date().toISOString(),
+        ...(extra || {}),
+      },
+    })
+  )
 }
 
 // ---- Bootstrap ----
@@ -1183,8 +1214,11 @@ watch(convId, async () => {
   border-radius: 14px;
   padding: 12px;
   box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
 }
 
 .group-header {
@@ -1197,7 +1231,7 @@ watch(convId, async () => {
 .group-avatar {
   width: 54px;
   height: 54px;
-  border-radius: 14px;
+  border-radius: 50%;
   background: var(--avatar-bg);
   border: 1px solid var(--avatar-border);
   display: grid;
@@ -1238,18 +1272,20 @@ watch(convId, async () => {
   flex: 1;
 }
 
-.members-block {
-  border-top: 1px dashed #e2e8f0;
-  padding-top: 6px;
+.members-block,
+.members-add {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px;
   display: grid;
   gap: 8px;
 }
 
-.members-add {
-  border-top: 1px dashed #e2e8f0;
-  padding-top: 8px;
-  display: grid;
-  gap: 6px;
+.member-scroll {
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .members-add .disabled {
@@ -1289,7 +1325,7 @@ watch(convId, async () => {
 .member-avatar {
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: 50%;
   background: var(--avatar-bg);
   border: 1px solid var(--avatar-border);
   display: grid;
@@ -1308,6 +1344,12 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.members-add :deep(.list) {
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .member-name {
