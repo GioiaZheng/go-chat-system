@@ -3,7 +3,15 @@
   <div class="page">
     <!-- TOP BAR -->
     <header class="topbar">
-      <button class="back" @click="router.back()">←</button>
+      <button
+        class="back"
+        type="button"
+        aria-label="Go back"
+        title="Back"
+        @click="router.back()"
+      >
+        ←
+      </button>
 
       <div class="title">
         <div class="title-row">
@@ -26,7 +34,7 @@
     <!-- MAIN CONTENT -->
     <section class="content">
       <ErrorMsg v-if="err" :text="err" class="mb-2" />
-      <p v-else-if="notice" class="notice">{{ notice }}</p>
+      <p v-else-if="notice" class="notice" role="status" aria-live="polite">{{ notice }}</p>
       <div class="chat-layout">
         <div class="chat-main">
           <div ref="scrollbox" class="scroll">
@@ -89,11 +97,30 @@
 
                 <!-- REACTIONS / ACTIONS -->
                 <div class="actions">
-                  <button class="icon-btn" title="Reply" @click="setReplyTarget(m)">↩️</button>
-                  <button class="icon-btn" title="Forward" @click="openForwardPicker(m)">🔗</button>
                   <button
                     class="icon-btn"
+                    type="button"
+                    aria-label="Reply to message"
+                    title="Reply"
+                    @click="setReplyTarget(m)"
+                  >
+                    ↩️
+                  </button>
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    aria-label="Forward message"
+                    title="Forward"
+                    @click="openForwardPicker(m)"
+                  >
+                    🔗
+                  </button>
+                  <button
+                    class="icon-btn"
+                    type="button"
                     :class="{ active: m._myReactions.includes('👍') }"
+                    :aria-pressed="m._myReactions.includes('👍')"
+                    aria-label="Toggle thumbs up reaction"
                     @click="toggleReaction(m, '👍')"
                   >
                     👍
@@ -101,7 +128,10 @@
 
                   <button
                     class="icon-btn"
+                    type="button"
                     :class="{ active: m._myReactions.includes('❤️') }"
+                    :aria-pressed="m._myReactions.includes('❤️')"
+                    aria-label="Toggle heart reaction"
                     @click="toggleReaction(m, '❤️')"
                   >
                     ❤️
@@ -109,7 +139,10 @@
 
                   <button
                     class="icon-btn"
+                    type="button"
                     :class="{ active: m._myReactions.includes('😂') }"
+                    :aria-pressed="m._myReactions.includes('😂')"
+                    aria-label="Toggle laugh reaction"
                     @click="toggleReaction(m, '😂')"
                   >
                     😂
@@ -119,7 +152,9 @@
                     v-if="isMine(m)"
                     class="icon-btn"
                     :disabled="deletingMessageId === String(m.id)"
+                    type="button"
                     title="Delete message"
+                    aria-label="Delete message"
                     @click="confirmDeleteMessage(m)"
                   >
                     {{ deletingMessageId === String(m.id) ? '⌛' : '🗑️' }}
@@ -160,6 +195,7 @@
                 ref="composerInput"
                 class="input"
                 placeholder="Type a message…"
+                aria-label="Message input"
                 rows="1"
                 @keyup.enter.exact.prevent="onSend"
               ></textarea>
@@ -168,10 +204,11 @@
               <button
                 type="button"
                 class="icon-btn attach"
+                aria-label="Attach image"
                 @click="triggerImagePicker"
                 title="Send image"
               >
-              📎
+                📎
               </button>
               <!-- Hidden file input -->
               <input
@@ -182,7 +219,7 @@
                 @change="onPickImage"
               />
 
-              <button class="btn" :disabled="!canSend" @click="onSend">
+              <button class="btn" type="button" aria-label="Send message" :disabled="!canSend" @click="onSend">
                 {{ sending ? 'Sending…' : 'Send' }}
               </button>
             </div>
@@ -196,7 +233,14 @@
                   <strong>Forward message</strong>
                   <div class="muted small">Select a chat to forward this message.</div>
                 </div>
-                <button class="close-btn" type="button" @click="closeForwardPicker">✕</button>
+                <button
+                  class="close-btn"
+                  type="button"
+                  aria-label="Close forward picker"
+                  @click="closeForwardPicker"
+                >
+                  ✕
+                </button>
               </header>
 
               <input
@@ -326,7 +370,7 @@
             <button class="btn danger leave" type="button" :disabled="groupBusy" @click="onLeaveGroup">
               Leave group
             </button>
-            <p v-if="groupNotice" class="notice small">{{ groupNotice }}</p>
+            <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
           </div>
         </aside>
       </div>
@@ -1457,6 +1501,16 @@ watch(convId, async () => {
   font-size: 1.05rem;
   padding: 3px;
   border-radius: 6px;
+}
+
+.icon-btn:focus-visible,
+.btn:focus-visible,
+.btn-xs:focus-visible,
+.link:focus-visible,
+.close-btn:focus-visible,
+.forward-item:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .icon-btn.active {
