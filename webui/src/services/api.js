@@ -388,14 +388,14 @@ export async function sendMessage({
 
 export async function sendImageMessage({ conversationId, file }) {
   if (!file) throw new Error('No file selected')
-
-  // 1) 先上传文件
+  
+    // 1) 先上传文件
   const form = new FormData()
   form.append('upload', file, file.name)
 
-  const r = await post('/messages/upload', form, {
+  const r = unwrap(await post('/upload/messages', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  }))
 
   const fileUrl  = r?.fileUrl  || r?.file_url  || ''
   const filename = r?.filename || file.name
