@@ -331,6 +331,7 @@
                   >
                     <div
                       class="forward-avatar"
+                      :class="{ placeholder: !avatarForConversation(c, meId) }"
                       :style="
                         avatarForConversation(c, meId) ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` } : {}
                       "
@@ -686,6 +687,14 @@ const headerAvatar = computed(() => {
 })
 
 const showSenderName = computed(() => isGroup.value)
+
+// Keep the header avatar/title in sync when conversation metadata refreshes.
+watch(convList, () => {
+  const fresh = convList.value.find(c => String(c.id) === convId.value)
+  if (fresh) {
+    currentConv.value = { ...(currentConv.value || {}), ...fresh }
+  }
+})
 
 async function refreshProfile() {
   // 兼容 me profile envelope
@@ -1381,27 +1390,28 @@ watch(convId, async () => {
 }
 
 .content {
-  max-width: 1100px;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 20px 24px;
 }
 
 .chat-layout {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 18px;
   align-items: start;
 }
 
 .chat-layout.has-group {
-  grid-template-columns: 320px minmax(0, 1fr) 320px;
+  grid-template-columns: 360px minmax(0, 1fr) 340px;
 }
 
 .conv-rail {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  padding: 12px;
+  padding: 14px;
   box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
   display: flex;
   flex-direction: column;
@@ -1445,7 +1455,7 @@ watch(convId, async () => {
 .conv-rail__list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   overflow: auto;
   padding-right: 2px;
 }
@@ -1457,7 +1467,7 @@ watch(convId, async () => {
   gap: 10px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 10px;
+  padding: 12px;
   background: #f8fafc;
   cursor: pointer;
   transition: border 0.2s, background 0.2s;
@@ -2112,6 +2122,12 @@ watch(convId, async () => {
   place-items: center;
   font-weight: 700;
   color: #475569;
+}
+
+.forward-avatar.placeholder {
+  background: #e0f7ee;
+  color: #0f766e;
+  border: 1px solid #a7f3d0;
 }
 
 .forward-meta {
