@@ -110,10 +110,10 @@ const me = ref(null)
 const loading = ref(false)
 const err = ref('')
 
-// 当前用户 id
+// Current user id helper
 const myId = () => String(me.value?.id ?? '')
 
-// 分类：私聊 & 群聊
+// Split conversations by type
 const privateConvs = computed(() => convs.value.filter(c => c.type !== 'group'))
 const groupConvs = computed(() => convs.value.filter(c => c.type === 'group'))
 
@@ -131,9 +131,9 @@ function fmtTime(t) {
 
 
 // -----------------------------------------------------
-// ✔ 会话显示名称
-// private → 对方名字（来自 participants）
-// group   → 会话 name
+// Conversation display name
+// private → peer name from participants
+// group   → conversation name
 // -----------------------------------------------------
 function displayName(c) {
   if (c.type === 'group') return c.name || 'Group'
@@ -146,9 +146,9 @@ function displayName(c) {
 
 
 // -----------------------------------------------------
-// ✔ avatar
-// private → 对方头像
-// group   → 群头像
+// Conversation avatar
+// private → peer avatar
+// group   → group avatar
 // -----------------------------------------------------
 function avatarFor(c) {
   if (c.type === 'group') {
@@ -170,7 +170,7 @@ function initials(c) {
 
 
 // -----------------------------------------------------
-// ✔ load conversations（从后端格式自动归一化）
+// Load conversations and normalize backend payloads
 // -----------------------------------------------------
 async function load() {
   loading.value = true

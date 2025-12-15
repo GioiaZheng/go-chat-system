@@ -1,10 +1,10 @@
 <template>
   <div class="app-shell" :class="{ 'no-sidebar': hideSidebar }">
-    <!-- ✅ 已登录才显示 Sidebar -->
+    <!-- Sidebar is visible only when authenticated -->
     <Sidebar v-if="!hideSidebar" />
 
     <main class="flex-fill p-3">
-      <!-- ✅ 未登录时显示过渡提示 -->
+      <!-- Transitional notice while auth is being checked -->
       <div v-if="checking" class="checking">
         <div class="spinner"></div>
         <p>Checking session…</p>
@@ -14,7 +14,7 @@
         <p>You are not logged in. Redirecting to login…</p>
       </div>
 
-      <!-- ✅ 正常内容 -->
+      <!-- Primary content -->
       <RouterView v-else />
     </main>
   </div>
@@ -28,7 +28,7 @@ import Sidebar from '@/components/Sidebar.vue'
 const route = useRoute()
 const router = useRouter()
 
-/* ---------- Auth 状态检测 ---------- */
+/* ---------- Auth state monitoring ---------- */
 const hasToken = () =>
   !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 
@@ -39,19 +39,19 @@ function refreshAuth() {
   isAuthed.value = hasToken()
 }
 
-/* ---------- 生命周期 ---------- */
+/* ---------- Lifecycle ---------- */
 onMounted(() => {
   refreshAuth()
 
-  // 检查当前路由：若未登录则跳转 /login
+  // Redirect to /login when unauthenticated
   if (!hasToken() && route.path !== '/login') {
     router.replace('/login')
   }
 
-  // 监听登录/登出事件
+  // Listen for login/logout events
   window.addEventListener('auth:changed', refreshAuth)
 
-  // 页面可见时自动刷新状态
+  // Refresh auth status when the page becomes visible again
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refreshAuth()
   })
@@ -63,7 +63,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('auth:changed', refreshAuth)
 })
 
-/* ---------- 路由变化时再验证一次 ---------- */
+/* ---------- Validate again on route changes ---------- */
 watch(
   () => route.fullPath,
   () => {
@@ -75,12 +75,12 @@ watch(
   { immediate: true }
 )
 
-/* ---------- Sidebar 是否隐藏 ---------- */
+/* ---------- Determine whether the sidebar should hide ---------- */
 const hideSidebar = computed(() => !!route.meta?.hideSidebar || !isAuthed.value)
 </script>
 
 <style>
-/* 布局控制 */
+/* Layout */
 .app-shell {
   display: flex;
   min-height: 100vh;
@@ -95,7 +95,7 @@ const hideSidebar = computed(() => !!route.meta?.hideSidebar || !isAuthed.value)
   width: 100%;
 }
 
-/* 未登录提示 */
+/* Unauthenticated notice */
 .unauth {
   display: flex;
   flex-direction: column;
@@ -107,7 +107,7 @@ const hideSidebar = computed(() => !!route.meta?.hideSidebar || !isAuthed.value)
   font-size: 1rem;
 }
 
-/* 检查中过渡状态 */
+/* Loading state while auth is checked */
 .checking {
   display: flex;
   flex-direction: column;

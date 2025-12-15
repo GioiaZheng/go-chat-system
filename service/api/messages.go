@@ -188,7 +188,7 @@ func (rt *_router) sendMessage(
 //
 
 // getMessages returns a cursor-paginated slice for a conversation.
-// 优先走 DB 层的按会话查询；若 DB 返回错误，回退到内存过滤，保证返回 200。
+// Prefer database pagination; fall back to in-memory filtering to keep a 200 on failures.
 func (rt *_router) getMessages(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -205,53 +205,53 @@ func (rt *_router) getMessages(
 	before := strings.TrimSpace(q.Get("beforeCursor"))
 	after := strings.TrimSpace(q.Get("afterCursor"))
 
-	// 1) 优先 DB 查询
-	items, err := rt.db.GetMessagesByConversation(convID, before, after, limit)
-	if err != nil {
-		// 便于定位问题的日志（不改变返回格式）
-		rt.baseLogger.WithError(err).Error("getMessages: db.GetMessagesByConversation failed; falling back to in-memory filter")
+        // 1) Primary path: database query per conversation
+        items, err := rt.db.GetMessagesByConversation(convID, before, after, limit)
+        if err != nil {
+                // Log details for troubleshooting without changing the response shape
+                rt.baseLogger.WithError(err).Error("getMessages: db.GetMessagesByConversation failed; falling back to in-memory filter")
 
-		// 2) 回退：拉全量内存过滤（保证不 500）
-		all, e2 := rt.db.GetAllMessages()
-		if e2 != nil {
-			rt.baseLogger.WithError(e2).Error("getMessages: db.GetAllMessages failed")
-			rt.sendError(w, http.StatusInternalServerError, "Failed to fetch messages")
-			return
-		}
-		// 过滤会话
-		buf := make([]models.Message, 0, len(all))
-		for _, m := range all {
-			if strings.TrimSpace(m.ConversationID) == convID {
-				buf = append(buf, m)
-			}
-		}
-		// 按时间降序（同时间再用 id 降序保证稳定）
-		sort.Slice(buf, func(i, j int) bool {
-			if buf[i].CreatedAt == buf[j].CreatedAt {
-				return buf[i].ID > buf[j].ID
-			}
-			return buf[i].CreatedAt > buf[j].CreatedAt
-		})
-		// 应用游标
-		filtered := buf[:0]
-		for _, m := range buf {
-			if before != "" && !timeBefore(m.CreatedAt, before) {
-				continue
-			}
+                // 2) Fallback: load all messages into memory and filter to avoid 500s
+                all, e2 := rt.db.GetAllMessages()
+                if e2 != nil {
+                        rt.baseLogger.WithError(e2).Error("getMessages: db.GetAllMessages failed")
+                        rt.sendError(w, http.StatusInternalServerError, "Failed to fetch messages")
+                        return
+                }
+                // Keep only the messages belonging to the requested conversation
+                buf := make([]models.Message, 0, len(all))
+                for _, m := range all {
+                        if strings.TrimSpace(m.ConversationID) == convID {
+                                buf = append(buf, m)
+                        }
+                }
+                // Sort newest first; if timestamps tie, sort by id for determinism
+                sort.Slice(buf, func(i, j int) bool {
+                        if buf[i].CreatedAt == buf[j].CreatedAt {
+                                return buf[i].ID > buf[j].ID
+                        }
+                        return buf[i].CreatedAt > buf[j].CreatedAt
+                })
+                // Apply cursors
+                filtered := buf[:0]
+                for _, m := range buf {
+                        if before != "" && !timeBefore(m.CreatedAt, before) {
+                                continue
+                        }
 			if after != "" && !timeAfter(m.CreatedAt, after) {
 				continue
 			}
 			filtered = append(filtered, m)
 		}
-		// 取页
-		if len(filtered) > limit {
-			items = filtered[:limit]
-		} else {
-			items = filtered
-		}
-	}
+                // Truncate to the requested page size
+                if len(filtered) > limit {
+                        items = filtered[:limit]
+                } else {
+                        items = filtered
+                }
+        }
 
-	// 生成游标
+        // Build cursors for the response
 	var nextCursor, prevCursor *string
 	if len(items) == limit {
 		nc := items[len(items)-1].CreatedAt
@@ -440,22 +440,22 @@ func (rt *_router) commentMessage(
 		return
 	}
 
-	// 🔥 FIX #1: 默认值
-	if req.Type == "" {
-		req.Type = "text"
-	}
+        // Default to text comments when the client does not provide a type.
+        if req.Type == "" {
+                req.Type = "text"
+        }
 
-	// 🔥 FIX #2: 限制合法类型
-	if req.Type != "text" && req.Type != "emoji" {
-		rt.sendError(w, http.StatusBadRequest, "invalid type")
-		return
-	}
+        // Only allow text or emoji comments to avoid unexpected database writes.
+        if req.Type != "text" && req.Type != "emoji" {
+                rt.sendError(w, http.StatusBadRequest, "invalid type")
+                return
+        }
 
-	// 🔥 FIX #3: 传入正确 type
-	if err := rt.db.CommentMessage(msgID, userID, req.Type, req.Content); err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "Failed to add comment")
-		return
-	}
+        // Persist the comment using the normalized type and sanitized content.
+        if err := rt.db.CommentMessage(msgID, userID, req.Type, req.Content); err != nil {
+                rt.sendError(w, http.StatusInternalServerError, "Failed to add comment")
+                return
+        }
 
 	resp := map[string]interface{}{
 		"code":    http.StatusCreated,
@@ -544,7 +544,7 @@ func (rt *_router) uploadMessageFile(
 		return
 	}
 
-	// 读取文件（表单字段名: upload）
+        // Read the uploaded file from multipart field "upload"
 	file, header, err := r.FormFile("upload")
 	if err != nil {
 		rt.sendError(w, http.StatusBadRequest, "file required")
@@ -552,14 +552,14 @@ func (rt *_router) uploadMessageFile(
 	}
 	defer file.Close()
 
-	// 确保 uploads 目录存在
+        // Ensure the uploads directory exists
 	baseDir := "./uploads"
 	if err := os.MkdirAll(baseDir, 0o755); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to prepare upload directory")
 		return
 	}
 
-	// 存储到 ./uploads/
+        // Persist the file under ./uploads/
 	fname := "msg_" + uuid.Must(uuid.NewV4()).String() + "_" + header.Filename
 	path := filepath.Join(baseDir, fname)
 
@@ -572,7 +572,7 @@ func (rt *_router) uploadMessageFile(
 
 	_, _ = io.Copy(out, file)
 
-	// 返回可访问 URL（前端用来当 content）
+        // Return a public URL for the frontend to use as message content
 	url := "/uploads/" + fname
 
 	resp := map[string]interface{}{

@@ -91,10 +91,10 @@ const loading = ref(false)
 const err = ref('')
 const imgBroken = ref(false)
 
-// 检查登录状态
+// Verify login state
 const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 
-// ✅ 使用 API 的 getAvatarUrl，自动拼接绝对路径
+// Build avatar URLs via getAvatarUrl to ensure absolute paths
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
 
 const initials = computed(() => ((me.value?.name || me.value?.username || 'U')[0] || 'U').toUpperCase())
@@ -145,7 +145,7 @@ async function uploadPhoto() {
   loading.value = true
   err.value = ''
   try {
-    await setMyPhotoFile(file.value) // multipart 字段名：upload（已在 api 封装）
+    await setMyPhotoFile(file.value) // multipart field name: upload (handled in api layer)
     file.value = null
     await loadProfile()
   } catch (e) {

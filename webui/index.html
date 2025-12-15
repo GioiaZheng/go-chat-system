@@ -7,7 +7,7 @@
     <link rel="icon" href="/favicon.ico" />
     <link rel="stylesheet" href="/bootstrap/css/bootstrap.css" />
 
-    <!-- ✅ 全局兜底：老模板/内联 onclick 若调用 getUserProfile()，不会再把页面搞崩 -->
+    <!-- Fallback: ensure legacy inline onclick calls to getUserProfile() do not break the page -->
     <script>
       window.getUserProfile = window.getUserProfile || function () {};
     </script>

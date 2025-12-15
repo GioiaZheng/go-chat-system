@@ -8,18 +8,18 @@ import ChatView from '../views/ChatView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import NewGroupView from '../views/NewGroupView.vue'
 
-// === 路由定义 ===
+// === Route definitions ===
 const routes = [
-  // Root path → 自动判断登录状态
+  // Root path → decide based on auth state
   {
     path: '/',
     redirect: '/login',
   },
 
-  // Debug 检查页（开发用）
+  // Debug checker (development only)
   {
     path: '/__check',
-    component: { template: '<div style="padding:12px">Router OK ✅</div>' },
+    component: { template: '<div style="padding:12px">Router OK</div>' },
   },
 
   // === Public ===
@@ -29,7 +29,7 @@ const routes = [
     component: LoginView,
     meta: {
       public: true,
-      hideSidebar: true, // 登录页隐藏 Sidebar
+      hideSidebar: true, // Hide sidebar on login page
     },
   },
 
@@ -84,7 +84,7 @@ const routes = [
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
-// === Router 实例 ===
+// === Router instance ===
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
@@ -101,7 +101,7 @@ router.beforeEach((to, from, next) => {
     sessionStorage.getItem('authToken') || localStorage.getItem('token')
   )
 
-  // 1️⃣ 如果访问受保护页且未登录 → 立刻重定向登录页
+  // 1) If visiting a protected page while unauthenticated, redirect to login
   if (needsAuth && !authed) {
     next({
       path: '/login',
@@ -110,13 +110,13 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // 2️⃣ 如果已登录还访问 login → 回 conversations
+  // 2) If already logged in and heading to login, redirect to conversations
   if (to.path === '/login' && authed) {
     next('/conversations')
     return
   }
 
-  // 3️⃣ 触发全局事件（可选）
+  // 3) Emit a global event when the route actually changes (optional)
   if (from.name && from.name !== to.name) {
     try {
       window.dispatchEvent(new Event('auth:changed'))
