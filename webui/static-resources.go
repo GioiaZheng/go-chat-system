@@ -5,7 +5,7 @@ package webui
 
 import "embed"
 
-// dist 包含打包后的前端资源。
+// dist contains the compiled frontend assets.
 //
 //go:embed dist/*
 var distFS embed.FS

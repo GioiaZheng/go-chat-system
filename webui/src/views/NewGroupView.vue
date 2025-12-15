@@ -164,9 +164,9 @@ async function create() {
 
   loading.value = true
   try {
-    // 1) 创建群组（后端允许任意用户，只要你有他们的ID即可）
+    // 1) Create the group (backend accepts any users as long as you have their IDs)
     const res = await apiCreateGroup({ name: groupName.value.trim(), memberIds: memberIds.value })
-    // 兼容返回结构
+    // Handle different response shapes
     const groupId =
       res?.group?.id || res?.id || res?.group_id || res?._id || res?.gid || null
     const conversationId =
@@ -178,16 +178,16 @@ async function create() {
       null
 
     if (!groupId) throw new Error('No group id returned')
-    // 2) 如选择了群头像，立即上传
+    // 2) Upload the group avatar immediately when provided
     if (avatarFile.value) {
       await setGroupPhoto(groupId, avatarFile.value)
     }
 
-    // 3) 跳到群聊（用 conversationId）
+    // 3) Navigate to the group chat using conversationId
     if (conversationId) {
       router.push({ name: 'chat', params: { type: 'conv', id: String(conversationId) } })
     } else {
-      // 如果返回没有会话ID，就回到群列表（兜底）
+      // Fallback: return to the group list if no conversation id is present
       router.push('/groups')
     }
   } catch (e) {

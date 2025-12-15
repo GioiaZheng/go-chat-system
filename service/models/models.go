@@ -60,7 +60,7 @@ type Message struct {
 	Type   string `db:"type"`
 	Status string `db:"status"`
 
-	// 微信式 reply（指向另一条 message）
+        // Messaging-style reply that points to another message
 	ReplyToID *string `db:"reply_to_id"`
 
 	// Internal-only routing fields

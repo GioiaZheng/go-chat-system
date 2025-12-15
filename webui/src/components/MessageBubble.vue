@@ -1,10 +1,10 @@
 <template>
   <div class="msg" :class="{ mine }">
 
-    <!-- 主内容区 -->
+    <!-- Main message content -->
     <div class="bubble">
 
-      <!-- 图片消息 -->
+      <!-- Image message -->
       <template v-if="type === 'image' && imageUrl">
         <img 
           :src="imageUrl" 
@@ -13,7 +13,7 @@
         />
       </template>
 
-      <!-- 文本消息 -->
+      <!-- Text message -->
       <template v-else>
         {{ text }}
       </template>
@@ -30,7 +30,7 @@
 
     </div>
 
-    <!-- meta 信息（时间 + 对勾） -->
+    <!-- Meta info (timestamp + checkmarks) -->
     <div class="meta">
       {{ meta }}
       <span v-if="ticks === 1">✓</span>
@@ -45,19 +45,19 @@
 const props = defineProps({
   mine: { type: Boolean, default: false },
 
-  /* 内容部分 */
+  /* Content */
   text: { type: String, default: '' },
   type: { type: String, default: 'text' },      
   imageUrl: { type: String, default: '' }, 
 
-  /* meta 信息 */
+  /* Meta */
   meta: { type: String, default: '' },
   ticks: { type: Number, default: -1 },  
 
-  /* inline reply */
+  /* Inline reply */
   replyTo: { type: String, default: '' },
 
-  /* reactions (emoji 数组) */
+  /* Reactions (emoji array) */
   reactions: { type: Array, default: () => [] },
 })
 </script>

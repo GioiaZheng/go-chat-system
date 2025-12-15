@@ -63,7 +63,7 @@ const q = ref('')
 const loading = ref(false)
 const err = ref('')
 const users = ref([])
-const creatingId = ref('') // 防止多次点击重复创建
+const creatingId = ref('') // Guard against double-click duplicate creation
 
 const asId        = (u) => String(u.id ?? u.user_id ?? u._id ?? '')
 const displayName = (u) => String(u.name ?? u.username ?? '(user)')
@@ -75,7 +75,7 @@ async function load () {
   loading.value = true
   err.value = ''
   try {
-    const list = await listContacts()  // 内部已过滤自己
+    const list = await listContacts()  // Backend already filters out myself
     users.value = Array.isArray(list) ? list : []
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to load contacts'
@@ -122,7 +122,7 @@ async function message (u) {
   }
 }
 
-// 空输入时自动恢复列表（带防抖）
+// Restore the full list on empty input (with debouncing)
 let debounceT = null
 watch(q, (val) => {
   if (debounceT) clearTimeout(debounceT)

@@ -8,17 +8,17 @@ import (
 	"github.com/GioiaZheng/Wasa_proj/webui"
 )
 
-// 当使用 -tags webui 构建时，将前端的嵌入静态资源挂到 "/"
-// 其余路径都交给 API 处理器
+// When built with -tags webui, mount the embedded frontend assets at "/"
+// and route all remaining paths to the API handler.
 func registerWebUI(api http.Handler) (http.Handler, error) {
 	mux := http.NewServeMux()
 
-	// 前端
-	mux.Handle("/", webui.Handler())
+        // Frontend entrypoint
+        mux.Handle("/", webui.Handler())
 
-	// API（把常见前缀路由给到原有 API handler）
-	// 如果你的 API 全部在根路径，也可以把默认注册顺序换一下：
-	// 先注册具体前缀到 api，再用 "/" 给前端。
+        // API routes (delegate common prefixes to the existing API handler)
+        // If your API lives at the root, swap the order: register prefixes
+        // on api first, then hand "/" to the frontend.
 	mux.Handle("/session", api)
 	mux.Handle("/liveness", api)
 	mux.Handle("/users/", api)

@@ -34,7 +34,7 @@ type CreateGroupRequest struct {
 }
 
 // groupNamePattern accepts any unicode letters/numbers plus spaces, apostrophes,
-// underscores and dashes. This allows names such as 中文群组 or O'Connor-Team.
+// underscores and dashes. This allows names such as "Chinese Group" or O'Connor-Team.
 var groupNamePattern = regexp.MustCompile(`^[\p{L}\p{N}\s'_\-]+$`)
 
 // createGroup creates a new group and adds the caller as a member.

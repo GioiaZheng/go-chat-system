@@ -166,14 +166,14 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 	if len(participants) == 2 {
 		convType = "private"
 
-		// 正确选择对方
-		for _, p := range participants {
-			if p.ID != requesterID {
-				name = p.Name                  // 会话名称 = 对方名字
-				avatarURL.String = p.AvatarUrl // 会话头像 = 对方头像
-				break
-			}
-		}
+                // Identify the peer for private conversations
+                for _, p := range participants {
+                        if p.ID != requesterID {
+                                name = p.Name                  // Conversation name mirrors the peer
+                                avatarURL.String = p.AvatarUrl // Conversation avatar mirrors the peer
+                                break
+                        }
+                }
 	}
 
 	// LastMessage
