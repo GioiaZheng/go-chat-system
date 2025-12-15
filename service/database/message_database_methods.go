@@ -30,20 +30,24 @@ func nullableReplyID(reply *string) interface{} {
 func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
 	_, err := db.c.Exec(`
 		INSERT INTO messages (
-        	id,
-            content,
-            sender_id,
-            receiver_id,
-            group_id,
-            conversation_id,
-            reply_to_id,
-            created_at
-        ) VALUES (
-            ?, ?, ?, ?, NULL, NULL, ?, COALESCE(?, datetime('now'))
-        )
-    `,
+			id,
+			content,
+			type,
+			status,
+			sender_id,
+			receiver_id,
+			group_id,
+			conversation_id,
+			reply_to_id,
+			created_at
+		) VALUES (
+			?, ?, ?, ?, ?, NULL, NULL, ?, COALESCE(?, datetime('now'))
+		)
+	`,
 		message.ID,
 		message.Content,
+		message.Type,
+		message.Status,
 		message.SenderID,
 		message.ReceiverID,
 		nullableReplyID(message.ReplyToID),
@@ -54,21 +58,25 @@ func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
 
 func (db *appdbimpl) SendMessageToConversation(message models.Message) error {
 	_, err := db.c.Exec(`
-        INSERT INTO messages (
-            id,
-            content,
-            sender_id,
-            receiver_id,
-            group_id,
-            conversation_id,
-            reply_to_id,
-            created_at
-        ) VALUES (
-            ?, ?, ?, NULL, NULL, ?, ?, COALESCE(?, datetime('now'))
-        )
-    `,
+		INSERT INTO messages (
+			id,
+			content,
+			type,
+			status,
+			sender_id,
+			receiver_id,
+			group_id,
+			conversation_id,
+			reply_to_id,
+			created_at
+		) VALUES (
+			?, ?, ?, ?, ?, NULL, NULL, ?, ?, COALESCE(?, datetime('now'))
+		)
+	`,
 		message.ID,
 		message.Content,
+		message.Type,
+		message.Status,
 		message.SenderID,
 		message.ConversationID,
 		nullableReplyID(message.ReplyToID),
@@ -102,15 +110,17 @@ func (db *appdbimpl) GetMessagesByConversation(
 	after = strings.TrimSpace(after)
 
 	qb := `
-        SELECT
-            id,
-            content,
-            sender_id,
-            receiver_id,
-            group_id,
-            conversation_id,
-            reply_to_id,
-            created_at
+		SELECT
+			id,
+			content,
+			type,
+			status,
+			sender_id,
+			receiver_id,
+			group_id,
+			conversation_id,
+			reply_to_id,
+			created_at
         FROM messages
         WHERE conversation_id = ?`
 	args := []interface{}{convID}
@@ -140,6 +150,8 @@ func (db *appdbimpl) GetMessagesByConversation(
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
+			&m.Type,
+			&m.Status,
 			&m.SenderID,
 			&recv,
 			&grp,
@@ -185,6 +197,8 @@ func (db *appdbimpl) getPrivateConversationEx(
         SELECT
             id,
             content,
+			type,
+			status,
             sender_id,
             receiver_id,
             group_id,
@@ -210,6 +224,8 @@ func (db *appdbimpl) getPrivateConversationEx(
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
+			&m.Type,
+			&m.Status,
 			&m.SenderID,
 			&m.ReceiverID,
 			&m.GroupID,
@@ -238,6 +254,8 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
         SELECT
             id,
             content,
+			type,
+			status,
             sender_id,
             receiver_id,
             group_id,
@@ -261,6 +279,8 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
+			&m.Type,
+			&m.Status,
 			&m.SenderID,
 			&m.ReceiverID,
 			&m.GroupID,
@@ -298,6 +318,8 @@ func (db *appdbimpl) GetMessageByID(messageID string) (models.Message, error) {
         SELECT
             id,
             content,
+			type,
+			status,
             sender_id,
             receiver_id,
             group_id,
@@ -309,6 +331,8 @@ func (db *appdbimpl) GetMessageByID(messageID string) (models.Message, error) {
     `, messageID).Scan(
 		&m.ID,
 		&m.Content,
+		&m.Type,
+		&m.Status,
 		&m.SenderID,
 		&recv,
 		&grp,
@@ -336,6 +360,8 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
         SELECT
             id,
             content,
+			type,
+			status,
             sender_id,
             receiver_id,
             group_id,
@@ -358,6 +384,8 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
+			&m.Type,
+			&m.Status,
 			&m.SenderID,
 			&recv,
 			&grp,
@@ -409,6 +437,8 @@ func (db *appdbimpl) ForwardMessage(userID, messageID, toUserID, toGroupID strin
         INSERT INTO messages (
             id,
             content,
+			type,
+			status,
             sender_id,
             receiver_id,
             group_id,
@@ -421,6 +451,8 @@ func (db *appdbimpl) ForwardMessage(userID, messageID, toUserID, toGroupID strin
         )
     `,
 		orig.Content,
+		orig.Type,
+		orig.Status,
 		userID,
 		convID,
 	)

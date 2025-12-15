@@ -129,12 +129,14 @@ func initializeTables(db *sql.DB) error {
 			FOREIGN KEY(user_id)         REFERENCES users(id)         ON DELETE CASCADE
 		);
 
-		CREATE TABLE IF NOT EXISTS messages (
-			id              TEXT PRIMARY KEY,
-			content         TEXT NOT NULL,
-			sender_id       TEXT NOT NULL,
-			receiver_id     TEXT,
-			group_id        TEXT,
+        CREATE TABLE IF NOT EXISTS messages (
+            id              TEXT PRIMARY KEY,
+            content         TEXT NOT NULL,
+            type            TEXT DEFAULT 'text',
+            status          TEXT DEFAULT 'sent',
+            sender_id       TEXT NOT NULL,
+            receiver_id     TEXT,
+            group_id        TEXT,
 			conversation_id TEXT,
 			reply_to_id     TEXT,
 			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -175,6 +177,45 @@ func initializeTables(db *sql.DB) error {
 		return err
 	}
 
+if err := ensureMessageTypeColumn(db); err != nil {
+		return err
+	}
+
+	if err := ensureMessageStatusColumn(db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ensureMessageTypeColumn(db *sql.DB) error {
+	exists, err := columnExists(db, "messages", "type")
+	if err != nil {
+		return fmt.Errorf("failed to inspect messages table: %w", err)
+	}
+	if exists {
+		return nil
+	}
+
+	if _, err := db.Exec(`ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text';`); err != nil {
+		return fmt.Errorf("failed to add type column: %w", err)
+	}
+	return nil
+}
+
+func ensureMessageStatusColumn(db *sql.DB) error {
+	exists, err := columnExists(db, "messages", "status")
+	if err != nil {
+		return fmt.Errorf("failed to inspect messages table: %w", err)
+	}
+	if exists {
+		return nil
+	}
+
+	if _, err := db.Exec(`ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'sent';`); err != nil {
+		return fmt.Errorf("failed to add status column: %w", err)
+	}
+
 	return nil
 }
 
@@ -190,6 +231,7 @@ func ensureMessageReplyColumn(db *sql.DB) error {
 	if _, err := db.Exec(`ALTER TABLE messages ADD COLUMN reply_to_id TEXT;`); err != nil {
 		return fmt.Errorf("failed to add reply_to_id column: %w", err)
 	}
+
 	return nil
 }
 
@@ -205,6 +247,7 @@ func ensureGroupConversationColumn(db *sql.DB) error {
 	if _, err := db.Exec(`ALTER TABLE groups ADD COLUMN conversation_id TEXT;`); err != nil {
 		return fmt.Errorf("failed to add conversation_id to groups: %w", err)
 	}
+
 	return nil
 }
 
