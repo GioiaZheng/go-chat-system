@@ -60,11 +60,11 @@ const busy = ref(false)
 onMounted(() => {
   document.body.classList.add('theme-light-login')
 
-  // Allow prefill from ?name=xxx query param
+  // Prefill the input when a name query parameter is provided.
   const preset = String(route.query.name || '').trim()
   if (preset) name.value = preset
 
-  // Redirect immediately if already logged in
+  // Skip the form when a valid token is already stored.
   const authed = !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
   if (authed) router.replace('/conversations')
 })
@@ -79,22 +79,22 @@ async function login () {
   busy.value = true
 
   try {
-    // Clear any stale tokens
+    // Remove any existing tokens before starting a new session.
     localStorage.removeItem('token')
     sessionStorage.removeItem('authToken')
 
-    // Login (api client stores the token internally)
+    // Sign in; the API client stores the token internally.
     await api.doLogin(name.value)
 
-    // Keep other views in sync with the chosen username
+    // Keep other views in sync with the chosen username.
     localStorage.setItem('username', name.value)
     localStorage.setItem('name', name.value)
     localStorage.setItem('me', JSON.stringify({ username: name.value }))
 
-    // Notify other views to refresh
+    // Notify other views to refresh their state.
     window.dispatchEvent(new Event('auth:changed'))
 
-    // Support ?redirect=/xxx
+    // Honor a redirect query parameter when present.
     const next = (route.query.redirect && String(route.query.redirect)) || '/conversations'
     router.replace(next)
   } catch (e) {

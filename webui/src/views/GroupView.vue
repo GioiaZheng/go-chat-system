@@ -192,7 +192,7 @@ async function loadList() {
   }
 }
 
-/* ---------- create group ---------- */
+/* ---------- Group creation ---------- */
 async function createGroup() {
   err.value = ''
   notice.value = ''
@@ -201,7 +201,7 @@ async function createGroup() {
     .map(s => s.trim())
     .filter(Boolean)
 
-  // auto include self
+  // Ensure the current user is always part of the new group.
   if (meId.value && !list.includes(meId.value)) list.unshift(meId.value)
 
   if (!groupName.value) {
@@ -228,7 +228,7 @@ async function createGroup() {
   }
 }
 
-/* ---------- manage panel actions ---------- */
+/* ---------- Management panel actions ---------- */
 function toggleManage(id) {
   panelErr.value = ''
   if (manageId.value === id) {
@@ -238,7 +238,7 @@ function toggleManage(id) {
     return
   }
   manageId.value = id
-  // preload latest group detail (for name/avatar freshness)
+  // Refresh the panel with the latest group details before editing.
   hydrateManage(id)
 }
 
@@ -290,7 +290,7 @@ async function onAddMembers(id) {
   try {
     await addToGroup(id, list)
     addIds.value = ''
-    // not strictly necessary to reload list here, but keeps UI fresh
+    // Reloading the list here keeps the on-screen data in sync.
     await loadList()
   } catch (e) {
     panelErr.value = e?.response?.data?.message || e?.message || 'Failed to add members'
