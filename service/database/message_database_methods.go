@@ -415,7 +415,7 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   COMMENTS / FORWARD / DELETE （原样保留）
+//   COMMENTS / FORWARD / DELETE (kept as originally structured)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 

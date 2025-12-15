@@ -697,7 +697,7 @@ watch(convList, () => {
 })
 
 async function refreshProfile() {
-  // 兼容 me profile envelope
+  // Handle both legacy and current envelopes for the profile response
   const prof = await getMyProfile()
   me.value = prof?.data?.user || prof?.user || prof || null
 }
@@ -713,7 +713,7 @@ async function loadConversationMeta() {
 
     if (!conv) {
       const raw = await getMyConversations()
-      // 兼容 payload：可能是 {code,data:{items}}、{items} 或直接数组
+      // Accept payloads shaped as {code,data:{items}}, {items}, or a raw array
       const items =
         raw?.data?.items ||
         raw?.items ||
@@ -753,7 +753,7 @@ async function loadConversationMeta() {
       groupInfo.value = null
     }
   } catch (e) {
-    // 不阻止消息加载，只在控制台看问题
+    // Let message loading continue; surface diagnostics in the console only
     console.error('loadConversationMeta failed', e)
   }
 }
@@ -779,7 +779,7 @@ function normalizeMessage(raw) {
   const replyType = raw.replyTo?.type || ''
   const replyPreview = replyContent || (replyType === 'image' ? '[image]' : '')
 
-  // 处理图片：如果 type === 'image'，content 就是图片 URL
+  // Image handling: when type === 'image', content is the image URL
   const fileRel =
     raw.fileUrl ||
     raw.file_url ||
@@ -833,7 +833,7 @@ async function loadMessages() {
   try {
     const data = await getMessages({ conversationId: convId.value, limit: 150 })
 
-    // 兼容 envelope：{code,data:{messages}} 或 {messages} 或直接数组
+    // Accept message envelopes: {code,data:{messages}}, {messages}, or a raw array
     const list =
       data?.data?.messages ||
       data?.messages ||
@@ -1781,7 +1781,7 @@ watch(convId, async () => {
 }
 
 .avatar.mine {
-  margin-left: 4px;    /* 自己的头像和气泡之间留一点空 */
+  margin-left: 4px;    /* Keep a small gap between my avatar and bubble */
 }
 .avatar.placeholder {
   background: var(--avatar-bg);

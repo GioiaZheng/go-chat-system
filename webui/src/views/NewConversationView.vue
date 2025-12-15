@@ -8,7 +8,7 @@
     <!-- Search & pick user -->
     <section class="card">
       <h3 class="h6">Find a user</h3>
-      <!-- 你已有的搜索组件：选中后会触发 @select -->
+      <!-- Existing search component: emits @select when a user is chosen -->
       <UserSearch class="mb-2" @select="onPick" @error="onChildError" />
 
       <div v-if="picked" class="picked">
@@ -54,14 +54,14 @@ function onChildError(msg) {
   err.value = msg || ''
 }
 
-/** 创建私聊并跳转（使用 api.startPrivateConversation） */
+/** Create a private chat and navigate (via api.startPrivateConversation) */
 async function start () {
   const id = String(picked.value?.id || '')
   if (!id) return
   loading.value = true
   err.value = ''
   try {
-    const res = await startPrivateConversation({ id }) // 或者直接传 id 字符串也行
+    const res = await startPrivateConversation({ id }) // Passing the id string directly also works
     const cid =
       res?.conversation?.id ||
       res?.conversationId ||

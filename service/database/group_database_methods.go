@@ -128,7 +128,7 @@ func normalizeTimestamp(ts string) string {
 // GetGroupMembers lists the users in a given group.
 // Matches interface: GetGroupMembers(groupID string) ([]models.User, error)
 //
-// NOTE: 我们的 users 表只有 id, name, avatar_url 三列（没有 username / photo）。
+// NOTE: The users table only has id, name, and avatar_url columns (no username/photo fields).
 func (db *appdbimpl) GetGroupMembers(groupID string) ([]models.User, error) {
 	rows, err := db.c.Query(`
 		SELECT u.id, u.name, u.avatar_url

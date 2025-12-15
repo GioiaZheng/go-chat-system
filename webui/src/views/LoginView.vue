@@ -60,11 +60,11 @@ const busy = ref(false)
 onMounted(() => {
   document.body.classList.add('theme-light-login')
 
-  // 允许从链接带入 ?name=xxx 预填
+  // Allow prefill from ?name=xxx query param
   const preset = String(route.query.name || '').trim()
   if (preset) name.value = preset
 
-  // 已登录直接跳
+  // Redirect immediately if already logged in
   const authed = !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
   if (authed) router.replace('/conversations')
 })
@@ -79,22 +79,22 @@ async function login () {
   busy.value = true
 
   try {
-    // 清理旧 token（防脏状态）
+    // Clear any stale tokens
     localStorage.removeItem('token')
     sessionStorage.removeItem('authToken')
 
-    // 登录（内部会存 token）
+    // Login (api client stores the token internally)
     await api.doLogin(name.value)
 
-    // 兼容其余页面读取到用户名
+    // Keep other views in sync with the chosen username
     localStorage.setItem('username', name.value)
     localStorage.setItem('name', name.value)
     localStorage.setItem('me', JSON.stringify({ username: name.value }))
 
-    // 通知其他视图刷新
+    // Notify other views to refresh
     window.dispatchEvent(new Event('auth:changed'))
 
-    // 支持 ?redirect=/xxx
+    // Support ?redirect=/xxx
     const next = (route.query.redirect && String(route.query.redirect)) || '/conversations'
     router.replace(next)
   } catch (e) {
@@ -109,7 +109,7 @@ async function login () {
 }
 </script>
 
-<!-- 全局背景（不 scoped） -->
+<!-- Global background (not scoped) -->
 <style>
 body.theme-light-login{
   background:
@@ -120,7 +120,7 @@ body.theme-light-login{
 }
 </style>
 
-<!-- 组件样式 -->
+<!-- Component styles -->
 <style scoped>
 .auth-wrap{
   min-height: 100vh;

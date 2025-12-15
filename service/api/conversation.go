@@ -26,7 +26,7 @@ type StartConversationRequest struct {
 //     - name: length 1..100 & pattern ^[a-zA-Z0-9\s'-]+$
 //     - memberIds (or member_ids): at least 1 (minItems:1)
 //  3. Merge memberIds and legacy member_ids, normalize and deduplicate.
-//  4. Ensure the caller is included as a member（校验在加入自己之前已完成）.
+//  4. Ensure the caller is included as a member (after validating the list).
 //  5. Delegate to the DB to create the conversation.
 //  6. Return 201 Created with { code, message, data: { conversation } }.
 func (rt *_router) startConversation(
@@ -63,18 +63,18 @@ func (rt *_router) startConversation(
 		return
 	}
 
-	// 合并但先不加入自己，用于严格遵循 YAML 的 minItems:1
+        // Merge without injecting self yet to respect the YAML minItems:1 rule
 	rawMembers := make([]string, 0, len(req.MemberIDs)+len(req.LegacyMemberIDs))
 	rawMembers = append(rawMembers, req.MemberIDs...)
 	rawMembers = append(rawMembers, req.LegacyMemberIDs...)
 
-	// OpenAPI: memberIds 是必填且 minItems:1
+        // OpenAPI: memberIds is required with minItems:1
 	if len(rawMembers) == 0 {
 		rt.sendError(w, http.StatusBadRequest, "memberIds is required and must contain at least 1 item")
 		return
 	}
 
-	// 3) 去重与清洗
+        // 3) Deduplicate and sanitize
 	finalMembers := make([]string, 0, len(rawMembers)+1)
 	seen := make(map[string]struct{})
 	push := func(id string) {
@@ -92,7 +92,7 @@ func (rt *_router) startConversation(
 		push(id)
 	}
 
-	// 4) 确保把自己加入（不计入上述 minItems:1 的校验）
+        // 4) Always include the caller (outside the minItems:1 validation)
 	push(ctx.UserID)
 
 	// 5) Create conversation via DB

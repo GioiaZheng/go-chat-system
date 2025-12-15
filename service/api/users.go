@@ -16,7 +16,7 @@ import (
 // Helpers (request bodies)
 //
 
-// setUsernameBody 支持 { "name": "..." }（OpenAPI）以及兼容 { "username": "..." }。
+// setUsernameBody accepts both the OpenAPI field {"name":"..."} and the legacy {"username":"..."}.
 type setUsernameBody struct {
 	Username string `json:"username,omitempty"`
 	Name     string `json:"name,omitempty"`
@@ -26,7 +26,7 @@ type setUsernameBody struct {
 // Get my info  (GET /users/me)
 //
 
-// getUserInfo 返回当前登录用户资料（UserEnvelope）。
+// getUserInfo returns the profile of the authenticated user (UserEnvelope).
 func (rt *_router) getUserInfo(
 	w http.ResponseWriter,
 	_ *http.Request,
@@ -39,7 +39,7 @@ func (rt *_router) getUserInfo(
 		return
 	}
 
-	// 兼容两种 DB 方法名
+        // Support either DB method name
 	u, err := rt.db.GetUser(uid)
 	if err != nil {
 		u, err = rt.db.GetUserByID(uid)
@@ -60,7 +60,7 @@ func (rt *_router) getUserInfo(
 // Get user profile by id  (GET /users/profile/{userId})
 //
 
-// getUserProfile 根据 path 的 :userId 读取公共资料；保留极简兼容查询键的降级方案。
+// getUserProfile reads public profile data by :userId and keeps a minimal query-key fallback.
 func (rt *_router) getUserProfile(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -70,7 +70,7 @@ func (rt *_router) getUserProfile(
 	// Path param
 	userID := strings.TrimSpace(ps.ByName("userId"))
 	if userID == "" {
-		// 极简兼容：允许 :id 或 ?id= 之类（不在 OpenAPI 中，仅兜底）
+                // Minimal compatibility: also allow :id or ?id= style fallbacks (non-OpenAPI)
 		userID = strings.TrimSpace(ps.ByName("id"))
 		if userID == "" {
 			userID = strings.TrimSpace(r.URL.Query().Get("id"))
@@ -92,7 +92,7 @@ func (rt *_router) getUserProfile(
 		"code":    http.StatusOK,
 		"message": "User information retrieved",
 		"data": map[string]interface{}{
-			"user": u, // 与 OpenAPI: UserEnvelope 对齐
+                        "user": u, // Aligns with the OpenAPI UserEnvelope
 		},
 	})
 }
@@ -101,7 +101,7 @@ func (rt *_router) getUserProfile(
 // Update username  (PUT /users/set_username)
 //
 
-// setUserUsername 修改当前用户的显示名（OpenAPI 请求字段是 name）。
+// setUserUsername updates the display name (OpenAPI request field: name).
 func (rt *_router) setUserUsername(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -119,7 +119,7 @@ func (rt *_router) setUserUsername(
 		rt.sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	// OpenAPI 字段是 name；同时兼容 legacy 的 username
+        // Prefer OpenAPI field name; fall back to legacy username
 	newName := strings.TrimSpace(body.Name)
 	if newName == "" {
 		newName = strings.TrimSpace(body.Username)
@@ -130,19 +130,19 @@ func (rt *_router) setUserUsername(
 	}
 
 	if err := rt.db.UpdateUserName(uid, newName); err != nil {
-		// 让 DB 层决定唯一性/正则等约束的错误；这里统一为 400
+                // Let the DB enforce uniqueness/regex constraints; surface them as 400
 		rt.sendError(w, http.StatusBadRequest, "Failed to update user name")
 		return
 	}
 
-	// OpenAPI: BaseSuccessResponse（只需要 code, message）
+        // OpenAPI: BaseSuccessResponse (code and message only)
 	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
 		"code":    http.StatusOK,
 		"message": "user name updated successfully",
 	})
 }
 
-// setMyUserName 供路由使用的名字（见 api-handler.go）
+// setMyUserName alias used by the router (see api-handler.go)
 func (rt *_router) setMyUserName(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -154,8 +154,8 @@ func (rt *_router) setMyUserName(
 
 //
 // Update avatar/photo  (PUT /users/set_photo)
-// 两种模式：?preset=avatar7  或 multipart/form-data 字段 "upload"
-// 返回 FileUploadEnvelope：data.file { filename, uri, size? }
+// Two modes: ?preset=avatar7 or multipart/form-data field "upload"
+// Returns FileUploadEnvelope: data.file { filename, uri, size? }
 //
 
 func (rt *_router) setUserPhoto(
@@ -170,7 +170,7 @@ func (rt *_router) setUserPhoto(
 		return
 	}
 
-	// 1) 预设头像模式：?preset=avatarX
+        // 1) Preset avatar mode: ?preset=avatarX
 	if preset := strings.TrimSpace(r.URL.Query().Get("preset")); preset != "" {
 		if !strings.HasPrefix(strings.ToLower(preset), "avatar") {
 			rt.sendError(w, http.StatusBadRequest, "Invalid preset name")
@@ -189,14 +189,14 @@ func (rt *_router) setUserPhoto(
 			"data": map[string]interface{}{
 				"file": map[string]interface{}{
 					"filename": derived,
-					"uri":      publicURI, // OpenAPI 字段叫 uri
+                                        "uri":      publicURI, // OpenAPI field is named uri
 				},
 			},
 		})
 		return
 	}
 
-	// 2) 上传模式
+        // 2) Upload mode
 	const maxUploadSizeBytes = 10 << 20 // 10 MiB
 	if err := r.ParseMultipartForm(maxUploadSizeBytes); err != nil {
 		rt.sendError(w, http.StatusBadRequest, "Invalid multipart form")
@@ -225,7 +225,7 @@ func (rt *_router) setUserPhoto(
 		}
 	}
 
-	// 保存到 /uploads/users
+        // Save the file to /uploads/users
 	baseDir := filepath.Join("uploads", "users")
 	if err := ensureDir(baseDir); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to prepare upload dir")
@@ -269,13 +269,13 @@ func (rt *_router) setUserPhoto(
 			"file": map[string]interface{}{
 				"filename": origName,
 				"size":     written,
-				"uri":      publicURI, // OpenAPI 字段叫 uri
+                                "uri":      publicURI, // OpenAPI field is named uri
 			},
 		},
 	})
 }
 
-// setMyPhoto 供路由使用的名字（见 api-handler.go）
+// setMyPhoto alias used by the router (see api-handler.go)
 func (rt *_router) setMyPhoto(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -298,10 +298,10 @@ func (rt *_router) searchUsers(
 		return
 	}
 
-	// q 可以为空：空就表示“搜索全部”
+        // q may be empty, which means "search all"
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
-		// 兼容一下 ?query= 这种旧写法
+                // Also accept the older ?query= variant
 		q = strings.TrimSpace(r.URL.Query().Get("query"))
 	}
 
@@ -315,7 +315,7 @@ func (rt *_router) searchUsers(
 		"code":    http.StatusOK,
 		"message": "Matching users found",
 		"data": map[string]interface{}{
-			"items": users, // 前端 api.js 里 unwrap + searchUsers() 正好兼容这个结构
+                        "items": users, // Matches the structure expected by api.js unwrap + searchUsers()
 		},
 	})
 }
