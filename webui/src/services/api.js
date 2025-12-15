@@ -1,18 +1,18 @@
 // src/services/api.js
 import axios from './axios'
 
-/* -------------------- helpers -------------------- */
+/* -------------------- Authentication helpers -------------------- */
 
-// 读 token（兼容 localStorage / sessionStorage）
+// Read token from either localStorage or sessionStorage.
 const readToken = () =>
   localStorage.getItem('token') || sessionStorage.getItem('authToken') || ''
 
-// 是否已登录
+// Determine whether the user is currently authenticated.
 export function isAuthed() {
   return !!readToken()
 }
 
-// 统一在请求里加 Authorization 头
+// Attach the Authorization header when a token is present.
 function withAuthConfig(cfg = {}) {
   const token = readToken()
   const headers = { ...(cfg?.headers || {}) }
@@ -20,7 +20,7 @@ function withAuthConfig(cfg = {}) {
   return { ...(cfg || {}), headers }
 }
 
-// 只剥掉一层 { code, message, data }，不破坏内部结构
+// Unwrap one layer of { code, message, data } without altering deeper payloads.
 function unwrap(res) {
   const root = res?.data ?? res
 
@@ -37,15 +37,15 @@ function unwrap(res) {
 
 
 
-// 快捷请求
+// Shorthand wrappers that automatically include auth headers.
 const get   = (url, cfg)       => axios.get(url,    withAuthConfig(cfg))
 const del   = (url, cfg)       => axios.delete(url, withAuthConfig(cfg))
 const post  = (url, data, cfg) => axios.post(url,   data, withAuthConfig(cfg))
 const put   = (url, data, cfg) => axios.put(url,    data, withAuthConfig(cfg))
 
-/* -------------------- base URL helpers -------------------- */
+/* -------------------- API base URL helpers -------------------- */
 
-// axios.baseURL > window.__API_URL__ > import.meta.env.VITE_API_BASE_URL
+// Resolve API base URL using axios defaults, runtime override, or Vite env values.
 export function resolveApiBase() {
   return (axios?.defaults?.baseURL)
       || (typeof window !== 'undefined' ? window.__API_URL__ : '')
@@ -60,26 +60,26 @@ export function absUrl(path) {
   return `${base}/${path}`
 }
 
-/* -------------------- public / utility -------------------- */
+/* -------------------- Public endpoints and utilities -------------------- */
 
 export async function doLogin(name) {
-  // 你的后端 /session 简化登录（只用 name）
+  // Basic login that posts the username to /session.
   const res = await axios.post('/session', { name })
 
-  // axios 的响应：res.data = { code, message, data: { user, token } }
+  // Typical axios response: res.data = { code, message, data: { user, token } }
   const root = res && res.data ? res.data : res
 
-  // 尽可能多地尝试几种包裹方式：
+  // Accept multiple wrapper shapes to keep the client tolerant.
   const token =
-    root?.data?.token ||   // 正常情况：{code, message, data:{user, token}}
-    root?.token           // 万一后端直接返回 {user, token}
+    root?.data?.token ||   // {code, message, data:{user, token}}
+    root?.token           // {user, token}
   
   if (!token) {
-    console.error('Login response payload =', root)   // 方便你在控制台看
+    console.error('Login response payload =', root)
     throw new Error('Login response missing token')
   }
 
-  // 存 token
+  // Persist token in both storage locations for compatibility.
   localStorage.setItem('token', token)
   sessionStorage.setItem('authToken', token)
 
@@ -94,11 +94,11 @@ export async function doLogin(name) {
 export async function liveness() { return unwrap(await get('/liveness')) }
 export async function healthz()  { return unwrap(await get('/healthz')) }
 
-/* -------------------- logout helper -------------------- */
+/* -------------------- Logout helper -------------------- */
 
 /**
  * Logout: clear all tokens and cached info.
- * (前端清除登录状态，后端无需处理)
+ * Client-side only; the backend does not need to revoke anything.
  */
 export function doLogout() {
   try {
@@ -111,11 +111,11 @@ export function doLogout() {
   } catch {}
 }
 
-/* -------------------- users -------------------- */
+/* -------------------- User profile -------------------- */
 
 export async function getMyProfile() {
   const u = unwrap(await get('/users/me')) || {}
-  // 归一化到前端常用键
+  // Normalize to the keys expected by the UI.
   return {
     ...u,
     id: String(u.id ?? ''),
@@ -144,7 +144,7 @@ export async function setMyUserName(name) {
   }
 }
 
-/** 头像上传（字段名 'upload'） */
+/** Upload avatar file (field name: 'upload'). */
 export async function setMyPhotoFile(file) {
   if (!file) throw new Error('No file selected')
   const form = new FormData()
@@ -159,7 +159,7 @@ export async function setMyPhotoFile(file) {
   }
 }
 
-/** 统一头像 URL + 缓存破坏参数 */
+/** Build avatar URL with a cache-busting parameter. */
 export function getAvatarUrl(userLike) {
   const u = userLike || {}
   const raw =
@@ -169,13 +169,16 @@ export function getAvatarUrl(userLike) {
   return url ? `${url}${url.includes('?') ? '&' : '?'}v=${v}` : ''
 }
 
-/** 搜索用户（/users/search?q） */
+/** Search users via /users/search?q. */
 export async function searchUsers(q = '') {
   const v = unwrap(await get('/users/search', { params: { q } }))
   return Array.isArray(v) ? v : (v?.items ?? v?.users ?? v?.list ?? [])
 }
 
-/** 兼容 ContactsView：用 search 聚合成联系人列表 */
+/**
+ * Build the contacts list by aggregating search results across alphabets.
+ * Keeps compatibility with the ContactsView component.
+ */
 export async function listContacts() {
   const letters = 'abcdefghijklmnopqrstuvwxyz'.split('')
   const uniq = new Map()
@@ -188,20 +191,20 @@ export async function listContacts() {
       }
     } catch {}
   }
-  // 过滤掉自己
+  // Filter out the current user
   let meId = ''
   try { const me = await getMyProfile(); meId = String(me.id || '') } catch {}
   return Array.from(uniq.values()).filter(u => String(u?.id ?? '') !== meId)
 }
 
-/* -------------------- conversations helpers -------------------- */
+/* -------------------- Conversation helpers -------------------- */
 
 export function isGroupConversation(c) {
   return c?.type === 'group'
 }
 
 
-/** 私聊标题 = 对方名字；群聊 = 群名 */
+/** Conversation title: peer name for private chats, group name otherwise. */
 export function titleForConversation(c, myId = '') {
   if (!c) return 'Chat'
 
@@ -222,7 +225,7 @@ export function titleForConversation(c, myId = '') {
 }
 
 
-/** 会话头像：群=群头像；私聊=对方头像 */
+/** Conversation avatar: group avatar for groups, peer avatar for private chats. */
 export function avatarForConversation(c, myId) {
   if (!c) return ''
 
@@ -242,11 +245,11 @@ export function avatarForConversation(c, myId) {
 
 
 
-/* -------------------- conversations -------------------- */
+/* -------------------- Conversation endpoints -------------------- */
 
 export async function startConversation(payload = {}) {
-  // OpenAPI：POST /conversations
-  // 接受多种键名并归一化：name / memberIds / members / user_id / userId
+  // OpenAPI: POST /conversations
+  // Accept multiple key names and normalize to memberIds.
   const body = {}
   let memberIds = []
   if (Array.isArray(payload.memberIds)) memberIds = payload.memberIds
@@ -262,7 +265,7 @@ export async function startPrivateConversation(userOrId) {
   if (!id) throw new Error('userId required')
 
   return unwrap(await post('/conversations', {
-    name: 'private',   // ✔ 必须加这个！
+    name: 'private',   // Required to indicate a private conversation
     memberIds: [id]
   }))
 }
@@ -273,18 +276,18 @@ export async function getMyConversations() {
   return unwrap(await get('/conversations'))
 }
 
-// 会话成员：优先 /conversations/:id/members；兜底用 groups 反查
+// Fetch members directly; fall back to group lookup when the endpoint is missing.
 export async function getConversationMembers(conversationId) {
   const id = String(conversationId || '').trim();
   if (!id) throw new Error('conversationId required');
 
-  // 1) 直连 conversations 成员端点（将来如果后端补上，这里优先命中）
+  // 1) Prefer the dedicated conversations members endpoint when available.
   try {
     const v = unwrap(await get(`/conversations/${encodeURIComponent(id)}/members`));
     return Array.isArray(v) ? v : (v?.items ?? v?.members ?? v?.list ?? []);
   } catch {}
 
-  // 2) 兜底：在 /groups 里按 conversationId 反查群，再取群成员
+  // 2) Fallback: locate the group by conversationId, then read its members.
   try {
     const glist = unwrap(await get('/groups'));
     const arr = Array.isArray(glist) ? glist : (glist?.items ?? glist?.groups ?? glist?.list ?? []);
@@ -341,9 +344,10 @@ export async function addToGroup(id, memberIds = []) {
   }))
 }
 
-/** 后端的 DELETE /groups/:id/members：自退。
- * 如果需要“移除某个成员”，后端应支持读取 body {userId}；
- * 这里按此约定传递，若未实现，前端请隐藏“移除成员”按钮或在后端补路由。
+/**
+ * DELETE /groups/:id/members implements self-removal.
+ * To remove another member, the backend should read body { userId }.
+ * The client sends that shape here; hide the UI action if the backend lacks support.
  */
 export async function removeFromGroup(id, userId) {
   return unwrap(await del(`/groups/${encodeURIComponent(String(id))}/members`, {
@@ -377,7 +381,7 @@ export async function sendMessage({
     type,
   }
 
-  // 支持回复字段：兼容可能的键名，replyToId 为后端字段名
+  // Support reply metadata: accept various keys; replyToId is the backend field.
   const reply = replyToId || replyTo
   if (reply) {
     body.replyToId = reply
@@ -389,7 +393,7 @@ export async function sendMessage({
 export async function sendImageMessage({ conversationId, file }) {
   if (!file) throw new Error('No file selected')
   
-    // 1) 先上传文件
+  // 1) Upload the binary first
   const form = new FormData()
   form.append('upload', file, file.name)
 
@@ -405,7 +409,7 @@ export async function sendImageMessage({ conversationId, file }) {
     throw new Error('Upload failed: no fileUrl')
   }
 
-  // 2) 再发一条 type=image 的普通消息
+  // 2) Send a normal message referencing the uploaded image URL
   return sendMessage({
     conversationId,
     content: fileUrl,
@@ -430,15 +434,15 @@ export async function forwardMessage(messageId, conversationId) {
   ))
 }
 
-/* ---- 评论 / 回复 / 表情 ---- */
+/* ---- Comments, replies, and reactions ---- */
 
-// 读取评论列表
+// Retrieve comment list for a message
 export async function getMessageComments(id) {
   const mid = encodeURIComponent(String(id))
   return unwrap(await get(`/messages/${mid}/comment`))
 }
 
-// 写评论
+// Create a comment or reply
 export async function commentMessage(msgId, payload) {
   const mid = encodeURIComponent(String(msgId))
   let body = { type: 'text', content: '' }
@@ -460,28 +464,28 @@ export async function commentMessage(msgId, payload) {
 
 
 
-// 删除评论：后端不读取 body，只需要 POST 即可
+// Remove comments: backend ignores the body and only expects a POST
 export async function uncommentMessage(id) {
   const mid = encodeURIComponent(String(id))
   return unwrap(await post(`/messages/${mid}/uncomment`))
 }
 
-// 语义别名
+// Semantic aliases for convenience
 export const replyToMessage     = commentMessage
 export const getMessageReplies  = getMessageComments
 export const removeMessageReply = uncommentMessage
 
-// 表情：将内容写成 :react:emoji，并标记类型为 emoji
+// React with an emoji (content stored as :react:emoji with type=emoji)
 export async function reactToMessage(id, emoji) {
   return commentMessage(id, { type: 'emoji', content: emoji })
 }
 
-// 删除表情：后端目前无法删除指定 emoji，因此全删
+// Remove reactions: backend currently deletes all emojis at once
 export async function unreactToMessage(id, emoji) {
   return uncommentMessage(id)
 }
 
-/* ---- 已读对勾（0=排队 1=已发 2=已达 3=已读；非本人发的返回 -1） ---- */
+/* ---- Read receipt ticks (0=queued 1=sent 2=delivered 3=read; -1 for others) ---- */
 export function ticksFor(m, myId) {
   if (!m || String(m.senderId) !== String(myId)) return -1
   const s = (m.status || '').toLowerCase()
