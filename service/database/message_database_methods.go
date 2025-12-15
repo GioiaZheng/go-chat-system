@@ -27,6 +27,8 @@ func nullableReplyID(reply *string) interface{} {
 	return NullIfEmpty(strings.TrimSpace(*reply))
 }
 
+// SendPrivateMessage stores a direct message between two users.
+// It enforces that only sender_id and receiver_id are set, leaving group and conversation empty.
 func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
 	_, err := db.c.Exec(`
 		INSERT INTO messages (
@@ -56,6 +58,8 @@ func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
 	return err
 }
 
+// SendMessageToConversation persists a message inside a conversation thread.
+// Group messages are funneled through this path as well so ordering remains consistent.
 func (db *appdbimpl) SendMessageToConversation(message models.Message) error {
 	_, err := db.c.Exec(`
 		INSERT INTO messages (
@@ -85,6 +89,8 @@ func (db *appdbimpl) SendMessageToConversation(message models.Message) error {
 	return err
 }
 
+// SendGroupMessage guards that a conversation has been selected before delegating
+// to the shared SendMessageToConversation implementation.
 func (db *appdbimpl) SendGroupMessage(message models.Message) error {
 	if strings.TrimSpace(message.ConversationID) == "" {
 		return errors.New("conversation_id required for group message")
@@ -98,8 +104,10 @@ func (db *appdbimpl) SendGroupMessage(message models.Message) error {
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
+// GetMessagesByConversation fetches messages for a conversation using optional
+// before/after cursors and a configurable limit. Results are ordered newest first.
 func (db *appdbimpl) GetMessagesByConversation(
-	convID, before, after string, limit int,
+        convID, before, after string, limit int,
 ) ([]models.Message, error) {
 
 	if limit <= 0 {
@@ -185,12 +193,15 @@ func (db *appdbimpl) GetMessagesByConversation(
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
+// GetPrivateConversation reads the recent direct-message history between two users.
 func (db *appdbimpl) GetPrivateConversation(userID1, userID2 string) ([]models.Message, error) {
-	return db.getPrivateConversationEx(context.Background(), userID1, userID2, defaultPrivateLimit, "")
+        return db.getPrivateConversationEx(context.Background(), userID1, userID2, defaultPrivateLimit, "")
 }
 
+// getPrivateConversationEx is the internal worker used by GetPrivateConversation;
+// it accepts a context for future cancellation support and allows overriding the limit.
 func (db *appdbimpl) getPrivateConversationEx(
-	_ context.Context, userID1, userID2 string, limit int, _ string,
+        _ context.Context, userID1, userID2 string, limit int, _ string,
 ) ([]models.Message, error) {
 
 	rows, err := db.c.Query(`
