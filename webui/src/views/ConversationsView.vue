@@ -110,16 +110,14 @@ const me = ref(null)
 const loading = ref(false)
 const err = ref('')
 
-// Current user id helper
+// Helper to read the current user identifier as a string.
 const myId = () => String(me.value?.id ?? '')
 
-// Split conversations by type
+// Derived conversation lists by type.
 const privateConvs = computed(() => convs.value.filter(c => c.type !== 'group'))
 const groupConvs = computed(() => convs.value.filter(c => c.type === 'group'))
 
-// -----------------------------------------------------
-// time format
-// -----------------------------------------------------
+// ----- Date formatting -----
 function fmtTime(t) {
   if (!t) return ''
   const d = new Date(t)
@@ -129,12 +127,8 @@ function fmtTime(t) {
   return `${m}/${day}`
 }
 
-
-// -----------------------------------------------------
-// Conversation display name
-// private → peer name from participants
-// group   → conversation name
-// -----------------------------------------------------
+// ----- Conversation display name -----
+// Private chats show the peer name; groups show the conversation name.
 function displayName(c) {
   if (c.type === 'group') return c.name || 'Group'
 
@@ -144,12 +138,8 @@ function displayName(c) {
   return other?.name || 'Chat'
 }
 
-
-// -----------------------------------------------------
-// Conversation avatar
-// private → peer avatar
-// group   → group avatar
-// -----------------------------------------------------
+// ----- Conversation avatar -----
+// Private chats mirror the peer avatar; groups use their own avatar.
 function avatarFor(c) {
   if (c.type === 'group') {
     return getAvatarUrl(c)
@@ -160,18 +150,15 @@ function avatarFor(c) {
   return getAvatarUrl(other || {})
 }
 
-
-// fallback initials
+// Fallback initials when no avatar is available.
 function initials(c) {
   const name = displayName(c)
   const match = name.match(/\b\w/g) || ['U']
   return match.slice(0, 2).join('').toUpperCase()
 }
 
-
-// -----------------------------------------------------
-// Load conversations and normalize backend payloads
-// -----------------------------------------------------
+// ----- Data loading -----
+// Load conversations and normalize varying backend payload shapes.
 async function load() {
   loading.value = true
   err.value = ''
@@ -238,10 +225,7 @@ async function load() {
   }
 }
 
-
-// -----------------------------------------------------
-// open chat
-// -----------------------------------------------------
+// ----- Navigation -----
 function open(c) {
   router.push({
     name: 'chat',
@@ -249,10 +233,7 @@ function open(c) {
   })
 }
 
-
-// -----------------------------------------------------
-// delete conversation
-// -----------------------------------------------------
+// Remove a conversation after user confirmation.
 async function warnDelete(c) {
   if (!confirm(`Delete chat:\n"${displayName(c)}"?`)) return
   try {
@@ -263,10 +244,7 @@ async function warnDelete(c) {
   }
 }
 
-
-// -----------------------------------------------------
-// mounted
-// -----------------------------------------------------
+// ----- Lifecycle -----
 const handleRefreshEvent = e => {
   const detail = e?.detail || {}
   const targetId = detail.conversationId ? String(detail.conversationId) : ''

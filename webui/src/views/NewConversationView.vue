@@ -54,14 +54,14 @@ function onChildError(msg) {
   err.value = msg || ''
 }
 
-/** Create a private chat and navigate (via api.startPrivateConversation) */
+/** Create a private chat and navigate (via api.startPrivateConversation). */
 async function start () {
   const id = String(picked.value?.id || '')
   if (!id) return
   loading.value = true
   err.value = ''
   try {
-    const res = await startPrivateConversation({ id }) // Passing the id string directly also works
+    const res = await startPrivateConversation({ id }) // Passing the raw id string also works.
     const cid =
       res?.conversation?.id ||
       res?.conversationId ||

@@ -110,16 +110,16 @@ const savingName = ref(false);
 const adding = ref(false);
 const leaving = ref(false);
 
-// selected users to add
+// Users queued for addition.
 const toAdd = ref([]);
 
-// --- API helpers (axios-only) ---
+// API helpers (axios-only).
 
 async function fetchGroup() {
   loading.value = true;
   try {
     const r = await axios.get(`/groups/${groupId.value ?? groupId}`);
-    // normalize: allow either {data:{group}} or {group}
+    // Normalize API shapes so both {data:{group}} and {group} are accepted.
     group.value = r?.data?.group || r?.data?.data?.group || r?.data || {};
     name.value = group.value.name || "";
   } finally {
@@ -165,7 +165,7 @@ async function uploadPhoto(ev) {
 }
 
 function onPick(u) {
-  // prevent duplicates
+  // Avoid adding the same user more than once.
   if (!toAdd.value.find((x) => String(x.id) === String(u.id))) {
     toAdd.value.push(u);
   }
@@ -191,7 +191,7 @@ async function leave() {
   leaving.value = true;
   try {
     await axios.post(`/groups/${groupId.value ?? groupId}/leave`);
-    emit("close"); // parent can refresh the list or navigate away
+    emit("close"); // Allow the parent to refresh the list or navigate away.
   } catch (e) {
     console.error("leaveGroup failed:", e);
   } finally {

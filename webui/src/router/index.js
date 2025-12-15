@@ -10,13 +10,13 @@ import NewGroupView from '../views/NewGroupView.vue'
 
 // === Route definitions ===
 const routes = [
-  // Root path → decide based on auth state
+  // Root path → default redirect; auth guard will apply.
   {
     path: '/',
     redirect: '/login',
   },
 
-  // Debug checker (development only)
+  // Lightweight route to verify router wiring during development.
   {
     path: '/__check',
     component: { template: '<div style="padding:12px">Router OK</div>' },
@@ -29,7 +29,7 @@ const routes = [
     component: LoginView,
     meta: {
       public: true,
-      hideSidebar: true, // Hide sidebar on login page
+      hideSidebar: true, // Hide the sidebar on the login page.
     },
   },
 
@@ -101,7 +101,7 @@ router.beforeEach((to, from, next) => {
     sessionStorage.getItem('authToken') || localStorage.getItem('token')
   )
 
-  // 1) If visiting a protected page while unauthenticated, redirect to login
+  // 1) Redirect unauthenticated users away from protected routes.
   if (needsAuth && !authed) {
     next({
       path: '/login',
@@ -110,13 +110,13 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // 2) If already logged in and heading to login, redirect to conversations
+  // 2) Send authenticated users away from the login page.
   if (to.path === '/login' && authed) {
     next('/conversations')
     return
   }
 
-  // 3) Emit a global event when the route actually changes (optional)
+  // 3) Emit a global event when the route actually changes (optional).
   if (from.name && from.name !== to.name) {
     try {
       window.dispatchEvent(new Event('auth:changed'))

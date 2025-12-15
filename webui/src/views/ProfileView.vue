@@ -91,10 +91,10 @@ const loading = ref(false)
 const err = ref('')
 const imgBroken = ref(false)
 
-// Verify login state
+// Lightweight auth helper to check for a stored token.
 const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
 
-// Build avatar URLs via getAvatarUrl to ensure absolute paths
+// Resolve avatar URLs through getAvatarUrl to avoid relative paths.
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
 
 const initials = computed(() => ((me.value?.name || me.value?.username || 'U')[0] || 'U').toUpperCase())
