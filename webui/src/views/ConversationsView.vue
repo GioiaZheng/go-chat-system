@@ -325,13 +325,13 @@ onUnmounted(() => {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: #e2e8f0;
-  color: #334155;
+  background: #e0f7ee;
+  color: #0f766e;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #a7f3d0;
 }
 .info {
   flex: 1;

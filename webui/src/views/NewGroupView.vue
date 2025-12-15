@@ -261,7 +261,7 @@ async function create() {
 .chip-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; }
 .chip-avatar.fallback {
   display: inline-flex; align-items: center; justify-content: center;
-  background: #e2e8f0; color: #334155; font-weight: 700;
+  background: #e0f7ee; color: #0f766e; font-weight: 700; border: 1px solid #a7f3d0;
 }
 .chip-name { color: #0f172a; font-weight: 600; }
 .chip-x {

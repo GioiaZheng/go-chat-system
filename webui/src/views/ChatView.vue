@@ -1048,6 +1048,9 @@ watch(convId, async () => {
 
 <style scoped>
 .page {
+  --avatar-bg: #e0f7ee;
+  --avatar-border: #a7f3d0;
+  --avatar-text: #0f766e;
   min-height: 100vh;
   background: #f2f5f8;
 }
@@ -1091,13 +1094,14 @@ watch(convId, async () => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: var(--avatar-bg);
   background-size: cover;
   background-position: center;
   display: grid;
   place-items: center;
   font-weight: 700;
-  color: #334155;
+  color: var(--avatar-text);
+  border: 1px solid var(--avatar-border);
 }
 
 .muted {
@@ -1150,17 +1154,18 @@ watch(convId, async () => {
   width: 54px;
   height: 54px;
   border-radius: 14px;
-  background: #e2e8f0;
+  background: var(--avatar-bg);
+  border: 1px solid var(--avatar-border);
   display: grid;
   place-items: center;
   background-size: cover;
   background-position: center;
-  color: #1e293b;
+  color: var(--avatar-text);
   font-weight: 700;
 }
 
 .group-avatar.placeholder {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--avatar-border);
 }
 
 .group-meta {
@@ -1241,17 +1246,18 @@ watch(convId, async () => {
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: #e2e8f0;
+  background: var(--avatar-bg);
+  border: 1px solid var(--avatar-border);
   display: grid;
   place-items: center;
   background-size: cover;
   background-position: center;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--avatar-text);
 }
 
 .member-avatar.placeholder {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--avatar-border);
 }
 
 .member-info {
@@ -1319,19 +1325,20 @@ watch(convId, async () => {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  background: #e2e8f0;
+  background: var(--avatar-bg);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  border: 1px solid var(--avatar-border);
 }
 
 .avatar.mine {
   margin-left: 4px;    /* 自己的头像和气泡之间留一点空 */
 }
 .avatar.placeholder {
-  background: #e2e8f0;
-  border: 1px solid #e2e8f0;
-  color: #475569;
+  background: var(--avatar-bg);
+  border: 1px solid var(--avatar-border);
+  color: var(--avatar-text);
   font-weight: 700;
 }
 

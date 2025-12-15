@@ -108,13 +108,14 @@ function logout() {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: #e0f7ee;
   background-size: cover;
   background-position: center;
   display: grid;
   place-items: center;
   font-weight: 700;
-  color: #475569;
+  color: #0f766e;
+  border: 1px solid #a7f3d0;
 }
 
 .me-info {

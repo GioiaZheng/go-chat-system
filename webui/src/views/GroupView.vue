@@ -386,7 +386,7 @@ onMounted(async () => {
 .avatar-fallback{
   width:36px; height:36px; border-radius:50%; display:inline-flex;
   align-items:center; justify-content:center;
-  background:#e2e8f0; color:#334155; font-weight:700; border:1px solid #cbd5e1;
+  background:#e0f7ee; color:#0f766e; font-weight:700; border:1px solid #a7f3d0;
 }
 
 .manage{
