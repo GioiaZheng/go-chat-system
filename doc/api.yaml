@@ -387,7 +387,28 @@ components:
               properties:
                 file:
                   $ref: '#/components/schemas/FileUpload'
-
+    MessageUploadEnvelope:
+      description: Uploaded message attachment metadata.
+      allOf:
+        - $ref: '#/components/schemas/BaseSuccessResponse'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              description: Uploaded message file information.
+              required: [fileUrl, filename]
+              properties:
+                fileUrl:
+                  type: string
+                  description: Public URL of the uploaded file
+                  minLength: 1
+                  maxLength: 255
+                filename:
+                  type: string
+                  description: Original filename of the uploaded file
+                  minLength: 1
+                  maxLength: 255
     Message:
       type: object
       description: Message model
@@ -1448,6 +1469,40 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /upload/messages:
+    post:
+      tags: [messages]
+      operationId: uploadMessageFile
+      summary: Upload message attachment
+      description: Upload a file to be referenced by a subsequent message
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              description: Payload for uploading a message attachment
+              type: object
+              required: [upload]
+              properties:
+                upload:
+                  type: string
+                  format: binary
+                  description: File to upload
+                  minLength: 1
+                  maxLength: 255
+      responses:
+        '201':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageUploadEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        
   /messages/{id}:
     parameters:
       - $ref: '#/components/parameters/id'
