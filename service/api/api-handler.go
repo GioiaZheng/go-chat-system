@@ -79,6 +79,8 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.GET("/messages/:id", rt.wrap(rt.getMessageByID))
 	// DELETE /messages/{id} -> deleteMessage
 	rt.router.DELETE("/messages/:id", rt.wrap(rt.deleteMessage))
+	// POST /messages/upload -> uploadMessageFile
+	rt.router.POST("/messages/:id/upload", rt.wrap(rt.uploadMessageFile))
 	// POST /messages/{id}/forward -> forwardMessage
 	rt.router.POST("/messages/:id/forward", rt.wrap(rt.forwardMessage))
 	// GET /messages/{id}/comment -> getMessageComments
@@ -86,7 +88,7 @@ func (rt *_router) RegisterRoutes() {
 	// POST /messages/{id}/comment -> commentMessage
 	rt.router.POST("/messages/:id/comment", rt.wrap(rt.commentMessage))
 	// POST /messages/{id}/uncomment -> uncommentMessage
-	rt.router.POST("/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
+	rt.router.POST("/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))     
 
 	// -------------------- Static files --------------------
 	// Serve uploaded files from the local "uploads" directory.
