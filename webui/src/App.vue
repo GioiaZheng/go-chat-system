@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex min-vh-100" :class="{ 'no-sidebar': hideSidebar }">
+  <div class="app-shell" :class="{ 'no-sidebar': hideSidebar }">
     <!-- ✅ 已登录才显示 Sidebar -->
     <Sidebar v-if="!hideSidebar" />
 
@@ -81,7 +81,17 @@ const hideSidebar = computed(() => !!route.meta?.hideSidebar || !isAuthed.value)
 
 <style>
 /* 布局控制 */
-.no-sidebar .flex-fill {
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-shell main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.no-sidebar main {
   width: 100%;
 }
 
@@ -119,5 +129,16 @@ const hideSidebar = computed(() => !!route.meta?.hideSidebar || !isAuthed.value)
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@media (max-width: 992px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .app-shell main {
+    width: 100%;
+    padding: 1rem !important;
+  }
 }
 </style>

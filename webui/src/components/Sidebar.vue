@@ -74,6 +74,7 @@ function logout() {
 <style scoped>
 .sidebar {
   width: 230px;
+  flex: 0 0 230px;
   min-height: 100vh;
   background: linear-gradient(180deg, #ffffff, #f8fafc);
   border-right: 1px solid #e2e8f0;
@@ -169,4 +170,56 @@ function logout() {
 .logout:hover {
   background: #dc2626;
 }
+
+
+@media (max-width: 992px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    width: 100%;
+    min-height: auto;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .brand {
+    margin: 0;
+    text-align: left;
+    flex: 0 0 auto;
+  }
+
+  .me {
+    margin: 0;
+    flex: 1 1 220px;
+  }
+
+  .nav {
+    flex: 2;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .link {
+    padding: 8px 10px;
+  }
+
+  .footer {
+    margin: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .logout {
+    width: auto;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+}
+
 </style>

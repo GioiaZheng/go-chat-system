@@ -150,6 +150,18 @@
                   {{ m._myLastComment }}
                 </div>
 
+                <div
+                  v-if="m._myReactions && m._myReactions.length"
+                  class="my-reactions"
+                  role="group"
+                  aria-label="Your reactions"
+                >
+                  <span class="my-reactions__label">You:</span>
+                  <span v-for="emoji in m._myReactions" :key="emoji" class="my-reactions__pill">
+                    {{ emoji }}
+                  </span>
+                </div>
+
                 <!-- REACTIONS / ACTIONS -->
                 <div class="actions">
                   <button
@@ -767,6 +779,25 @@ function normalizeMessage(raw) {
     raw.file ||
     (raw.type === 'image' ? raw.content : null)
 
+  const commentList =
+    raw.comments ||
+    raw.Comments ||
+    raw.replies ||
+    raw.Replies ||
+    []
+
+  const byMe = commentList.filter(c =>
+    String(c?.senderId || c?.userId || c?.user_id || '') === meId.value
+  )
+
+  const myEmojis = byMe
+    .filter(c => (c?.type || '').toLowerCase() === 'emoji' && c?.content)
+    .map(c => c.content)
+
+  const myLastComment = [...byMe]
+    .reverse()
+    .find(c => (c?.type || '').toLowerCase() !== 'emoji' && (c?.content || c?.text))
+
   return {
     id: raw.id,
     content: raw.type === 'image' ? '' : (raw.content || raw.text || ''),
@@ -777,8 +808,9 @@ function normalizeMessage(raw) {
     replyToId: replyToId ? String(replyToId) : '',
     _showCommentBox: false,
     _commentDraft: '',
-    _myLastComment: '',
-    _myReactions: [],
+    _myLastComment:
+      (myLastComment?.content || myLastComment?.text || '').trim(),
+    _myReactions: Array.from(new Set(myEmojis)),
     _replyPreview: replyPreview,
     _replyFrom: raw.replyTo?.sender?.name || '',
   }
@@ -1848,6 +1880,28 @@ watch(convId, async () => {
 
 .comment-chip.mine {
   background: #d9f7be;
+}
+
+.my-reactions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.my-reactions__label {
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.my-reactions__pill {
+  border-radius: 999px;
+  background: #e0f2fe;
+  border: 1px solid #bfdbfe;
+  padding: 2px 8px;
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .actions {

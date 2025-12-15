@@ -501,4 +501,24 @@ onUnmounted(() => {
     transform: rotate(360deg);
   }
 }
+
+@media (max-width: 992px) {
+  .topbar {
+    height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 14px;
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  .section-head {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
 </style>
