@@ -1,4 +1,5 @@
-// file: service/api/common_io.go
+// context-utils.go centralizes JSON helpers for reading request payloads and
+// sending structured responses and errors.
 package api
 
 import (

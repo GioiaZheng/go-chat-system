@@ -1,4 +1,5 @@
-// file: service/api/auth_do_login.go
+// auth_do_login.go implements the session login endpoint and its response
+// envelope to match the OpenAPI user/token contract.
 package api
 
 import (

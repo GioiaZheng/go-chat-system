@@ -1,4 +1,5 @@
-// file: service/api/conversations.go
+// conversation.go implements the conversation endpoints, including validation,
+// membership checks, and responses aligned with the OpenAPI contract.
 package api
 
 import (

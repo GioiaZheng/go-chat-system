@@ -1,17 +1,20 @@
+// cors.go centralizes the CORS middleware used by the web API server to make
+// cross-origin requests predictable for browsers and API clients.
 package main
 
 import (
-	"net/http"
+        "net/http"
 
-	"github.com/gorilla/handlers"
+        "github.com/gorilla/handlers"
 )
 
-// applyCORSHandler applies a CORS policy to the router. CORS stands for Cross-Origin Resource Sharing: it's a security
-// feature present in web browsers that blocks JavaScript requests going across different domains if not specified in a
-// policy. This function sends the policy of this API server.
+// applyCORSHandler wraps the given handler with the CORS policy enforced by the
+// API server. CORS (Cross-Origin Resource Sharing) is enforced by browsers to
+// control cross-domain requests, so explicitly defining the allowed headers,
+// methods, and origins keeps client behavior consistent.
 func applyCORSHandler(h http.Handler) http.Handler {
-	return handlers.CORS(
-		handlers.AllowedHeaders([]string{
+        return handlers.CORS(
+                handlers.AllowedHeaders([]string{
 			"Content-Type",
 			"Authorization",
 			"x-example-header",

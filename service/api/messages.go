@@ -1,3 +1,5 @@
+// messages.go serves message read/write endpoints and the DTO helpers that map
+// internal models to the OpenAPI JSON shapes.
 package api
 
 import (
@@ -16,11 +18,9 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  DTOs (match OpenAPI JSON shapes; keep models.* as internal)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// -----------------------------------------------------------------------------
+// Section: DTOs (match OpenAPI JSON shapes; keep models.* as internal)
+// -----------------------------------------------------------------------------
 
 // MessageDTO is the public JSON shape for a message (camelCase, per OpenAPI).
 type MessageDTO struct {
@@ -67,11 +67,9 @@ func messageRowToCommentDTO(m models.Message) CommentDTO {
 	}
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  Helpers
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// -----------------------------------------------------------------------------
+// Section: Helpers
+// -----------------------------------------------------------------------------
 
 // newMsgID generates a random message ID (TEXT).
 func newMsgID() (string, error) {
@@ -104,11 +102,9 @@ func parseLimit(raw string, dflt, min, max int) int {
 func timeBefore(a, b string) bool { return a < b }
 func timeAfter(a, b string) bool  { return a > b }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  POST /messages  -> sendMessage (OpenAPI)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// -----------------------------------------------------------------------------
+// Endpoint: POST /messages -> sendMessage (OpenAPI)
+// -----------------------------------------------------------------------------
 
 // sendMessageRequest matches the OpenAPI request body for sending a message.
 type sendMessageRequest struct {
@@ -181,11 +177,9 @@ func (rt *_router) sendMessage(
 	_ = writeJSON(w, http.StatusCreated, resp)
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  GET /messages  -> getConversation (OpenAPI)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// -----------------------------------------------------------------------------
+// Endpoint: GET /messages -> getConversation (OpenAPI)
+// -----------------------------------------------------------------------------
 
 // getMessages returns a cursor-paginated slice for a conversation.
 // Prefer database pagination; fall back to in-memory filtering to keep a 200 on failures.
@@ -280,11 +274,9 @@ func (rt *_router) getMessages(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  GET /messages/{id}  -> getMessageByID (OpenAPI)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// -----------------------------------------------------------------------------
+// Endpoint: GET /messages/{id} -> getMessageByID (OpenAPI)
+// -----------------------------------------------------------------------------
 
 func (rt *_router) getMessageByID(
 	w http.ResponseWriter,
@@ -311,11 +303,9 @@ func (rt *_router) getMessageByID(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  POST /messages/{id}/forward  -> forwardMessage (OpenAPI)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// -----------------------------------------------------------------------------
+// Endpoint: POST /messages/{id}/forward -> forwardMessage (OpenAPI)
+// -----------------------------------------------------------------------------
 
 // forwardRequest matches OpenAPI: target conversationId only.
 type forwardRequest struct {
@@ -367,14 +357,9 @@ func (rt *_router) forwardMessage(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  COMMENTS
-//  GET /messages/{id}/comment    -> list
-//  POST /messages/{id}/comment   -> add
-//  POST /messages/{id}/uncomment -> remove
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// -----------------------------------------------------------------------------
+// Section: Comments (GET, POST, POST /uncomment)
+// -----------------------------------------------------------------------------
 
 // commentAddRequest matches OpenAPI CommentMessageRequest.
 type commentAddRequest struct {
@@ -486,11 +471,9 @@ func (rt *_router) uncommentMessage(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//  DELETE /messages/{id}  -> deleteMessage (OpenAPI)
-// ────────────────────────────────────────────────────────────────────────────────
-//
+// -----------------------------------------------------------------------------
+// Endpoint: DELETE /messages/{id} -> deleteMessage (OpenAPI)
+// -----------------------------------------------------------------------------
 
 func (rt *_router) deleteMessage(
 	w http.ResponseWriter,
