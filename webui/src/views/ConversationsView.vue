@@ -301,7 +301,11 @@ onUnmounted(() => {
 
 <style scoped>
 .page {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
   color: #1f2937;
 }
@@ -324,20 +328,26 @@ onUnmounted(() => {
 }
 
 .workspace {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
   padding: 14px 18px 18px;
 }
 
 .panel {
-  display: grid;
-  grid-template-columns: 340px 1fr;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
   background: #f5f7fa;
   border-radius: 18px;
-  min-height: calc(100vh - 120px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   border: 1px solid #e2e8f0;
 }
 .list-pane {
+  flex: 0 0 340px;
   background: #f7f7f7;
   border-right: 1px solid #e2e8f0;
   display: flex;
@@ -516,6 +526,8 @@ onUnmounted(() => {
   padding: 16px 0;
 }
 .conversation-pane {
+  flex: 1 1 auto;
+  min-width: 0;
   background: #ffffff;
   display: flex;
   align-items: center;
@@ -579,12 +591,13 @@ onUnmounted(() => {
     padding: 12px;
   }
   .panel {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     min-height: auto;
   }
 
 
   .list-pane {
+    flex-basis: auto;
     border-right: 0;
     border-bottom: 1px solid #e2e8f0;
   }

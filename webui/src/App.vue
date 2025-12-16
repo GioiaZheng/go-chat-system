@@ -1,10 +1,19 @@
 <template>
-  <div class="app-shell" :class="{ 'no-sidebar': hideSidebar }">
-    <!-- Show the sidebar only when the user is authenticated. -->
-    <Sidebar v-if="!hideSidebar" />
+  <RouterView v-slot="{ Component, route }">
+    <AppLayout v-if="!route.meta?.hideSidebar && isAuthed">
+      <div v-if="checking" class="checking">
+        <div class="spinner"></div>
+        <p>Checking session…</p>
+      </div>
 
-    <main class="flex-fill p-3">
-      <!-- Transitional notice while authentication status is being checked. -->
+      <div v-else-if="!isAuthed" class="unauth">
+        <p>You are not logged in. Redirecting to login…</p>
+      </div>
+
+      <component v-else :is="Component" />
+    </AppLayout>
+
+    <template v-else>
       <div v-if="checking" class="checking">
         <div class="spinner"></div>
         <p>Checking session…</p>
@@ -14,16 +23,15 @@
         <p>You are not logged in. Redirecting to login…</p>
       </div>
 
-      <!-- Render the active route content. -->
-      <RouterView v-else />
-    </main>
-  </div>
+      <component v-else :is="Component" />
+    </template>
+  </RouterView>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Sidebar from '@/components/Sidebar.vue'
+import AppLayout from '@/components/AppLayout.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,26 +83,9 @@ watch(
   { immediate: true }
 )
 
-/* Hide the sidebar on routes that request it or when unauthenticated. */
-const hideSidebar = computed(() => !!route.meta?.hideSidebar || !isAuthed.value)
 </script>
 
 <style>
-/* Layout */
-.app-shell {
-  display: flex;
-  min-height: 100vh;
-}
-
-.app-shell main {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.no-sidebar main {
-  width: 100%;
-}
-
 /* Unauthenticated notice */
 .unauth {
   display: flex;
@@ -129,16 +120,5 @@ const hideSidebar = computed(() => !!route.meta?.hideSidebar || !isAuthed.value)
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-@media (max-width: 992px) {
-  .app-shell {
-    flex-direction: column;
-  }
-
-  .app-shell main {
-    width: 100%;
-    padding: 1rem !important;
-  }
 }
 </style>

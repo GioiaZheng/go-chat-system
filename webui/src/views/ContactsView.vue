@@ -139,20 +139,23 @@ onMounted(() => {
 
 <style scoped>
 .page{
-  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  flex:1 1 auto;
+  min-height:0;
+  height:100%;
   background:
     radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
     radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
     linear-gradient(180deg, #ffffff, #f7fafe);
 }
 .topbar{
-  height:56px; display:flex; align-items:center; justify-content:flex-end;
+  height:56px; display:flex; align-items:center; justify-content:space-between;
   padding:0 18px; border-bottom:1px solid rgba(20,100,60,.08); background:#fff8; backdrop-filter: blur(6px);
-   position:relative;
 }
 .title{
   font-weight:800; color:#0f172a;
-  position:absolute; left:50%; transform:translateX(-50%);
+  margin:0 auto;
 }
 
 .search{ display:flex; gap:8px; }
@@ -169,7 +172,7 @@ onMounted(() => {
 .btn-outline{
   background:#fff; color:#334155; border:1px solid #cbd5e1; box-shadow:none;
 }
-.content{ max-width:1100px; margin:0 auto; padding:16px; }
+.content{ flex:1 1 auto; max-width:1100px; margin:0 auto; padding:16px; width:100%; overflow:auto; }
 
 .loading{ color:#475569; display:flex; align-items:center; gap:.5rem }
 .spinner{

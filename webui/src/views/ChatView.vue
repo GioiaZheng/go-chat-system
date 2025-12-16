@@ -1331,12 +1331,15 @@ watch(convId, async () => {
   --avatar-bg: #e0f7ee;
   --avatar-border: #a7f3d0;
   --avatar-text: #0f766e;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   background: #f2f5f8;
 }
 
 .topbar {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1354,13 +1357,12 @@ watch(convId, async () => {
 }
 
 .title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-weight: 800;
-  color: #1e293b;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  font-weight: 800;
+  color: #1e293b;
 }
 
 .title-row {
@@ -1394,6 +1396,12 @@ watch(convId, async () => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px 24px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
 }
 
 .chat-layout {
@@ -1401,6 +1409,8 @@ watch(convId, async () => {
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chat-layout.has-group {
@@ -1416,7 +1426,8 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100vh - 120px);
+  height: 100%;
+  min-height: 0;
 }
 
 .conv-rail__header {
