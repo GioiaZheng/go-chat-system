@@ -175,6 +175,9 @@ function handleError(e, fallback) {
 .page {
   min-height: 100%;
   height: 100%;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   background:

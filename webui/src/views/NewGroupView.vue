@@ -203,6 +203,9 @@ async function create() {
 .page {
   min-height: 100%;
   height: 100%;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   background:
@@ -214,15 +217,13 @@ async function create() {
   height: 56px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   padding: 0 18px;
   border-bottom: 1px solid #e2e8f0;
   background: #fff;
-  position: relative;
 }
 .title {
   font-weight: 800; color: #0f172a;
-  position: absolute; left: 50%; transform: translateX(-50%);
 }
 
 .content { flex: 1 1 auto; max-width: 900px; margin: 0 auto; padding: 18px; width: 100%; }

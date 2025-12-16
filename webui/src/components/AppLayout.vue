@@ -15,6 +15,7 @@ import Sidebar from '@/components/Sidebar.vue'
 .app-layout {
   display: flex;
   min-height: 100vh;
+  height: 100%;
   width: 100%;
   background: #f7fafc;
 }
