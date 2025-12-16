@@ -49,16 +49,17 @@ const checking = ref(true)
 
 function refreshAuth() {
   isAuthed.value = hasToken()
+
+  // Always send unauthenticated visitors to the login screen.
+  if (!isAuthed.value && route.path !== '/login') {
+    const query = route.fullPath ? { redirect: route.fullPath } : undefined
+    router.replace({ path: '/login', query })
+  }
 }
 
 /* Lifecycle hooks manage authentication redirects and listeners. */
 onMounted(() => {
   refreshAuth()
-
-  // Redirect unauthenticated visitors to the login page.
-  if (!hasToken() && route.path !== '/login') {
-    router.replace('/login')
-  }
 
   // Listen for login/logout events emitted elsewhere in the app.
   window.addEventListener('auth:changed', refreshAuth)
