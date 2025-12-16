@@ -8,100 +8,102 @@
     </header>
 
     <section class="workspace">
-      <div v-if="loading" class="loading">
-        <span class="spinner"></span> Loading conversations…
-      </div>
-      <template v-else>
-        <ErrorMsg v-if="err" :text="err" class="mb-2" />
-        <button v-if="err" class="btn btn-sm btn-outline-secondary mb-3" @click="load">
-          Retry
-        </button>
+      <div class="content-inner">
+        <div v-if="loading" class="loading">
+          <span class="spinner"></span> Loading conversations…
+        </div>
+        <template v-else>
+          <ErrorMsg v-if="err" :text="err" class="mb-2" />
+          <button v-if="err" class="btn btn-sm btn-outline-secondary mb-3" @click="load">
+            Retry
+          </button>
 
-        <div v-else class="panel">
-          <aside class="list-pane">
-            <div class="list-header">
-              <input
-                type="search"
-                class="search"
-                placeholder="search conversations"
-                aria-label="Search conversations"
-              />
-            </div>
-
-            <div class="section">
-              <div class="section-head">
-                <h3 class="section-title">Private Chats</h3>
-                <span class="badge">{{ privateConvs.length }}</span>
+          <div v-else class="panel">
+            <aside class="list-pane">
+              <div class="list-header">
+                <input
+                  type="search"
+                  class="search"
+                  placeholder="search conversations"
+                  aria-label="Search conversations"
+                />
               </div>
 
-              <ul class="list">
-                <li
-                  v-for="c in privateConvs"
-                  :key="c.id"
-                  class="item"
-                  @click="open(c)"
-                >
-                  <div class="left">
-                    <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
-                    <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
-                  </div>
+              <div class="section">
+                <div class="section-head">
+                  <h3 class="section-title">Private Chats</h3>
+                  <span class="badge">{{ privateConvs.length }}</span>
+                </div>
 
-                  <div class="info">
-                    <div class="top">
-                      <div class="name">{{ displayName(c) }}</div>
-                      <div class="time">{{ fmtTime(c.last_time) }}</div>
+                <ul class="list">
+                  <li
+                    v-for="c in privateConvs"
+                    :key="c.id"
+                    class="item"
+                    @click="open(c)"
+                  >
+                    <div class="left">
+                      <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
+                      <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
                     </div>
-                    <div class="bottom">
-                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+
+                    <div class="info">
+                      <div class="top">
+                        <div class="name">{{ displayName(c) }}</div>
+                        <div class="time">{{ fmtTime(c.last_time) }}</div>
+                      </div>
+                      <div class="bottom">
+                        <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                      </div>
                     </div>
-                  </div>
 
-                  <button class="del" @click.stop="warnDelete(c)">删除</button>
-                </li>
+                    <button class="del" @click.stop="warnDelete(c)">删除</button>
+                  </li>
 
-                <li v-if="!privateConvs.length" class="empty">No private chats yet.</li>
-              </ul>
-            </div>
-            <div class="section">
-              <div class="section-head second">
-                <h3 class="section-title">Group Chats</h3>
-                <span class="badge badge--secondary">{{ groupConvs.length }}</span>
+                  <li v-if="!privateConvs.length" class="empty">No private chats yet.</li>
+                </ul>
               </div>
+              <div class="section">
+                <div class="section-head second">
+                  <h3 class="section-title">Group Chats</h3>
+                  <span class="badge badge--secondary">{{ groupConvs.length }}</span>
+                </div>
 
-              <ul class="list">
-                <li
-                  v-for="c in groupConvs"
-                  :key="c.id"
-                  class="item"
-                  @click="open(c)"
-                >
-                  <div class="left">
-                    <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
-                    <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
-                  </div>
-                  <div class="info">
-                    <div class="top">
-                      <div class="name">{{ displayName(c) }}</div>
-                      <div class="time">{{ fmtTime(c.last_time) }}</div>
+                <ul class="list">
+                  <li
+                    v-for="c in groupConvs"
+                    :key="c.id"
+                    class="item"
+                    @click="open(c)"
+                  >
+                    <div class="left">
+                      <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
+                      <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
                     </div>
-                    <div class="bottom">
-                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                    <div class="info">
+                      <div class="top">
+                        <div class="name">{{ displayName(c) }}</div>
+                        <div class="time">{{ fmtTime(c.last_time) }}</div>
+                      </div>
+                      <div class="bottom">
+                        <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                      </div>
                     </div>
-                  </div>
-                  <button class="del" @click.stop="warnDelete(c)">Delete</button>
-                </li>
-                <li v-if="!groupConvs.length" class="empty">No group chats yet.</li>
-              </ul>
-            </div>
-          </aside>
+                    <button class="del" @click.stop="warnDelete(c)">Delete</button>
+                  </li>
+                  <li v-if="!groupConvs.length" class="empty">No group chats yet.</li>
+                </ul>
+              </div>
+            </aside>
 
-          <div class="conversation-pane">
-            <div class="preview-ghost">
-              <span class="ghost-icon">💬</span>
+            <div class="conversation-pane">
+              <div class="preview-ghost">
+                <span class="ghost-icon">💬</span>
+              </div>
             </div>
           </div>
-        </div>
-      </template>
+        </template>
+      </div>
     </section>
   </div>
 </template>
@@ -335,6 +337,17 @@ onUnmounted(() => {
   flex-direction: column;
   min-height: 0;
   padding: 14px 18px 18px;
+}
+
+.content-inner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .panel {

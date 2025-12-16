@@ -33,14 +33,15 @@
 
     <!-- Main content area: errors/notices, conversation rail, and chat canvas. -->
     <section class="content">
-      <ErrorMsg v-if="err" :text="err" class="mb-2" />
-      <p v-else-if="notice" class="notice" role="status" aria-live="polite">{{ notice }}</p>
-      <div class="chat-layout" :class="{ 'has-group': isGroup }">
-        <aside class="conv-rail">
-          <div class="conv-rail__header">
-            <div>
-              <div class="conv-rail__title">Conversations</div>
-              <div class="conv-rail__hint">Switch chats without leaving the page.</div>
+      <div class="content-inner">
+        <ErrorMsg v-if="err" :text="err" class="mb-2" />
+        <p v-else-if="notice" class="notice" role="status" aria-live="polite">{{ notice }}</p>
+        <div class="chat-layout" :class="{ 'has-group': isGroup }">
+          <aside class="conv-rail">
+            <div class="conv-rail__header">
+              <div>
+                <div class="conv-rail__title">Conversations</div>
+                <div class="conv-rail__hint">Switch chats without leaving the page.</div>
             </div>
             <span class="conv-rail__badge">{{ filteredConversations.length }}</span>
           </div>
@@ -356,93 +357,94 @@
           </div>
         </div>
 
-        <aside v-if="isGroup" class="group-panel">
-          <div class="group-card">
-            <div class="group-header">
-              <div
-                class="group-avatar"
-                :class="{ placeholder: !groupInfo?.avatar }"
-                :style="groupInfo?.avatar ? { backgroundImage: `url('${groupInfo.avatar}')` } : {}"
-              >
-                <span v-if="!groupInfo?.avatar">{{ (groupInfo?.name || headerTitle)[0] || 'G' }}</span>
+          <aside v-if="isGroup" class="group-panel">
+            <div class="group-card">
+              <div class="group-header">
+                <div
+                  class="group-avatar"
+                  :class="{ placeholder: !groupInfo?.avatar }"
+                  :style="groupInfo?.avatar ? { backgroundImage: `url('${groupInfo.avatar}')` } : {}"
+                >
+                  <span v-if="!groupInfo?.avatar">{{ (groupInfo?.name || headerTitle)[0] || 'G' }}</span>
+                </div>
+                <div class="group-meta">
+                  <div class="group-name">{{ groupInfo?.name || headerTitle }}</div>
+                  <div class="group-sub">Conversation ID: {{ convId }}</div>
+                  <div class="group-sub">Members: {{ groupMembers.length }}</div>
+                </div>
+                <button class="link" type="button" @click="triggerGroupPhoto">Change photo</button>
+                <input
+                  ref="groupPhotoInput"
+                  type="file"
+                  class="filepick"
+                  accept="image/*"
+                  @change="onPickGroupPhoto"
+                />
               </div>
-              <div class="group-meta">
-                <div class="group-name">{{ groupInfo?.name || headerTitle }}</div>
-                <div class="group-sub">Conversation ID: {{ convId }}</div>
-                <div class="group-sub">Members: {{ groupMembers.length }}</div>
+
+              <div class="field inline">
+                <input
+                  v-model.trim="groupNameDraft"
+                  class="input"
+                  placeholder="Group name"
+                  :disabled="groupBusy"
+                />
+                <button class="btn sm" type="button" :disabled="groupBusy || !groupNameDraft" @click="onRenameGroup">
+                  {{ groupBusy ? 'Saving…' : 'Save' }}
+                </button>
               </div>
-              <button class="link" type="button" @click="triggerGroupPhoto">Change photo</button>
-              <input
-                ref="groupPhotoInput"
-                type="file"
-                class="filepick"
-                accept="image/*"
-                @change="onPickGroupPhoto"
-              />
-            </div>
 
-            <div class="field inline">
-              <input
-                v-model.trim="groupNameDraft"
-                class="input"
-                placeholder="Group name"
-                :disabled="groupBusy"
-              />
-              <button class="btn sm" type="button" :disabled="groupBusy || !groupNameDraft" @click="onRenameGroup">
-                {{ groupBusy ? 'Saving…' : 'Save' }}
-              </button>
-            </div>
-
-            <div class="members-block">
-              <div class="members-title">Members ({{ groupMembers.length }})</div>
-              <p v-if="groupLoading" class="muted">Loading group info…</p>
-              <ErrorMsg v-else-if="groupErr" :text="groupErr" />
-              <div v-else class="member-scroll" role="list">
-                <ul class="member-list">
-                  <li v-for="u in groupMembers" :key="u.id" class="member-item" role="listitem">
-                    <div class="member-left">
-                      <div
-                        class="member-avatar"
-                        :class="{ placeholder: !u.avatar }"
-                        :style="u.avatar ? { backgroundImage: `url('${u.avatar}')` } : {}"
+              <div class="members-block">
+                <div class="members-title">Members ({{ groupMembers.length }})</div>
+                <p v-if="groupLoading" class="muted">Loading group info…</p>
+                <ErrorMsg v-else-if="groupErr" :text="groupErr" />
+                <div v-else class="member-scroll" role="list">
+                  <ul class="member-list">
+                    <li v-for="u in groupMembers" :key="u.id" class="member-item" role="listitem">
+                      <div class="member-left">
+                        <div
+                          class="member-avatar"
+                          :class="{ placeholder: !u.avatar }"
+                          :style="u.avatar ? { backgroundImage: `url('${u.avatar}')` } : {}"
+                        >
+                          <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
+                        </div>
+                        <div class="member-info">
+                          <div class="member-name">{{ u.name || 'User' }}</div>
+                          <div class="member-sub">ID: {{ u.id }}</div>
+                        </div>
+                      </div>
+                      <button
+                        v-if="String(u.id) !== meId"
+                        class="link danger"
+                        type="button"
+                        :disabled="groupBusy"
+                        @click="onRemoveMember(u.id)"
                       >
-                        <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
-                      </div>
-                      <div class="member-info">
-                        <div class="member-name">{{ u.name || 'User' }}</div>
-                        <div class="member-sub">ID: {{ u.id }}</div>
-                      </div>
-                    </div>
-                    <button
-                      v-if="String(u.id) !== meId"
-                      class="link danger"
-                      type="button"
-                      :disabled="groupBusy"
-                      @click="onRemoveMember(u.id)"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                  <li v-if="!groupMembers.length" class="muted">No members found.</li>
-                </ul>
+                        Remove
+                      </button>
+                    </li>
+                    <li v-if="!groupMembers.length" class="muted">No members found.</li>
+                  </ul>
+                </div>
               </div>
-            </div>
-            <div class="members-add">
-              <div class="members-title">Add members</div>
-              <UserSearch
-                placeholder="Search users to add"
-                :class="{ disabled: addingMember }"
-                @select="onSelectNewMember"
-                @error="groupErr = $event || ''"
-              />
-            </div>
+              <div class="members-add">
+                <div class="members-title">Add members</div>
+                <UserSearch
+                  placeholder="Search users to add"
+                  :class="{ disabled: addingMember }"
+                  @select="onSelectNewMember"
+                  @error="groupErr = $event || ''"
+                />
+              </div>
 
-            <button class="btn danger leave" type="button" :disabled="groupBusy" @click="onLeaveGroup">
-              Leave group
-            </button>
-            <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
-          </div>
-        </aside>
+              <button class="btn danger leave" type="button" :disabled="groupBusy" @click="onLeaveGroup">
+                Leave group
+              </button>
+              <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
+            </div>
+          </aside>
+        </div>
       </div>
     </section>
   </div>
@@ -1398,14 +1400,21 @@ watch(convId, async () => {
 
 .content {
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
   padding: 20px 24px;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
+}
+
+.content-inner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chat-layout {
