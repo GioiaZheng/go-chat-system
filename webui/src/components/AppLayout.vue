@@ -13,7 +13,8 @@ import Sidebar from '@/components/Sidebar.vue'
 
 <style scoped>
 .app-layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: 230px 1fr;
   min-height: 100vh;
   height: 100%;
   width: 100%;
@@ -21,12 +22,11 @@ import Sidebar from '@/components/Sidebar.vue'
 }
 
 .app-layout__sidebar {
-  flex: 0 0 230px;
+  position: static;
   min-height: 100%;
 }
 
 .app-layout__main {
-  flex: 1 1 auto;
   min-width: 0;
   min-height: 100vh;
   display: flex;
@@ -36,7 +36,8 @@ import Sidebar from '@/components/Sidebar.vue'
 
 @media (max-width: 992px) {
   .app-layout {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
   .app-layout__sidebar {

@@ -75,6 +75,7 @@ function logout() {
   width: 230px;
   flex: 0 0 230px;
   min-height: 100vh;
+  position: static;
   background: linear-gradient(180deg, #ffffff, #f8fafc);
   border-right: 1px solid #e2e8f0;
   padding: 18px 14px;
