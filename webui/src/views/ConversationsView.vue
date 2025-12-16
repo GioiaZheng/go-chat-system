@@ -303,6 +303,9 @@ onUnmounted(() => {
 .page {
   min-height: 100%;
   height: 100%;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #f1f5f9, #e2e8f0);

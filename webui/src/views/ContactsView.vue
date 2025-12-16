@@ -141,6 +141,9 @@ onMounted(() => {
 .page{
   min-height:100%;
   height:100%;
+  width:100%;
+  min-width:0;
+  flex:1 1 auto;
   display:flex;
   flex-direction:column;
   background:
@@ -149,13 +152,11 @@ onMounted(() => {
     linear-gradient(180deg, #ffffff, #f7fafe);
 }
 .topbar{
-  height:56px; display:flex; align-items:center; justify-content:flex-end;
+  height:56px; display:flex; align-items:center; justify-content:space-between;
   padding:0 18px; border-bottom:1px solid rgba(20,100,60,.08); background:#fff8; backdrop-filter: blur(6px);
-   position:relative;
 }
 .title{
   font-weight:800; color:#0f172a;
-  position:absolute; left:50%; transform:translateX(-50%);
 }
 
 .search{ display:flex; gap:8px; }

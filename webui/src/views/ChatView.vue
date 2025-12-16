@@ -1333,6 +1333,9 @@ watch(convId, async () => {
   --avatar-text: #0f766e;
   min-height: 100%;
   height: 100%;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   background: #f2f5f8;
@@ -1347,6 +1350,7 @@ watch(convId, async () => {
   padding: 0 16px;
   border-bottom: 1px solid #e2e8f0;
   background: #fff;
+  justify-content: flex-start;
 }
 
 .back {
@@ -1357,13 +1361,13 @@ watch(convId, async () => {
 }
 
 .title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   font-weight: 800;
   color: #1e293b;
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
 }
 
 .title-row {
