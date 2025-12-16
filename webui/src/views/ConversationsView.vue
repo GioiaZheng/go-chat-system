@@ -4,11 +4,10 @@
     <header class="topbar">
       <div>
         <div class="title">Chats</div>
-        <p class="subtitle">Stay close to your private and group conversations.</p>
       </div>
     </header>
 
-    <section class="content">
+    <section class="workspace">
       <div v-if="loading" class="loading">
         <span class="spinner"></span> Loading conversations…
       </div>
@@ -18,73 +17,88 @@
           Retry
         </button>
 
-        <div v-else class="sections">
-          <div class="section">
-            <div class="section-head">
-              <h3 class="section-title">Private Chats</h3>
-              <span class="badge">{{ privateConvs.length }}</span>
+        <div v-else class="panel">
+          <aside class="list-pane">
+            <div class="list-header">
+              <input
+                type="search"
+                class="search"
+                placeholder="search conversations"
+                aria-label="Search conversations"
+              />
             </div>
 
-            <ul class="list">
-              <li
-                v-for="c in privateConvs"
-                :key="c.id"
-                class="item"
-                @click="open(c)"
-              >
-                <div class="left">
-                  <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
-                  <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
-                </div>
+            <div class="section">
+              <div class="section-head">
+                <h3 class="section-title">Private Chats</h3>
+                <span class="badge">{{ privateConvs.length }}</span>
+              </div>
 
-                <div class="info">
-                  <div class="top">
-                    <div class="name">{{ displayName(c) }}</div>
-                    <div class="time">{{ fmtTime(c.last_time) }}</div>
+              <ul class="list">
+                <li
+                  v-for="c in privateConvs"
+                  :key="c.id"
+                  class="item"
+                  @click="open(c)"
+                >
+                  <div class="left">
+                    <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
+                    <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
                   </div>
-                  <div class="bottom">
-                    <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+
+                  <div class="info">
+                    <div class="top">
+                      <div class="name">{{ displayName(c) }}</div>
+                      <div class="time">{{ fmtTime(c.last_time) }}</div>
+                    </div>
+                    <div class="bottom">
+                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                    </div>
                   </div>
-                </div>
 
-                <button class="del" @click.stop="warnDelete(c)">Delete</button>
-              </li>
+                  <button class="del" @click.stop="warnDelete(c)">删除</button>
+                </li>
 
-              <li v-if="!privateConvs.length" class="empty">No private chats yet.</li>
-            </ul>
-          </div>
-          <div class="section">
-            <div class="section-head">
-              <h3 class="section-title">Group Chats</h3>
-              <span class="badge badge--secondary">{{ groupConvs.length }}</span>
+                <li v-if="!privateConvs.length" class="empty">No private chats yet.</li>
+              </ul>
             </div>
-            <ul class="list">
-              <li
-                v-for="c in groupConvs"
-                :key="c.id"
-                class="item"
-                @click="open(c)"
-              >
-                <div class="left">
-                  <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
-                  <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
-                </div>
+            <div class="section">
+              <div class="section-head second">
+                <h3 class="section-title">Group Chats</h3>
+                <span class="badge badge--secondary">{{ groupConvs.length }}</span>
+              </div>
 
-                <div class="info">
-                  <div class="top">
-                    <div class="name">{{ displayName(c) }}</div>
-                    <div class="time">{{ fmtTime(c.last_time) }}</div>
+              <ul class="list">
+                <li
+                  v-for="c in groupConvs"
+                  :key="c.id"
+                  class="item"
+                  @click="open(c)"
+                >
+                  <div class="left">
+                    <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
+                    <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
                   </div>
-                  <div class="bottom">
-                    <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                  <div class="info">
+                    <div class="top">
+                      <div class="name">{{ displayName(c) }}</div>
+                      <div class="time">{{ fmtTime(c.last_time) }}</div>
+                    </div>
+                    <div class="bottom">
+                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                    </div>
                   </div>
-                </div>
+                  <button class="del" @click.stop="warnDelete(c)">Delete</button>
+                </li>
+                <li v-if="!groupConvs.length" class="empty">No group chats yet.</li>
+              </ul>
+            </div>
+          </aside>
 
-                <button class="del" @click.stop="warnDelete(c)">Delete</button>
-              </li>
-
-              <li v-if="!groupConvs.length" class="empty">No group chats yet.</li>
-            </ul>
+          <div class="conversation-pane">
+            <div class="preview-ghost">
+              <span class="ghost-icon">💬</span>
+            </div>
           </div>
         </div>
       </template>
@@ -285,106 +299,144 @@ onUnmounted(() => {
 })
 </script>
 
-
 <style scoped>
 .page {
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
-    radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
-    linear-gradient(180deg, #ffffff, #f7fafe);
+  background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+  color: #1f2937;
 }
 .topbar {
   height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  place-items: center;
   padding: 0 18px;
-  border-bottom: 1px solid rgba(20, 100, 60, 0.08);
-  background: #fff8;
-  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(20, 100, 60, 0.06);
+  background: #f8fafc;
   position: sticky;
   top: 0;
   z-index: 1;
 }
 .title {
   font-weight: 800;
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   color: #0f172a;
+  text-align: center;
 }
-.subtitle {
-  margin: 2px 0 0;
-  color: #64748b;
-  font-size: 0.95rem;
+
+.workspace {
+  padding: 14px 18px 18px;
 }
-.content {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 16px;
+
+.panel {
   display: grid;
-  gap: 16px;
-}
-.sections {
-  display: grid;
-  gap: 18px;
-}
-.section {
-  background: #fff;
+  grid-template-columns: 340px 1fr;
+  background: #f5f7fa;
+  border-radius: 18px;
+  min-height: calc(100vh - 120px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 14px;
-  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
 }
+.list-pane {
+  background: #f7f7f7;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 10px;
+}
+
+.list-header {
+  padding: 4px 0 8px;
+}
+
+.search {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #ffffff;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 10px;
+  padding: 4px 4px 2px;
 }
+
+.section-head.second {
+  margin-top: 4px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+
 .section-title {
   margin: 0;
   font-weight: 700;
   color: #0f172a;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
 }
+
 .badge {
   display: inline-flex;
+  min-width: 28px;
+  height: 22px;
+  border-radius: 10px;
+  padding: 0 8px;
   align-items: center;
   justify-content: center;
-  min-width: 30px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-  color: #0f172a;
-  background: #e0f2fe;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 600;
 }
 .badge--secondary {
-  background: #ecfdf3;
-  color: #166534;
+  background: #f1f5f9;
+  border-color: #d8e0e8;
 }
+
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 10px;
-}
-.item {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: space-between;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 10px 12px;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.05);
-  transition: background 0.2s;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }
+
 .item:hover {
   background: #f8fafc;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
 }
 .left {
   display: flex;
@@ -392,24 +444,24 @@ onUnmounted(() => {
   justify-content: center;
 }
 .avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   object-fit: cover;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #d1d5db;
   background: #fff;
 }
 .avatar-fallback {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #e0f7ee;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #d9f5e8;
   color: #0f766e;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #a7f3d0;
+  border: 1px solid #b2e5cd;
 }
 .info {
   flex: 1;
@@ -418,26 +470,29 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 2px;
 }
+
 .top {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .name {
   font-weight: 600;
-  color: #0f172a;
+  color: #111827;
   font-size: 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .time {
   font-size: 0.85rem;
-  color: #64748b;
+  color: #6b7280;
   white-space: nowrap;
 }
 .preview {
-  color: #64748b;
+  color: #6b7280;
   font-size: 0.92rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -446,10 +501,10 @@ onUnmounted(() => {
 .del {
   border: 0;
   border-radius: 8px;
-  padding: 0.25rem 0.55rem;
+  padding: 0.35rem 0.7rem;
   font-size: 0.8rem;
   color: #fff;
-  background: linear-gradient(135deg, #ef4444, #f97316);
+  background: linear-gradient(135deg, #ef4444, #dc2626);
   transition: 0.2s;
 }
 .del:hover {
@@ -457,9 +512,40 @@ onUnmounted(() => {
 }
 .empty {
   text-align: center;
-  color: #64748b;
-  padding: 20px 0;
+  color: #6b7280;
+  padding: 16px 0;
 }
+.conversation-pane {
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.preview-ghost {
+  text-align: center;
+  color: #7a7a7a;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ghost-icon {
+  font-size: 1.6rem;
+}
+
+.ghost-title {
+  margin: 0;
+  font-weight: 700;
+  color: #4a4a4a;
+}
+
+.ghost-sub {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
 .loading {
   display: flex;
   align-items: center;
@@ -474,6 +560,7 @@ onUnmounted(() => {
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -484,19 +571,26 @@ onUnmounted(() => {
   .topbar {
     height: auto;
     align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
+    grid-template-columns: 1fr;
     padding: 10px 14px;
   }
 
-  .content {
+  .workspace {
     padding: 12px;
   }
+  .panel {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
 
-  .section-head {
-    flex-wrap: wrap;
-    gap: 6px;
+
+  .list-pane {
+    border-right: 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .conversation-pane {
+    min-height: 200px;
   }
 }
-
 </style>
