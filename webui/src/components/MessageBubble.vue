@@ -43,6 +43,12 @@ const props = defineProps({
   type: { type: String, default: 'text' },
   imageUrl: { type: String, default: '' },
 
+  /* Author */
+  senderId: { type: [String, Number], default: '' },
+  senderName: { type: String, default: '' },
+  senderAvatar: { type: String, default: '' },
+  senderTag: { type: String, default: '' },
+
   /* Meta */
   meta: { type: String, default: '' },
   ticks: { type: Number, default: -1 },

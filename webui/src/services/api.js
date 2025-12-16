@@ -4,16 +4,17 @@ import axios from './axios'
 /* Authentication helpers */
 
 // Read the persisted token from either localStorage or sessionStorage.
-const readToken = () =>
-  localStorage.getItem('token') || sessionStorage.getItem('authToken') || ''
-
+export const readToken = () =>
+  (typeof window === 'undefined'
+    ? ''
+    : localStorage.getItem('token') || sessionStorage.getItem('authToken') || '')
 // Determine whether the user is currently authenticated.
 export function isAuthed() {
   return !!readToken()
 }
 
 // Attach the Authorization header when a token is present.
-function withAuthConfig(cfg = {}) {
+export function withAuthConfig(cfg = {}) {
   const token = readToken()
   const headers = { ...(cfg?.headers || {}) }
   if (token) headers.Authorization = `Bearer ${token}`

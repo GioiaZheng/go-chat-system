@@ -90,6 +90,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axios from "../services/axios";
+import { withAuthConfig } from "../services/api";
 import LoadingSpinner from "./LoadingSpinner.vue";
 import UserSearchBox from "./UserSearchBox.vue";
 
@@ -115,7 +116,7 @@ const toAdd = ref([]);
 async function fetchGroup() {
   loading.value = true;
   try {
-    const r = await axios.get(`/groups/${groupId.value ?? groupId}`);
+    const r = await axios.get(`/groups/${groupId.value ?? groupId}`, withAuthConfig());
     // Normalize API shapes so both {data:{group}} and {group} are accepted.
     group.value = r?.data?.group || r?.data?.data?.group || r?.data || {};
     name.value = group.value.name || "";
@@ -128,7 +129,11 @@ async function saveName() {
   if (!name.value.trim()) return;
   savingName.value = true;
   try {
-    await axios.put(`/groups/${groupId.value ?? groupId}/name`, { name: name.value.trim() });
+    await axios.put(
+      `/groups/${groupId.value ?? groupId}/name`,
+      { name: name.value.trim() },
+      withAuthConfig()
+    );
     await fetchGroup();
   } finally {
     savingName.value = false;
@@ -137,7 +142,11 @@ async function saveName() {
 
 async function setPreset(preset) {
   try {
-    await axios.put(`/groups/${groupId.value ?? groupId}/photo`, { preset });
+    await axios.put(
+      `/groups/${groupId.value ?? groupId}/photo`,
+      { preset },
+      withAuthConfig()
+    );
     await fetchGroup();
   } catch (e) {
     console.error("setGroupPhotoPreset failed:", e);
@@ -148,10 +157,12 @@ async function uploadPhoto(ev) {
   const f = ev?.target?.files?.[0];
   if (!f) return;
   try {
+    const authCfg = withAuthConfig();
     const form = new FormData();
     form.append("upload", f);
     await axios.put(`/groups/${groupId.value ?? groupId}/photo`, form, {
-      headers: { "Content-Type": "multipart/form-data" },
+      ...authCfg,
+      headers: { ...authCfg.headers, "Content-Type": "multipart/form-data" },
     });
     await fetchGroup();
   } catch (e) {
@@ -160,7 +171,6 @@ async function uploadPhoto(ev) {
     if (ev?.target) ev.target.value = "";
   }
 }
-
 function onPick(u) {
   // Avoid adding the same user more than once.
   if (!toAdd.value.find((x) => String(x.id) === String(u.id))) {
@@ -173,7 +183,11 @@ async function addMembers() {
   adding.value = true;
   try {
     const member_ids = toAdd.value.map((u) => u.id);
-    await axios.post(`/groups/${groupId.value ?? groupId}/members`, { member_ids });
+    await axios.post(
+      `/groups/${groupId.value ?? groupId}/members`,
+      { member_ids },
+      withAuthConfig()
+    );
     toAdd.value = [];
     await fetchGroup();
   } catch (e) {
@@ -187,7 +201,11 @@ async function leave() {
   if (!confirm("Are you sure to leave this group?")) return;
   leaving.value = true;
   try {
-    await axios.post(`/groups/${groupId.value ?? groupId}/leave`);
+    await axios.post(
+      `/groups/${groupId.value ?? groupId}/leave`,
+      undefined,
+      withAuthConfig()
+    );
     emit("close"); // Allow the parent to refresh the list or navigate away.
   } catch (e) {
     console.error("leaveGroup failed:", e);

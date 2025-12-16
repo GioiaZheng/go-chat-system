@@ -246,7 +246,7 @@
           <div class="composer">
 
             <div v-if="replyTarget" class="reply-banner">
-              Replying to {{ nameForSender(replyTarget.senderId) || 'message' }}:
+              Replying to {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}:
               <span class="reply-snippet">
                 {{
                   replyTarget.content ||
@@ -637,11 +637,61 @@ function switchConversation(c) {
   router.push({ name: 'chat', params: { type: c.type === 'group' ? 'group' : 'conv', id: c.id } })
 }
 
+
+// Sender resolution helpers to keep author data accurate per userId.
+function senderProfileFromRaw(raw = {}) {
+  const senderRaw =
+    raw.sender || raw.user || raw.author || raw.from || raw.owner || raw.created_by || raw.createdBy || {}
+
+  const senderIdValue =
+    raw.senderId || raw.sender_id || raw.userId || senderRaw.id || senderRaw.userId || senderRaw.user_id
+
+  const senderName =
+    senderRaw.name ||
+    senderRaw.username ||
+    senderRaw.displayName ||
+    senderRaw.display_name ||
+    senderRaw.fullName ||
+    senderRaw.full_name ||
+    raw.senderName ||
+    raw.sender_name ||
+    ''
+
+  const senderTag = senderRaw.tag || senderRaw.role || senderRaw.label || senderRaw.title || ''
+  const senderAvatar = getAvatarUrl(senderRaw)
+  const senderId = senderIdValue != null ? String(senderIdValue) : ''
+
+  return senderId
+    ? {
+        id: senderId,
+        name: senderName,
+        avatar: senderAvatar,
+        tag: senderTag,
+      }
+    : { id: '', name: senderName, avatar: senderAvatar, tag: senderTag }
+}
+
+function resolveSender(userId, msg = null) {
+  const id = String(userId || msg?.senderId || '')
+  if (!id) return null
+
+  const fromParticipants = participants.value.find(u => String(u.id) === id)
+  if (fromParticipants) return fromParticipants
+
+  if (msg?._sender && String(msg._sender.id) === id) return msg._sender
+
+  const fromMessages = messages.value.find(m => String(m.senderId) === id && m._sender)
+  if (fromMessages) return fromMessages._sender
+
+  return null
+}
+
 // Avatar helpers.
 function avatarFor(m) {
   if (isMine(m)) return myAvatar.value
 
-  const sender = participants.value.find(u => String(u.id) === String(m.senderId))
+  const sender = resolveSender(m.senderId, m)
+  if (sender?.avatar) return sender.avatar
   if (sender) return getAvatarUrl(sender)
 
   return ''
@@ -649,8 +699,8 @@ function avatarFor(m) {
 
 function avatarInitial(m) {
   if (isMine(m)) return (me.value?.name || 'Me')[0] || 'M'
-  const sender = participants.value.find(u => String(u.id) === String(m.senderId))
-  const name = sender?.name || sender?.username || 'U'
+  const sender = resolveSender(m.senderId, m)
+  const name = sender?.name || sender?.tag || sender?.id || 'U'
   return (name[0] || 'U').toUpperCase()
 }
 
@@ -658,17 +708,21 @@ function avatarBg(src) {
   return src ? { backgroundImage: `url('${src}')` } : {}
 }
 
-
 function displayNameFor(m) {
-  const s = participants.value.find(u => String(u.id) === String(m.senderId))
-  return s?.name || 'User'
+  const s = resolveSender(m.senderId, m)
+  if (s?.name) return s.name
+  if (s?.tag) return s.tag
+  return s?.id || String(m.senderId || '')
 }
 
-function nameForSender(userId) {
-  if (!userId) return ''
-  if (String(userId) === meId.value) return me.value?.name || 'Me'
-  const s = participants.value.find(u => String(u.id) === String(userId))
-  return s?.name || s?.username || 'User'
+function nameForSender(userId, msg = null) {
+  if (!userId && !msg?.senderId) return ''
+  if (String(userId || msg?.senderId) === meId.value) return me.value?.name || 'Me'
+
+  const s = resolveSender(userId, msg)
+  if (s?.name) return s.name
+  if (s?.tag) return s.tag
+  return s?.id || String(userId || msg?.senderId || '')
 }
 
 // Header avatar and title helpers.
@@ -773,7 +827,8 @@ function isMine(m) {
 
 // Normalize heterogeneous message payloads from the API.
 function normalizeMessage(raw) {
-  const senderId = raw.senderId || raw.sender_id || raw.userId
+  const senderProfile = senderProfileFromRaw(raw)
+  const senderId = senderProfile.id
   const ts = raw.createdAt || raw.created_at || new Date().toISOString()
   const replyToId = raw.replyToId || raw.reply_to_id || null
 
@@ -809,12 +864,22 @@ function normalizeMessage(raw) {
     .reverse()
     .find(c => (c?.type || '').toLowerCase() !== 'emoji' && (c?.content || c?.text))
 
+  const replySenderProfile = senderProfileFromRaw({ sender: raw.replyTo?.sender || raw.reply_to?.sender || {} })
+
   return {
     id: raw.id,
     content: raw.type === 'image' ? '' : (raw.content || raw.text || ''),
     type: raw.type === 'image' ? 'image' : 'text',
     fileAbsUrl: fileRel ? absUrl(fileRel) : null,
-    senderId: String(senderId),
+    senderId: String(senderId || ''),
+    _sender: senderProfile.id
+      ? {
+          id: senderProfile.id,
+          name: senderProfile.name,
+          avatar: senderProfile.avatar,
+          tag: senderProfile.tag,
+        }
+      : null,
     _ts: new Date(ts).toISOString(),
     replyToId: replyToId ? String(replyToId) : '',
     _showCommentBox: false,
@@ -823,7 +888,7 @@ function normalizeMessage(raw) {
       (myLastComment?.content || myLastComment?.text || '').trim(),
     _myReactions: Array.from(new Set(myEmojis)),
     _replyPreview: replyPreview,
-    _replyFrom: raw.replyTo?.sender?.name || '',
+    _replyFrom: replySenderProfile.name || replySenderProfile.tag || replySenderProfile.id || '',
   }
 }
 
@@ -852,14 +917,14 @@ async function loadMessages() {
         if (target) {
           const preview = target.content || (target.type === 'image' ? '[image]' : '')
           m._replyPreview = preview
-          m._replyFrom = nameForSender(target.senderId)
+          m._replyFrom = nameForSender(target.senderId, target)
         }
       }
 
       if (m._replyPreview && !m._replyFrom && m.replyToId) {
         const target = byId.get(String(m.replyToId))
         if (target) {
-          m._replyFrom = nameForSender(target.senderId)
+          m._replyFrom = nameForSender(target.senderId, target)
         }
       }
     })
@@ -881,7 +946,7 @@ function normalizeMembers(list) {
   return (list || [])
     .map(u => ({
       id: String(u?.id ?? u?.userId ?? u?.user_id ?? ''),
-      name: u?.name || u?.username || 'User',
+      name: u?.name || u?.username || String(u?.id ?? u?.userId ?? u?.user_id ?? ''),
       avatar: getAvatarUrl({
         avatarUri: u?.avatarUri ?? u?.avatar_uri ?? u?.avatar_url ?? u?.avatar,
         updatedAt: u?.updatedAt ?? u?.updated_at ?? Date.now(),
