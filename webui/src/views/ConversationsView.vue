@@ -57,7 +57,7 @@
                       </div>
                     </div>
 
-                    <button class="del" @click.stop="warnDelete(c)">删除</button>
+                    <button class="del" @click.stop="warnDelete(c)">Delete</button>
                   </li>
 
                   <li v-if="!privateConvs.length" class="empty">No private chats yet.</li>

@@ -121,12 +121,13 @@ import {
   leaveGroup,
   getMyProfile,
   getAvatarUrl,
+  readToken,
 } from '@/services/api'
 
 const router = useRouter()
 
 // Authentication helpers and cached profile details.
-const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+const authed = () => !!readToken()
 const meId = ref('')
 async function loadMe () {
   try { const me = await getMyProfile(); meId.value = String(me?.id || '') } catch {}

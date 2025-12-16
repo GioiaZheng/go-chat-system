@@ -82,7 +82,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
-import { getMyProfile, setMyUserName, setMyPhotoFile, getAvatarUrl } from '@/services/api'
+import { getMyProfile, setMyUserName, setMyPhotoFile, getAvatarUrl, readToken } from '@/services/api'
 
 const router = useRouter()
 const me = ref(null)
@@ -93,7 +93,7 @@ const err = ref('')
 const imgBroken = ref(false)
 
 // Lightweight auth helper to detect an existing token.
-const authed = () => !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+const authed = () => !!readToken()
 
 // Resolve avatar URLs through getAvatarUrl to avoid relative paths.
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))

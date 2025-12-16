@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { readToken } from '@/services/api'
 
 // View components used in the route map.
 import LoginView from '../views/LoginView.vue'
@@ -92,14 +93,11 @@ const router = createRouter({
 })
 
 // Navigation guard enforcing authentication and login redirects.
-const isAuthed = () =>
-  !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+const isAuthed = () => !!readToken()
 
 router.beforeEach((to, from, next) => {
   const needsAuth = to.matched.some((r) => r.meta?.requiresAuth)
-  const authed = !!(
-    sessionStorage.getItem('authToken') || localStorage.getItem('token')
-  )
+  const authed = !!readToken()
 
   // Step 1: Redirect unauthenticated users away from protected routes.
   if (needsAuth && !authed) {
@@ -125,6 +123,5 @@ router.beforeEach((to, from, next) => {
 
   next()
 })
-
 
 export default router

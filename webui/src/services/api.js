@@ -4,10 +4,16 @@ import axios from './axios'
 /* Authentication helpers */
 
 // Read the persisted token from either localStorage or sessionStorage.
-export const readToken = () =>
-  (typeof window === 'undefined'
-    ? ''
-    : localStorage.getItem('token') || sessionStorage.getItem('authToken') || '')
+export const readToken = () => {
+  if (typeof window === 'undefined') return ''
+
+  const rawToken = localStorage.getItem('token') || sessionStorage.getItem('authToken') || ''
+  const token = String(rawToken).trim()
+
+  // Treat placeholder values (e.g., "null" or "undefined") as missing tokens so we fall
+  // back to the login page instead of mistakenly considering the user authenticated.
+  return token && token !== 'null' && token !== 'undefined' ? token : ''
+}
 // Determine whether the user is currently authenticated.
 export function isAuthed() {
   return !!readToken()
@@ -108,6 +114,9 @@ export function doLogout() {
     localStorage.removeItem('username')
     localStorage.removeItem('name')
     localStorage.removeItem('me')
+    if (axios?.defaults?.headers?.common) {
+      delete axios.defaults.headers.common.Authorization
+    }
     window.dispatchEvent(new Event('auth:changed'))
   } catch {}
 }

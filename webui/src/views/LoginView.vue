@@ -65,8 +65,7 @@ onMounted(() => {
   if (preset) name.value = preset
 
   // Skip the form when a valid token is already stored.
-  const authed = !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
-  if (authed) router.replace('/conversations')
+  if (readToken()) router.replace('/conversations')
 })
 
 onUnmounted(() => {

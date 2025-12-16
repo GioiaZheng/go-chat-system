@@ -36,13 +36,14 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
+import { readToken } from '@/services/api'
+
 
 const route = useRoute()
 const router = useRouter()
 
 /* Track authentication state across navigation. */
-const hasToken = () =>
-  !!(sessionStorage.getItem('authToken') || localStorage.getItem('token'))
+const hasToken = () => !!readToken()
 
 const isAuthed = ref(false)
 const checking = ref(true)
@@ -57,10 +58,12 @@ function refreshAuth() {
   }
 }
 
+// Run an initial auth check so first render shows the correct view.
+refreshAuth()
+checking.value = false
+
 /* Lifecycle hooks manage authentication redirects and listeners. */
 onMounted(() => {
-  refreshAuth()
-
   // Listen for login/logout events emitted elsewhere in the app.
   window.addEventListener('auth:changed', refreshAuth)
 
@@ -68,8 +71,6 @@ onMounted(() => {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refreshAuth()
   })
-
-  checking.value = false
 })
 
 onBeforeUnmount(() => {

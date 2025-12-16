@@ -64,9 +64,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('auth:changed', handleAuthChanged)
 })
 
-function logout() {
+async function logout() {
   api.doLogout()
-  router.replace('/login')
+  await router.replace('/login')
 }
 </script>
 
