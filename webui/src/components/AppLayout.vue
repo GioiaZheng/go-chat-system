@@ -17,7 +17,7 @@ import Sidebar from '@/components/Sidebar.vue'
   min-height: 100vh;
   height: 100%;
   width: 100%;
-  background: #f7fafc;
+  background: #e5e7eb;
 }
 
 .app-layout__sidebar {
@@ -31,7 +31,7 @@ import Sidebar from '@/components/Sidebar.vue'
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 0;
 }
 
 @media (max-width: 992px) {

@@ -13,6 +13,10 @@
   --border: #e5e7eb;          /* Subtle borders */
   --shadow: 0 12px 32px rgba(15,23,42,.06); /* Soft shadow */
 
+  /* Radii */
+  --radius-bubble: 12px;
+  --radius-control: 8px;
+
   /* Shared gradient */
   --grad: linear-gradient(135deg,#22c55e 0%,#16a34a 45%,#3b82f6 120%);
 }
@@ -49,7 +53,7 @@ body{
   max-width: 480px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   box-shadow: var(--shadow);
   backdrop-filter: blur(6px);
   padding: 28px;
@@ -59,7 +63,7 @@ body{
 .page-card{
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   box-shadow: var(--shadow);
 }
 
@@ -84,7 +88,7 @@ body{
 .input{
   width: 100%;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: #ffffff;
   color: var(--text);
@@ -102,7 +106,7 @@ body{
 .btn{
   appearance:none;
   border:0;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: var(--grad);
   color:#fff;
   padding: 12px 16px;

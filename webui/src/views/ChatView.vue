@@ -1340,7 +1340,7 @@ watch(convId, async () => {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  background: #f2f5f8;
+  background: #e5e7eb;
 }
 
 .topbar {
@@ -1400,7 +1400,7 @@ watch(convId, async () => {
 
 .content {
   width: 100%;
-  padding: 20px 24px;
+  padding: 12px 12px 16px;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -1408,8 +1408,6 @@ watch(convId, async () => {
 
 .content-inner {
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1419,23 +1417,21 @@ watch(convId, async () => {
 
 .chat-layout {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
 }
 
 .chat-layout.has-group {
-  grid-template-columns: 360px minmax(0, 1fr) 340px;
+  grid-template-columns: 320px minmax(0, 1fr) 300px;
 }
 
 .conv-rail {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  background: #f8fafc;
+  border-right: 1px solid #d9dde3;
   padding: 14px;
-  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1463,7 +1459,7 @@ watch(convId, async () => {
 .conv-rail__badge {
   background: #e0f2fe;
   color: #0f172a;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 4px 10px;
   font-weight: 700;
 }
@@ -1471,7 +1467,7 @@ watch(convId, async () => {
 .conv-rail__search input {
   width: 100%;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   padding: 10px 12px;
   font-size: 0.95rem;
 }
@@ -1490,7 +1486,7 @@ watch(convId, async () => {
   align-items: center;
   gap: 10px;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 12px;
   background: #f8fafc;
   cursor: pointer;
@@ -1505,7 +1501,6 @@ watch(convId, async () => {
 .conv-pill.active {
   border-color: #3b82f6;
   background: #e0f2fe;
-  box-shadow: 0 10px 22px rgba(59, 130, 246, 0.18);
 }
 
 .conv-pill__avatar {
@@ -1567,7 +1562,7 @@ watch(convId, async () => {
   font-size: 0.85rem;
   color: #0f172a;
   background: #e2e8f0;
-  border-radius: 10px;
+  border-radius: 0;
   padding: 4px 8px;
   font-weight: 600;
 }
@@ -1578,10 +1573,9 @@ watch(convId, async () => {
 }
 
 .chat-main {
-    background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
+  background: #fff;
+  border: 1px solid #d9dde3;
+  border-radius: 0;
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -1596,10 +1590,9 @@ watch(convId, async () => {
 
 .group-card {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border: 1px solid #d9dde3;
+  border-radius: 0;
   padding: 12px;
-  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1662,7 +1655,7 @@ watch(convId, async () => {
 .members-add {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 10px;
   display: grid;
   gap: 8px;
@@ -1697,7 +1690,7 @@ watch(convId, async () => {
   align-items: center;
   justify-content: space-between;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 8px;
   background: #f8fafc;
 }
@@ -1764,7 +1757,7 @@ watch(convId, async () => {
   background: #ecfeff;
   color: #0f766e;
   border: 1px solid #99f6e4;
-  border-radius: 10px;
+  border-radius: 0;
   padding: 8px 10px;
   margin-bottom: 8px;
 }
@@ -1773,7 +1766,7 @@ watch(convId, async () => {
   height: 65vh;
   overflow-y: auto;
   background: #f8fafc;
-  border-radius: 14px;
+  border-radius: 0;
   padding: 12px;
   border: 1px solid #e1e5eb;
 }
@@ -1839,7 +1832,7 @@ watch(convId, async () => {
   display: inline-flex;
   flex-direction: column;
   padding: 8px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-bubble);
   background: #ffffff;
   width: fit-content;
   max-width: 100%;
@@ -1865,7 +1858,7 @@ watch(convId, async () => {
   background: #eef2f7;
   font-size: 0.86rem;
   color: #334155;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   cursor: pointer;
 }
 
@@ -1884,7 +1877,7 @@ watch(convId, async () => {
 
 .img {
   max-width: 260px;
-  border-radius: 10px;
+  border-radius: var(--radius-bubble);
 }
 
 .meta {
@@ -1905,7 +1898,7 @@ watch(convId, async () => {
 .comment-chip {
   margin-top: 6px;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 4px 12px;
   font-size: 0.82rem;
   max-width: 80%;
@@ -1930,7 +1923,7 @@ watch(convId, async () => {
 }
 
 .my-reactions__pill {
-  border-radius: 999px;
+  border-radius: 0;
   background: #e0f2fe;
   border: 1px solid #bfdbfe;
   padding: 2px 8px;
@@ -1950,7 +1943,7 @@ watch(convId, async () => {
   cursor: pointer;
   font-size: 1.05rem;
   padding: 3px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
 }
 
 .icon-btn:focus-visible,
@@ -1976,14 +1969,14 @@ watch(convId, async () => {
 .comment-input {
   flex: 1;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 5px 8px;
 }
 
 .btn-xs {
   border: none;
   padding: 5px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: #22c55e;
   color: white;
   cursor: pointer;
@@ -2002,7 +1995,7 @@ watch(convId, async () => {
   gap: 8px;
   padding: 10px;
   background: white;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid #e1e5eb;
 }
 
@@ -2015,7 +2008,7 @@ watch(convId, async () => {
 .input {
   flex: 1;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid #cbd5e1;
   resize: none;
 }
@@ -2026,7 +2019,7 @@ watch(convId, async () => {
   gap: 8px;
   background: #f1f5f9;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 0;
   padding: 6px 8px;
   margin-bottom: 6px;
   width: 100%;
@@ -2039,7 +2032,7 @@ watch(convId, async () => {
 
 .btn {
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: #22c55e;
   padding: 10px 16px;
   color: white;
@@ -2089,7 +2082,7 @@ watch(convId, async () => {
   width: min(460px, 92vw);
   max-height: 80vh;
   background: #fff;
-  border-radius: 14px;
+  border-radius: 0;
   padding: 14px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.15);
   display: flex;
@@ -2106,7 +2099,7 @@ watch(convId, async () => {
 .forward-search {
   width: 100%;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid #cbd5e1;
 }
 
@@ -2124,7 +2117,7 @@ watch(convId, async () => {
   align-items: center;
   padding: 10px;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 0;
   background: #f8fafc;
   cursor: pointer;
   transition: 0.2s;

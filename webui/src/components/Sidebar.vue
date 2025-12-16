@@ -80,7 +80,6 @@ function logout() {
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.03);
 }
 
 .brand {
@@ -101,7 +100,6 @@ function logout() {
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
   background: #f8fafc;
   margin-bottom: 14px;
 }
@@ -144,7 +142,6 @@ function logout() {
 .link {
   display: block;
   padding: 10px 12px;
-  border-radius: 10px;
   color: #0f172a;
   font-weight: 500;
   text-decoration: none;
@@ -167,7 +164,7 @@ function logout() {
 .logout {
   width: 100%;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   padding: 8px 0;
   background: #ef4444;
   color: #fff;

@@ -213,7 +213,7 @@ export default {
 .panel {
   width: min(680px, 92vw);
   max-height: 90vh;
-  background: #fff; border-radius: 12px;
+  background: #fff; border-radius: 0;
   box-shadow: 0 10px 28px rgba(0,0,0,0.15);
   display: grid; grid-template-rows: auto 1fr;
 }
@@ -221,19 +221,19 @@ export default {
   display: flex; justify-content: space-between; align-items: center;
   padding: 12px 14px; border-bottom: 1px solid #eee;
 }
-.close { border: 0; background: transparent; cursor: pointer; }
+.close { border: 0; background: transparent; cursor: pointer; border-radius: var(--radius-control); }
 .body { padding: 12px 14px; overflow: auto; display: grid; gap: 14px; }
 .row { display: grid; grid-template-columns: 140px 1fr; gap: 10px; align-items: center; }
 .inline { display: flex; gap: 8px; }
 .photo-actions { display: flex; align-items: center; gap: 12px; }
-.avatar { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; }
+.avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
 .members { display: flex; flex-wrap: wrap; gap: 8px; }
-.member { background: #f7f7f7; padding: 4px 8px; border-radius: 8px; }
+.member { background: #f7f7f7; padding: 4px 8px; border-radius: 0; }
 .mn { font-weight: 600; margin-right: 6px; }
 .mid { font-size: 12px; opacity: .6; }
 .add { margin-top: 8px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-.chip { background: #eef6ff; padding: 2px 6px; border-radius: 6px; font-size: 12px; }
+.chip { background: #eef6ff; padding: 2px 6px; border-radius: 0; font-size: 12px; }
 .danger { border-top: 1px dashed #eee; padding-top: 12px; margin-top: 8px; }
-.danger-btn { border: 0; background: #ffe9e9; color: #b10000; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.danger-btn { border: 0; background: #ffe9e9; color: #b10000; padding: 8px 10px; border-radius: var(--radius-control); cursor: pointer; }
 </style>

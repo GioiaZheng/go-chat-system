@@ -310,7 +310,7 @@ onUnmounted(() => {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+  background: #e5e7eb;
   color: #1f2937;
 }
 .topbar {
@@ -336,13 +336,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 14px 18px 18px;
+  padding: 12px 12px 16px;
 }
 
 .content-inner {
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -353,17 +351,15 @@ onUnmounted(() => {
 .panel {
   flex: 1 1 auto;
   min-height: 0;
-  display: flex;
-  background: #f5f7fa;
-  border-radius: 18px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  background: #f8fafc;
+  border: 1px solid #d9dde3;
 }
 .list-pane {
-  flex: 0 0 340px;
+  flex: 0 0 320px;
   background: #f7f7f7;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #d9dde3;
   display: flex;
   flex-direction: column;
   padding: 12px;
@@ -377,7 +373,7 @@ onUnmounted(() => {
 .search {
   width: 100%;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   padding: 10px 12px;
   background: #ffffff;
   font-size: 0.95rem;
@@ -421,7 +417,7 @@ onUnmounted(() => {
   display: inline-flex;
   min-width: 28px;
   height: 22px;
-  border-radius: 10px;
+  border-radius: 0;
   padding: 0 8px;
   align-items: center;
   justify-content: center;
@@ -448,7 +444,7 @@ onUnmounted(() => {
 .item {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 10px 12px;
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -470,7 +466,7 @@ onUnmounted(() => {
 .avatar {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 50%;
   object-fit: cover;
   border: 1px solid #d1d5db;
   background: #fff;
@@ -478,7 +474,7 @@ onUnmounted(() => {
 .avatar-fallback {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 50%;
   background: #d9f5e8;
   color: #0f766e;
   font-weight: 700;
@@ -524,7 +520,7 @@ onUnmounted(() => {
 }
 .del {
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 0.35rem 0.7rem;
   font-size: 0.8rem;
   color: #fff;
@@ -542,11 +538,12 @@ onUnmounted(() => {
 .conversation-pane {
   flex: 1 1 auto;
   min-width: 0;
-  background: #ffffff;
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 32px;
+  border-left: 1px solid #d9dde3;
 }
 
 .preview-ghost {
