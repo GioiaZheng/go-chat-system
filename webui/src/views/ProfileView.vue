@@ -173,16 +173,21 @@ function handleError(e, fallback) {
 
 <style scoped>
 .page {
-  min-height: 100vh;
+  min-height: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   background:
     radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
     radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
     linear-gradient(180deg, #ffffff, #f7fafe);
 }
 .wrap {
+  flex: 1 1 auto;
   max-width: 900px;
   margin: 0 auto;
   padding: 18px;
+  width: 100%;
 }
 .title {
   font-size: 1.5rem;

@@ -1331,7 +1331,10 @@ watch(convId, async () => {
   --avatar-bg: #e0f7ee;
   --avatar-border: #a7f3d0;
   --avatar-text: #0f766e;
-  min-height: 100vh;
+  min-height: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   background: #f2f5f8;
 }
 
@@ -1394,6 +1397,11 @@ watch(convId, async () => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px 24px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .chat-layout {
@@ -1401,6 +1409,8 @@ watch(convId, async () => {
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chat-layout.has-group {
@@ -1416,7 +1426,8 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100vh - 120px);
+  height: 100%;
+  min-height: 0;
 }
 
 .conv-rail__header {

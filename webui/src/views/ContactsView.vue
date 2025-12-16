@@ -139,7 +139,10 @@ onMounted(() => {
 
 <style scoped>
 .page{
-  min-height:100vh;
+  min-height:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
   background:
     radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
     radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
@@ -169,7 +172,7 @@ onMounted(() => {
 .btn-outline{
   background:#fff; color:#334155; border:1px solid #cbd5e1; box-shadow:none;
 }
-.content{ max-width:1100px; margin:0 auto; padding:16px; }
+.content{ flex:1 1 auto; max-width:1100px; margin:0 auto; padding:16px; width:100%; }
 
 .loading{ color:#475569; display:flex; align-items:center; gap:.5rem }
 .spinner{
