@@ -202,7 +202,7 @@ function handleError(e, fallback) {
 .card {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: 0;
   padding: 16px;
   box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
 }
@@ -256,7 +256,7 @@ function handleError(e, fallback) {
 .summary-card {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 10px 12px;
   box-shadow: 0 6px 18px rgba(2, 6, 23, 0.04);
 }
@@ -303,7 +303,7 @@ function handleError(e, fallback) {
 .input {
   flex: 1 1 220px;
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   padding: 0.55rem 0.75rem;
   outline: none;
 }
@@ -314,7 +314,7 @@ function handleError(e, fallback) {
 
 .btn {
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   color: #fff;
   padding: 0.55rem 0.9rem;
   white-space: nowrap;

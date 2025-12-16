@@ -68,7 +68,7 @@ const props = defineProps({
 .bubble {
   background: #fff;
   padding: 8px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-bubble);
   font-size: 14px;
   position: relative;
 }
@@ -85,7 +85,7 @@ const props = defineProps({
 }
 .msg-img {
   max-width: 200px;
-  border-radius: 10px;
+  border-radius: var(--radius-bubble);
 }
 .reply-preview {
   margin-top: 4px;
@@ -93,7 +93,7 @@ const props = defineProps({
   font-size: 12px;
   background: #eef2f7;
   border-left: 3px solid #3b82f6;
-  border-radius: 6px;
+  border-radius: 0;
 }
 .reactions {
   margin-top: 6px;
@@ -104,6 +104,6 @@ const props = defineProps({
   font-size: 14px;
   padding: 2px 4px;
   background: #eee;
-  border-radius: 6px;
+  border-radius: 0;
 }
 </style>

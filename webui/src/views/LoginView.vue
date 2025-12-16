@@ -134,7 +134,7 @@ body.theme-light-login{
   max-width: 460px;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: 0;
   box-shadow: 0 20px 60px rgba(2,6,23,.08);
   padding: 28px 24px;
   color: #0f172a;
