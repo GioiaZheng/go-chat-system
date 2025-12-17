@@ -326,28 +326,27 @@ components:
                     $ref: '#/components/schemas/Conversation'
                 pagination:
                   description: Pagination metadata. May be null if pagination is not applicable.
-                  oneOf:
-                    - type: object
-                      properties:
-                        total:
-                          type: integer
-                          format: int32
-                          description: Total number of available items.
-                          minimum: 0
-                          maximum: 1000000
-                        limit:
-                          type: integer
-                          format: int32
-                          description: Page size.
-                          minimum: 1
-                          maximum: 100
-                        offset:
-                          type: integer
-                          format: int32
-                          description: Zero-based index of the first returned item.
-                          minimum: 0
-                          maximum: 1000000
-                    - type: "null"
+                  type: object
+                  nullable: true
+                  properties:
+                    total:
+                      type: integer
+                      format: int32
+                      description: Total number of available items.
+                      minimum: 0
+                      maximum: 1000000
+                    limit:
+                      type: integer
+                      format: int32
+                      description: Page size.
+                      minimum: 1
+                      maximum: 100
+                    offset:
+                      type: integer
+                      format: int32
+                      description: Zero-based index of the first returned item.
+                      minimum: 0
+                      maximum: 1000000
 
     FileUpload:
       type: object
@@ -1077,7 +1076,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /users/profile/{userId}:
+  /users/{userId}/profile:
     parameters:
       - $ref: '#/components/parameters/userId'
     get:
