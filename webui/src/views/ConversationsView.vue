@@ -210,6 +210,7 @@ async function load() {
 
     convs.value = (items || [])
       .map(c => {
+        const isGroupType = c?.type === 'group' || !!(c?.groupId || c?.group_id || c?.group?.id)
         const last = pickLastMessage(c) || {}
         const previewContent =
           last.type === 'image' ? '[Image]' :
@@ -233,6 +234,7 @@ async function load() {
 
         return {
           ...c,
+          type: isGroupType ? 'group' : c?.type,
           last_preview: previewContent || 'No messages yet',
           last_time: time,
         }

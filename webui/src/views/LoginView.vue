@@ -85,11 +85,15 @@ async function login () {
     const next = (route.query.redirect && String(route.query.redirect)) || '/conversations'
     router.replace(next)
   } catch (e) {
-    err.value =
-      e?.response?.data?.error ||
-      e?.response?.data?.message ||
-      e?.message ||
-      'Login failed'
+    if (e?.response?.status === 409 || /exist|taken|already/i.test(e?.response?.data?.message)) {
+      err.value = 'Username already exists. Please choose another.'
+    } else {
+      err.value =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        'Login failed'
+    }
   } finally {
     busy.value = false
   }

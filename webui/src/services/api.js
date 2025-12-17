@@ -303,9 +303,8 @@ export async function listContacts() {
 /* Conversation helpers */
 
 export function isGroupConversation(c) {
-  return c?.type === 'group'
+  return c?.type === 'group' || !!(c?.groupId || c?.group_id || c?.group?.id)
 }
-
 
 /** Conversation title: peer name for private chats, group name otherwise. */
 export function titleForConversation(c, myId = '') {
@@ -315,7 +314,7 @@ export function titleForConversation(c, myId = '') {
   const isPrivate =
     Array.isArray(c.participants) &&
     c.participants.length === 2 &&
-    c.type !== 'group'
+    !isGroupConversation(c)
 
   if (isPrivate) {
     const list = c.participants
@@ -327,7 +326,6 @@ export function titleForConversation(c, myId = '') {
   return c.name || 'Group'
 }
 
-
 /** Conversation avatar: group avatar for groups, peer avatar for private chats. */
 export function avatarForConversation(c, myId) {
   if (!c) return ''
@@ -335,7 +333,7 @@ export function avatarForConversation(c, myId) {
   const isPrivate =
     Array.isArray(c.participants) &&
     c.participants.length === 2 &&
-    c.type !== 'group'
+    !isGroupConversation(c)
 
   if (isPrivate) {
     const list = c.participants
@@ -345,8 +343,6 @@ export function avatarForConversation(c, myId) {
 
   return getAvatarUrl(c)
 }
-
-
 
 /* Conversation endpoints */
 
@@ -477,6 +473,7 @@ export async function sendMessage({
   type = 'text',
   replyTo,
   replyToId,
+  fileUrl,
 } = {}) {
   const body = {
     conversationId: String(conversationId || ''),
@@ -490,10 +487,12 @@ export async function sendMessage({
     body.replyToId = reply
   }
 
+  if (fileUrl) body.fileUrl = fileUrl
+
   return unwrap(await post('/messages', body))
 }
 
-export async function sendImageMessage({ conversationId, file }) {
+export async function sendImageMessage({ conversationId, file, caption = '', replyToId }) {
   if (!file) throw new Error('No file selected')
   
   // 1) Upload the binary first
@@ -515,12 +514,13 @@ export async function sendImageMessage({ conversationId, file }) {
   // Step 2: Send a normal message referencing the uploaded image URL.
   return sendMessage({
     conversationId,
-    content: fileUrl,
+    content: caption || fileUrl,
     type: 'image',
     filename,
+    fileUrl,
+    replyToId,
   })
 }
-
 
 export async function getMessageById(id) {
   return unwrap(await get(`/messages/${encodeURIComponent(String(id))}`))

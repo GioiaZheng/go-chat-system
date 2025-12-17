@@ -148,6 +148,11 @@ async function uploadPhoto() {
     await setMyPhotoFile(file.value) // Multipart field name is "upload"; handled in the API layer.
     file.value = null
     await loadProfile()
+    me.value = { ...(me.value || {}), updatedAt: Date.now() }
+    if (me.value) {
+      localStorage.setItem('me', JSON.stringify(me.value))
+      window.dispatchEvent(new Event('auth:changed'))
+    }
   } catch (e) {
     handleError(e, 'Failed to upload photo')
   } finally {

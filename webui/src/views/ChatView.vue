@@ -128,13 +128,13 @@
                     <div class="reply-text">{{ m._replyPreview }}</div>
                   </button>
 
-                  <template v-if="m.type === 'image' && m.fileAbsUrl">
+                  <div v-if="m.fileAbsUrl" class="img-wrap">
                     <img :src="m.fileAbsUrl" class="img" />
-                  </template>
+                  </div>
 
-                  <template v-else>
+                  <div v-if="m.content" class="text-block">
                     {{ m.content }}
-                  </template>
+                  </div>
                 </div>
                 <!-- Timestamp and delivery markers. -->
                 <div class="meta">
@@ -257,6 +257,15 @@
 
               <button class="btn-xs btn-secondary" type="button" @click="clearReplyTarget">Cancel</button>
             </div>
+            <div v-if="imagePreview" class="attach-preview" aria-label="Selected image preview">
+              <img :src="imagePreview" alt="Selected upload" class="attach-thumb" />
+              <div class="attach-meta">
+                <div class="attach-name">{{ imageFile?.name || 'Image' }}</div>
+                <button class="btn-xs btn-secondary" type="button" @click="clearImageSelection">
+                  Remove
+                </button>
+              </div>
+            </div>
             <div class="composer-row">
               <textarea
                 v-model="draft"
@@ -352,6 +361,14 @@
 
                   <p v-if="!filteredForwardList.length" class="muted">No conversations found.</p>
                 </template>
+                <div class="forward-new">
+                  <div class="forward-new__title">Forward to a new user</div>
+                  <UserSearch
+                    placeholder="Search users"
+                    @select="forwardToUser"
+                    @error="forwardError = $event || ''"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -468,6 +485,7 @@ import {
   leaveGroup,
   sendMessage,
   sendImageMessage,
+  startConversation,
   getAvatarUrl,
   absUrl,
   deleteMessage,
@@ -495,6 +513,8 @@ const draft = ref('')
 const messages = ref([])
 const scrollbox = ref(null)
 const imageInput = ref(null)
+const imageFile = ref(null)
+const imagePreview = ref('')
 const replyTarget = ref(null)
 const composerInput = ref(null)
 const replyHighlightId = ref('')
@@ -578,6 +598,10 @@ function normalizeConversationList(items = []) {
 
   return (items || [])
     .map((c) => {
+      const isGroupType =
+        c?.type === 'group' ||
+        !!(c?.groupId || c?.group_id || c?.group?.id)
+
       const last = pickLastMessage(c) || {}
       const previewContent =
         last.type === 'image'
@@ -602,6 +626,7 @@ function normalizeConversationList(items = []) {
 
       return {
         ...c,
+        type: isGroupType ? 'group' : c?.type,
         last_preview: previewContent || 'No messages yet',
         last_time: time,
       }
@@ -809,7 +834,8 @@ async function loadConversationMeta() {
     }
 
     currentConv.value = conv || null
-    isGroup.value = conv?.type === 'group'
+    isGroup.value =
+      conv?.type === 'group' || !!(conv?.groupId || conv?.group_id || conv?.group?.id)
     if (isGroup.value) {
       await loadGroupPanel()
     } else {
@@ -834,6 +860,11 @@ function isMine(m) {
   return String(m.senderId) === meId.value
 }
 
+function looksLikeFileUrl(val) {
+  if (!val) return false
+  return /^https?:\/\//i.test(val) || String(val).startsWith('/')
+}
+
 // Normalize heterogeneous message payloads from the API.
 function normalizeMessage(raw) {
   const senderProfile = senderProfileFromRaw(raw)
@@ -846,13 +877,15 @@ function normalizeMessage(raw) {
   const replyPreview = replyContent || (replyType === 'image' ? '[image]' : '')
 
   // Image handling: when type === 'image', content is the image URL
-  const fileRel =
+  const possibleFileRel =
     raw.fileUrl ||
     raw.file_url ||
     raw.imageUrl ||
     raw.image_url ||
-    raw.file ||
-    (raw.type === 'image' ? raw.content : null)
+    raw.file
+
+  const contentIsUrl = raw.type === 'image' && looksLikeFileUrl(raw.content)
+  const fileRel = possibleFileRel || (contentIsUrl ? raw.content : null)
 
   const commentList =
     raw.comments ||
@@ -875,9 +908,14 @@ function normalizeMessage(raw) {
 
   const replySenderProfile = senderProfileFromRaw({ sender: raw.replyTo?.sender || raw.reply_to?.sender || {} })
 
+  const contentText =
+    raw.type === 'image'
+      ? raw.caption || raw.text || (contentIsUrl ? '' : raw.content || '')
+      : raw.content || raw.text || ''
+
   return {
     id: raw.id,
-    content: raw.type === 'image' ? '' : (raw.content || raw.text || ''),
+    content: contentText,
     type: raw.type === 'image' ? 'image' : 'text',
     fileAbsUrl: fileRel ? absUrl(fileRel) : null,
     senderId: String(senderId || ''),
@@ -1051,7 +1089,7 @@ async function loadGroupPanel() {
 }
 
 // Send text messages and handle deletion.
-const canSend = computed(() => !!draft.value.trim() && !sending.value)
+const canSend = computed(() => (!!draft.value.trim() || !!imageFile.value) && !sending.value)
 
 async function confirmDeleteMessage(m) {
   if (!m || !m.id) return
@@ -1074,20 +1112,42 @@ async function confirmDeleteMessage(m) {
 
 async function onSend() {
   const t = draft.value.trim()
-  if (!t) return
+  const file = imageFile.value
+  if (!t && !file) return
 
   sending.value = true
   err.value = ''
   notice.value = ''
   try {
-    await sendMessage({
-      conversationId: convId.value,
-      content: t,
-      replyToId: replyTarget.value?.id,
-    })
+    let sent
+    if (file) {
+      sent = await sendImageMessage({
+        conversationId: convId.value,
+        file,
+        caption: t,
+        replyToId: replyTarget.value?.id,
+      })
+    } else {
+      sent = await sendMessage({
+        conversationId: convId.value,
+        content: t,
+        replyToId: replyTarget.value?.id,
+      })
+    }
+
+    const normalized = normalizeMessage(sent?.message || sent || {})
+    normalized._localStatus = 1
+    messages.value = [...messages.value, normalized]
+    await nextTick()
+    if (scrollbox.value) {
+      scrollbox.value.scrollTop = scrollbox.value.scrollHeight
+    }
+
     draft.value = ''
     replyTarget.value = null
+    clearImageSelection()
     await loadMessages()
+    bumpConversationList({ lastPreview: normalized.content || forwardPreview(normalized) })
   } catch (e) {
     err.value = e?.response?.data?.message || 'Failed to send'
   } finally {
@@ -1106,20 +1166,18 @@ async function onPickImage(e) {
   const file = e.target.files?.[0]
   if (!file) return
 
-  err.value = ''
-  try {
-    await sendImageMessage({
-      conversationId: convId.value,
-      file,
-      replyToId: replyTarget.value?.id,
-    })
-    await loadMessages()
-  } catch (e2) {
-    err.value = e2?.response?.data?.message || 'Failed to send image'
-  } finally {
-    if (imageInput.value) {
-      imageInput.value.value = ''
-    }
+  imageFile.value = file
+  imagePreview.value = URL.createObjectURL(file)
+  if (imageInput.value) {
+    imageInput.value.value = ''
+  }
+}
+
+function clearImageSelection() {
+  imageFile.value = null
+  imagePreview.value = ''
+  if (imageInput.value) {
+    imageInput.value.value = ''
   }
 }
 
@@ -1209,6 +1267,27 @@ async function forwardToConversation(targetConvId) {
   }
 }
 
+async function forwardToUser(user) {
+  const userId = String(user?.id || user?.userId || user?.user_id || '')
+  if (!userId || !forwardTargetMessage.value) return
+
+  forwardError.value = ''
+  try {
+    const res = await startConversation({ memberIds: [userId] })
+    const cid =
+      res?.conversationId ||
+      res?.conversation_id ||
+      res?.conversation?.id ||
+      res?.id ||
+      res?._id
+
+    if (!cid) throw new Error('Failed to create conversation')
+    await forwardToConversation(String(cid))
+  } catch (e) {
+    forwardError.value = e?.response?.data?.message || e?.message || 'Failed to forward message'
+  }
+}
+
 function focusComposer() {
   nextTick(() => {
     if (composerInput.value) {
@@ -1256,11 +1335,9 @@ function jumpToMessage(targetId) {
 }
 
 function tickText(m) {
-  const v = ticksFor(m, meId.value)
-  if (v === 3) return '✓✓ read'
-  if (v === 2) return '✓✓ delivered'
-  if (v === 1) return '✓ sent'
-  if (v === 0) return '…'
+  const v = Math.max(ticksFor(m, meId.value), m?._localStatus || 0)
+  if (v >= 2) return '✓✓'
+  if (v >= 1 || isMine(m)) return '✓'
   return ''
 }
 
@@ -1946,9 +2023,18 @@ watch(convId, async () => {
   color: #475569;
 }
 
+.img-wrap {
+  display: inline-flex;
+  margin-bottom: 6px;
+}
+
 .img {
   max-width: 260px;
   border-radius: var(--radius-bubble);
+}
+
+.text-block {
+  white-space: pre-wrap;
 }
 
 .meta {
@@ -2070,6 +2156,36 @@ watch(convId, async () => {
   border: 1px solid #e1e5eb;
 }
 
+.attach-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  padding: 8px;
+  border-radius: var(--radius-control);
+  margin-bottom: 4px;
+}
+
+.attach-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-bubble);
+  border: 1px solid #e2e8f0;
+}
+
+.attach-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.attach-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
 .composer-row {
   display: flex;
   align-items: center;
@@ -2180,6 +2296,17 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.forward-new {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+}
+
+.forward-new__title {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 6px;
 }
 
 .forward-item {
