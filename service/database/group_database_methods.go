@@ -70,7 +70,11 @@ func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 
 		result = append(result, g)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // getGroupMembersWithRole returns group members along with their stored role.
@@ -148,7 +152,12 @@ func (db *appdbimpl) GetGroupMembers(groupID string) ([]models.User, error) {
 		}
 		members = append(members, u)
 	}
-	return members, rows.Err()
+	
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return members, nil
 }
 
 // GetGroupByName fetches a group by its unique name (if unique in your schema).

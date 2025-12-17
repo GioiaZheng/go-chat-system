@@ -274,9 +274,13 @@ func columnExists(db *sql.DB, table, column string) (bool, error) {
 			return true, nil
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
 
-	return false, rows.Err()
+	return false, nil
 }
+
 
 // lifecycle
 func (db *appdbimpl) Close() error { return db.c.Close() }

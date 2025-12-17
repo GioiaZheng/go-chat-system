@@ -100,6 +100,13 @@ yarn run build-prod
 yarn run preview
 ```
 
+## Testing
+
+The first `go test ./...` invocation compiles the vendored SQLite3 C driver. That
+CGO build can take close to a minute and may look stalled even though it is
+working. Once the driver object files are cached, subsequent `go test ./...`
+runs finish in under a second.
+
 ## License
 
 See [LICENSE](LICENSE).

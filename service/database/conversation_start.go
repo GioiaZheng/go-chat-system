@@ -232,8 +232,13 @@ func (db *appdbimpl) GetConversationMembers(conversationID string) ([]string, er
 		}
 		members = append(members, uid)
 	}
-	return members, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return members, nil
 }
+
 
 // DeleteConversation removes a conversation after verifying it exists.
 func (db *appdbimpl) DeleteConversation(conversationID string) error {
@@ -300,5 +305,10 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 
 		result = append(result, conv)
 	}
-	return result, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

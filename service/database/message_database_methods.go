@@ -519,8 +519,13 @@ func (db *appdbimpl) GetMessageComments(messageID string) ([]models.Message, err
 		}
 		out = append(out, m)
 	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
+
 
 // CommentMessage creates a new comment on a message, preserving the provided type
 // and content and assigning a server-generated timestamp.
