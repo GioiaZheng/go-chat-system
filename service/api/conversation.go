@@ -65,18 +65,18 @@ func (rt *_router) startConversation(
 		return
 	}
 
-        // Merge without injecting self yet to respect the YAML minItems:1 rule
+	// Merge without injecting self yet to respect the YAML minItems:1 rule
 	rawMembers := make([]string, 0, len(req.MemberIDs)+len(req.LegacyMemberIDs))
 	rawMembers = append(rawMembers, req.MemberIDs...)
 	rawMembers = append(rawMembers, req.LegacyMemberIDs...)
 
-        // OpenAPI: memberIds is required with minItems:1
+	// OpenAPI: memberIds is required with minItems:1
 	if len(rawMembers) == 0 {
 		rt.sendError(w, http.StatusBadRequest, "memberIds is required and must contain at least 1 item")
 		return
 	}
 
-        // 3) Deduplicate and sanitize
+	// 3) Deduplicate and sanitize
 	finalMembers := make([]string, 0, len(rawMembers)+1)
 	seen := make(map[string]struct{})
 	push := func(id string) {
@@ -94,7 +94,7 @@ func (rt *_router) startConversation(
 		push(id)
 	}
 
-        // 4) Always include the caller (outside the minItems:1 validation)
+	// 4) Always include the caller (outside the minItems:1 validation)
 	push(ctx.UserID)
 
 	// 5) Create conversation via DB

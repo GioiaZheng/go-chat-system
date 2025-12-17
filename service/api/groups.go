@@ -426,7 +426,7 @@ func (rt *_router) setGroupPhoto(
 		return
 	}
 
-        // Mode 1: preset via query param (kept for convenience).
+	// Mode 1: preset via query param (kept for convenience).
 	if preset := strings.TrimSpace(r.URL.Query().Get("preset")); preset != "" {
 		if !strings.HasPrefix(strings.ToLower(preset), "avatar") {
 			rt.sendError(w, http.StatusBadRequest, "Invalid preset name")
@@ -452,7 +452,7 @@ func (rt *_router) setGroupPhoto(
 		return
 	}
 
-        // Mode 2: uploaded photo via multipart form.
+	// Mode 2: uploaded photo via multipart form.
 	const maxUploadSizeBytes = 10 << 20 // 10 MiB
 	if err := r.ParseMultipartForm(maxUploadSizeBytes); err != nil {
 		rt.sendError(w, http.StatusBadRequest, "Invalid multipart form")

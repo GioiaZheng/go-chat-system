@@ -42,8 +42,8 @@ import (
 // main delegates to run() and exits with a non-zero status if initialization or
 // shutdown fail. Keeping the logic in run() simplifies testing and future reuse.
 func main() {
-        if err := run(); err != nil {
-                _, _ = fmt.Fprintln(os.Stderr, "error: ", err)
+	if err := run(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "error: ", err)
 		os.Exit(1)
 	}
 }

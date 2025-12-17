@@ -22,13 +22,13 @@ import (
 
 // MessageDTO is the public JSON shape for a message (camelCase, per OpenAPI).
 type MessageDTO struct {
-	ID             string `json:"id"`
-	Content        string `json:"content"`
-	SenderID       string `json:"senderId"`
-	ConversationID string `json:"conversationId,omitempty"`
-	CreatedAt      string `json:"createdAt"`
-	Type           string `json:"type,omitempty"`
-	Status         string `json:"status,omitempty"`
+	ID             string  `json:"id"`
+	Content        string  `json:"content"`
+	SenderID       string  `json:"senderId"`
+	ConversationID string  `json:"conversationId,omitempty"`
+	CreatedAt      string  `json:"createdAt"`
+	Type           string  `json:"type,omitempty"`
+	Status         string  `json:"status,omitempty"`
 	ReplyToID      *string `json:"replyToId,omitempty"`
 }
 
@@ -102,9 +102,9 @@ func timeAfter(a, b string) bool  { return a > b }
 
 // sendMessageRequest matches the OpenAPI request body for sending a message.
 type sendMessageRequest struct {
-	ConversationID string `json:"conversationId"`
-	Content        string `json:"content"`
-	Type           string `json:"type,omitempty"`
+	ConversationID string  `json:"conversationId"`
+	Content        string  `json:"content"`
+	Type           string  `json:"type,omitempty"`
 	ReplyToID      *string `json:"replyToId"`
 }
 
@@ -191,53 +191,53 @@ func (rt *_router) getMessages(
 	before := strings.TrimSpace(q.Get("beforeCursor"))
 	after := strings.TrimSpace(q.Get("afterCursor"))
 
-        // 1) Primary path: database query per conversation
-        items, err := rt.db.GetMessagesByConversation(convID, before, after, limit)
-        if err != nil {
-                // Log details for troubleshooting without changing the response shape
-                rt.baseLogger.WithError(err).Error("getMessages: db.GetMessagesByConversation failed; falling back to in-memory filter")
+	// 1) Primary path: database query per conversation
+	items, err := rt.db.GetMessagesByConversation(convID, before, after, limit)
+	if err != nil {
+		// Log details for troubleshooting without changing the response shape
+		rt.baseLogger.WithError(err).Error("getMessages: db.GetMessagesByConversation failed; falling back to in-memory filter")
 
-                // 2) Fallback: load all messages into memory and filter to avoid 500s
-                all, e2 := rt.db.GetAllMessages()
-                if e2 != nil {
-                        rt.baseLogger.WithError(e2).Error("getMessages: db.GetAllMessages failed")
-                        rt.sendError(w, http.StatusInternalServerError, "Failed to fetch messages")
-                        return
-                }
-                // Keep only the messages belonging to the requested conversation
-                buf := make([]models.Message, 0, len(all))
-                for _, m := range all {
-                        if strings.TrimSpace(m.ConversationID) == convID {
-                                buf = append(buf, m)
-                        }
-                }
-                // Sort newest first; if timestamps tie, sort by id for determinism
-                sort.Slice(buf, func(i, j int) bool {
-                        if buf[i].CreatedAt == buf[j].CreatedAt {
-                                return buf[i].ID > buf[j].ID
-                        }
-                        return buf[i].CreatedAt > buf[j].CreatedAt
-                })
-                // Apply cursors
-                filtered := buf[:0]
-                for _, m := range buf {
-                        if before != "" && !timeBefore(m.CreatedAt, before) {
-                                continue
-                        }
+		// 2) Fallback: load all messages into memory and filter to avoid 500s
+		all, e2 := rt.db.GetAllMessages()
+		if e2 != nil {
+			rt.baseLogger.WithError(e2).Error("getMessages: db.GetAllMessages failed")
+			rt.sendError(w, http.StatusInternalServerError, "Failed to fetch messages")
+			return
+		}
+		// Keep only the messages belonging to the requested conversation
+		buf := make([]models.Message, 0, len(all))
+		for _, m := range all {
+			if strings.TrimSpace(m.ConversationID) == convID {
+				buf = append(buf, m)
+			}
+		}
+		// Sort newest first; if timestamps tie, sort by id for determinism
+		sort.Slice(buf, func(i, j int) bool {
+			if buf[i].CreatedAt == buf[j].CreatedAt {
+				return buf[i].ID > buf[j].ID
+			}
+			return buf[i].CreatedAt > buf[j].CreatedAt
+		})
+		// Apply cursors
+		filtered := buf[:0]
+		for _, m := range buf {
+			if before != "" && !timeBefore(m.CreatedAt, before) {
+				continue
+			}
 			if after != "" && !timeAfter(m.CreatedAt, after) {
 				continue
 			}
 			filtered = append(filtered, m)
 		}
-                // Truncate to the requested page size
-                if len(filtered) > limit {
-                        items = filtered[:limit]
-                } else {
-                        items = filtered
-                }
-        }
+		// Truncate to the requested page size
+		if len(filtered) > limit {
+			items = filtered[:limit]
+		} else {
+			items = filtered
+		}
+	}
 
-        // Build cursors for the response
+	// Build cursors for the response
 	var nextCursor, prevCursor *string
 	if len(items) == limit {
 		nc := items[len(items)-1].CreatedAt
@@ -411,22 +411,22 @@ func (rt *_router) commentMessage(
 		return
 	}
 
-        // Default to text comments when the client does not provide a type.
-        if req.Type == "" {
-                req.Type = "text"
-        }
+	// Default to text comments when the client does not provide a type.
+	if req.Type == "" {
+		req.Type = "text"
+	}
 
-        // Only allow text or emoji comments to avoid unexpected database writes.
-        if req.Type != "text" && req.Type != "emoji" {
-                rt.sendError(w, http.StatusBadRequest, "invalid type")
-                return
-        }
+	// Only allow text or emoji comments to avoid unexpected database writes.
+	if req.Type != "text" && req.Type != "emoji" {
+		rt.sendError(w, http.StatusBadRequest, "invalid type")
+		return
+	}
 
-        // Persist the comment using the normalized type and sanitized content.
-        if err := rt.db.CommentMessage(msgID, userID, req.Type, req.Content); err != nil {
-                rt.sendError(w, http.StatusInternalServerError, "Failed to add comment")
-                return
-        }
+	// Persist the comment using the normalized type and sanitized content.
+	if err := rt.db.CommentMessage(msgID, userID, req.Type, req.Content); err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to add comment")
+		return
+	}
 
 	resp := map[string]interface{}{
 		"code":    http.StatusCreated,
@@ -511,7 +511,7 @@ func (rt *_router) uploadMessageFile(
 		return
 	}
 
-        // Read the uploaded file from multipart field "upload"
+	// Read the uploaded file from multipart field "upload"
 	file, header, err := r.FormFile("upload")
 	if err != nil {
 		rt.sendError(w, http.StatusBadRequest, "file required")
@@ -519,14 +519,14 @@ func (rt *_router) uploadMessageFile(
 	}
 	defer file.Close()
 
-        // Ensure the uploads directory exists
+	// Ensure the uploads directory exists
 	baseDir := "./uploads"
 	if err := os.MkdirAll(baseDir, 0o755); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to prepare upload directory")
 		return
 	}
 
-        // Persist the file under ./uploads/
+	// Persist the file under ./uploads/
 	fname := "msg_" + uuid.Must(uuid.NewV4()).String() + "_" + header.Filename
 	path := filepath.Join(baseDir, fname)
 
@@ -539,7 +539,7 @@ func (rt *_router) uploadMessageFile(
 
 	_, _ = io.Copy(out, file)
 
-        // Return a public URL for the frontend to use as message content
+	// Return a public URL for the frontend to use as message content
 	url := "/uploads/" + fname
 
 	resp := map[string]interface{}{
