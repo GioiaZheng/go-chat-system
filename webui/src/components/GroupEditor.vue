@@ -90,7 +90,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axios from "../services/axios";
-import { withAuthConfig } from "../services/api";
+import { isAbortError, withAuthConfig } from "../services/api";
 import LoadingSpinner from "./LoadingSpinner.vue";
 import UserSearchBox from "./UserSearchBox.vue";
 
@@ -149,7 +149,7 @@ async function setPreset(preset) {
     );
     await fetchGroup();
   } catch (e) {
-    console.error("setGroupPhotoPreset failed:", e);
+    if (!isAbortError(e)) console.error("setGroupPhotoPreset failed:", e);
   }
 }
 
@@ -166,11 +166,12 @@ async function uploadPhoto(ev) {
     });
     await fetchGroup();
   } catch (e) {
-    console.error("setGroupPhotoUpload failed:", e);
+    if (!isAbortError(e)) console.error("setGroupPhotoUpload failed:", e);
   } finally {
     if (ev?.target) ev.target.value = "";
   }
 }
+
 function onPick(u) {
   // Avoid adding the same user more than once.
   if (!toAdd.value.find((x) => String(x.id) === String(u.id))) {
@@ -191,7 +192,7 @@ async function addMembers() {
     toAdd.value = [];
     await fetchGroup();
   } catch (e) {
-    console.error("addToGroup failed:", e);
+    if (!isAbortError(e)) console.error("addToGroup failed:", e);
   } finally {
     adding.value = false;
   }
@@ -208,7 +209,7 @@ async function leave() {
     );
     emit("close"); // Allow the parent to refresh the list or navigate away.
   } catch (e) {
-    console.error("leaveGroup failed:", e);
+    if (!isAbortError(e)) console.error("leaveGroup failed:", e);
   } finally {
     leaving.value = false;
   }

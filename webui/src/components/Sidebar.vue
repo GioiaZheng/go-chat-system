@@ -34,38 +34,19 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import api, { getMyProfile, getAvatarUrl } from '@/services/api'
+import { getAvatarUrl } from '@/services/api'
+import { logout as clearAuth, currentUser } from '@/services/auth'
 
 const router = useRouter()
-const me = ref(null)
+const me = computed(() => currentUser.value)
 
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
 const initials = computed(() => (me.value?.name || me.value?.username || 'U')[0].toUpperCase())
 
-async function loadProfile() {
-  try {
-    const prof = await getMyProfile()
-    me.value = prof?.data?.user || prof?.user || prof || null
-  } catch {}
-}
-
-function handleAuthChanged() {
-  loadProfile()
-}
-
-onMounted(() => {
-  loadProfile()
-  window.addEventListener('auth:changed', handleAuthChanged)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('auth:changed', handleAuthChanged)
-})
-
 async function logout() {
-  api.doLogout()
+  clearAuth()
   await router.replace('/login')
 }
 </script>

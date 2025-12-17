@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { readToken } from '@/services/api'
+import { ensureAuthReady, isAuthenticated } from '@/services/auth'
 
 // View components used in the route map.
 import LoginView from '../views/LoginView.vue'
@@ -93,11 +93,11 @@ const router = createRouter({
 })
 
 // Navigation guard enforcing authentication and login redirects.
-const isAuthed = () => !!readToken()
+router.beforeEach(async (to, from, next) => {
+  await ensureAuthReady()
 
-router.beforeEach((to, from, next) => {
   const needsAuth = to.matched.some((r) => r.meta?.requiresAuth)
-  const authed = !!readToken()
+  const authed = isAuthenticated.value
 
   // Step 1: Redirect unauthenticated users away from protected routes.
   if (needsAuth && !authed) {
@@ -112,13 +112,6 @@ router.beforeEach((to, from, next) => {
   if (to.path === '/login' && authed) {
     next('/conversations')
     return
-  }
-
-  // Step 3: Emit a global event when the route actually changes (optional).
-  if (from.name && from.name !== to.name) {
-    try {
-      window.dispatchEvent(new Event('auth:changed'))
-    } catch {}
   }
 
   next()

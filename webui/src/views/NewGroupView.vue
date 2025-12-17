@@ -111,18 +111,12 @@ const memberIds = computed(() => {
   return Array.from(ids)
 })
 
-onMounted(() => {
-  if (!isAuthed()) {
+onMounted(async () => {
+  await ensureAuthReady()
+  if (!isAuthenticated.value) {
     router.replace('/login')
   }
-  loadMe()
 })
-
-async function loadMe() {
-  try {
-    me.value = await getMyProfile()
-  } catch {}
-}
 
 function onChildError(msg) {
   err.value = msg || ''

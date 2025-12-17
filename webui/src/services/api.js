@@ -3,28 +3,132 @@ import axios from './axios'
 
 /* Authentication helpers */
 
-// Read the persisted token from either localStorage or sessionStorage.
+let activeAbortController = createAbortController()
+
+function createAbortController() {
+  return new AbortController()
+}
+
+function getRequestSignal(customSignal) {
+  if (customSignal) return customSignal
+
+  if (!activeAbortController || activeAbortController.signal.aborted) {
+    activeAbortController = createAbortController()
+  }
+  return activeAbortController.signal
+}
+
+export function abortActiveRequests(reason = 'Canceled due to logout') {
+  try {
+    if (activeAbortController) {
+      activeAbortController.abort(reason)
+    }
+  } finally {
+    activeAbortController = createAbortController()
+  }
+}
+
+export function isAbortError(err) {
+  const code = err?.code || err?.name || ''
+  const msg = String(err?.message || '').toLowerCase()
+  return (
+    code === 'ERR_CANCELED' ||
+    code === 'CanceledError' ||
+    code === 'AbortError' ||
+    msg === 'canceled' ||
+    msg === 'cancelled' ||
+    msg === 'aborted' ||
+    msg.includes('canceled') ||
+    msg.includes('aborted')
+  )
+}
+
+const AUTH_EVENT = 'auth:changed'
+
+function emitAuthChanged() {
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(AUTH_EVENT))
+    }
+  } catch {}
+}
+
+// Read the persisted token from localStorage.
 export const readToken = () => {
   if (typeof window === 'undefined') return ''
 
-  const rawToken = localStorage.getItem('token') || sessionStorage.getItem('authToken') || ''
+  const rawToken = localStorage.getItem('token') || ''
   const token = String(rawToken).trim()
 
   // Treat placeholder values (e.g., "null" or "undefined") as missing tokens so we fall
   // back to the login page instead of mistakenly considering the user authenticated.
   return token && token !== 'null' && token !== 'undefined' ? token : ''
 }
+
+// Backward-compatible alias used by legacy callers; ensures any lingering
+// references resolve to the single canonical accessor above instead of
+// throwing a ReferenceError at runtime.
+export const readTokens = () => readToken()
 // Determine whether the user is currently authenticated.
 export function isAuthed() {
   return !!readToken()
 }
 
+/**
+ * Remove all persisted authentication artifacts.
+ * Useful for both logout and resetting state before a new login attempt.
+ */
+export function clearAuthArtifacts({ emit = true } = {}) {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    localStorage.removeItem('name')
+    localStorage.removeItem('me')
+  }
+
+  if (axios?.defaults?.headers?.common) {
+    delete axios.defaults.headers.common.Authorization
+  }
+
+  if (emit) emitAuthChanged()
+}
+
+/**
+ * Persist a valid auth token across storage layers and axios defaults.
+ */
+export function persistAuthToken(token, { emit = true } = {}) {
+  const value = typeof token === 'string' ? token.trim() : String(token || '').trim()
+  if (!value) throw new Error('Invalid token provided')
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('token', value)
+  }
+
+  if (axios?.defaults?.headers?.common) {
+    axios.defaults.headers.common.Authorization = `Bearer ${value}`
+  }
+
+  if (emit) emitAuthChanged()
+  return value
+}
+
 // Attach the Authorization header when a token is present.
 export function withAuthConfig(cfg = {}) {
+  const { authRequired = true, signal, ...rest } = cfg || {}
   const token = readToken()
-  const headers = { ...(cfg?.headers || {}) }
+
+  if (authRequired && !token) {
+    throw new Error('Not authenticated')
+  }
+
+  const headers = { ...(rest.headers || {}) }
   if (token) headers.Authorization = `Bearer ${token}`
-  return { ...(cfg || {}), headers }
+
+  return {
+    ...rest,
+    headers,
+    signal: getRequestSignal(signal),
+  }
 }
 
 // Unwrap one layer of { code, message, data } without altering deeper payloads.
@@ -69,7 +173,7 @@ export function absUrl(path) {
 
 /* Public endpoints and utilities */
 
-export async function doLogin(name) {
+export async function doLogin(name, { persist = true } = {}) {
   // Basic login that posts the username to /session.
   const res = await axios.post('/session', { name })
 
@@ -80,26 +184,25 @@ export async function doLogin(name) {
   const token =
     root?.data?.token ||   // {code, message, data:{user, token}}
     root?.token           // {user, token}
-  
+
   if (!token) {
     console.error('Login response payload =', root)
     throw new Error('Login response missing token')
   }
 
-  // Persist the token in both storage locations for compatibility.
-  localStorage.setItem('token', token)
-  sessionStorage.setItem('authToken', token)
+  if (persist) {
+    // Persist the token, signaling auth changes only once the flow succeeds.
+    clearAuthArtifacts({ emit: false })
+    persistAuthToken(token, { emit: false })
+    emitAuthChanged()
+  }
 
-  try {
-    window.dispatchEvent(new Event('auth:changed'))
-  } catch {}
-
-  return token
+  return { token, user: root?.data?.user || root?.user || null }
 }
 
 
-export async function liveness() { return unwrap(await get('/liveness')) }
-export async function healthz()  { return unwrap(await get('/healthz')) }
+export async function liveness() { return unwrap(await get('/liveness', { authRequired: false })) }
+export async function healthz()  { return unwrap(await get('/healthz', { authRequired: false })) }
 
 /* Logout helper */
 
@@ -109,15 +212,8 @@ export async function healthz()  { return unwrap(await get('/healthz')) }
  */
 export function doLogout() {
   try {
-    localStorage.removeItem('token')
-    sessionStorage.removeItem('authToken')
-    localStorage.removeItem('username')
-    localStorage.removeItem('name')
-    localStorage.removeItem('me')
-    if (axios?.defaults?.headers?.common) {
-      delete axios.defaults.headers.common.Authorization
-    }
-    window.dispatchEvent(new Event('auth:changed'))
+    abortActiveRequests('User logged out')
+    clearAuthArtifacts()
   } catch {}
 }
 
@@ -201,10 +297,7 @@ export async function listContacts() {
       }
     } catch {}
   }
-  // Filter out the current user
-  let meId = ''
-  try { const me = await getMyProfile(); meId = String(me.id || '') } catch {}
-  return Array.from(uniq.values()).filter(u => String(u?.id ?? '') !== meId)
+  return Array.from(uniq.values())
 }
 
 /* Conversation helpers */
@@ -510,7 +603,13 @@ export function ticksFor(m, myId) {
 const api = {
   // auth / ping / base
   isAuthed,
+  readToken,
+  readTokens,
   doLogin,
+  abortActiveRequests,
+  isAbortError,
+  persistAuthToken,
+  clearAuthArtifacts,
   liveness,
   healthz,
   resolveApiBase,

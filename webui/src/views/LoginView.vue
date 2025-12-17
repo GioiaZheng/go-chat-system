@@ -48,7 +48,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
-import api from '@/services/api'
+import { ensureAuthReady, isAuthenticated, login as performLogin } from '@/services/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -57,7 +57,7 @@ const name = ref('')
 const err  = ref('')
 const busy = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
   document.body.classList.add('theme-light-login')
 
   // Prefill the input when a name query parameter is provided.
@@ -65,7 +65,8 @@ onMounted(() => {
   if (preset) name.value = preset
 
   // Skip the form when a valid token is already stored.
-  if (readToken()) router.replace('/conversations')
+  await ensureAuthReady()
+  if (isAuthenticated.value) router.replace('/conversations')
 })
 
 onUnmounted(() => {
@@ -78,20 +79,7 @@ async function login () {
   busy.value = true
 
   try {
-    // Clear any existing tokens before starting a new session.
-    localStorage.removeItem('token')
-    sessionStorage.removeItem('authToken')
-
-    // Sign in; the API client stores the token internally.
-    await api.doLogin(name.value)
-
-    // Keep other views in sync with the chosen username.
-    localStorage.setItem('username', name.value)
-    localStorage.setItem('name', name.value)
-    localStorage.setItem('me', JSON.stringify({ username: name.value }))
-
-    // Notify other views to refresh their state.
-    window.dispatchEvent(new Event('auth:changed'))
+    await performLogin(name.value)
 
     // Honor a redirect query parameter when present.
     const next = (route.query.redirect && String(route.query.redirect)) || '/conversations'

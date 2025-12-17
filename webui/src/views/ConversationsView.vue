@@ -113,21 +113,17 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 
-import {
-  getMyConversations,
-  getMyProfile,
-  getAvatarUrl,
-  deleteConversation,
-} from '@/services/api'
+import { getMyConversations, getAvatarUrl, deleteConversation } from '@/services/api'
+import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
 
 const router = useRouter()
 
 const convs = ref([])
-const me = ref(null)
 const loading = ref(false)
 const err = ref('')
 
 // Helper to read the current user identifier as a string.
+const me = computed(() => currentUser.value)
 const myId = () => String(me.value?.id ?? '')
 
 // Derived conversation lists by type.
@@ -176,6 +172,14 @@ function initials(c) {
 
 // Load conversations and normalize varying backend payload shapes.
 async function load() {
+
+  await ensureAuthReady()
+  if (!isAuthenticated.value) {
+    convs.value = []
+    loading.value = false
+    return
+  }
+
   loading.value = true
   err.value = ''
 
@@ -286,10 +290,6 @@ const handleRefreshEvent = e => {
 }
 
 onMounted(async () => {
-  try {
-    me.value = await getMyProfile()
-  } catch {}
-
   await load()
   window.addEventListener('auth:changed', load)
   window.addEventListener('conversations:refresh', handleRefreshEvent)

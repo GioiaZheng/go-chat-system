@@ -33,57 +33,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
-import { readToken } from '@/services/api'
+import { ensureAuthReady, isAuthenticated, isReady } from '@/services/auth'
 
 
 const route = useRoute()
 const router = useRouter()
 
-/* Track authentication state across navigation. */
-const hasToken = () => !!readToken()
+const checking = computed(() => !isReady.value)
+const isAuthed = isAuthenticated
 
-const isAuthed = ref(false)
-const checking = ref(true)
+ensureAuthReady()
 
-function refreshAuth() {
-  isAuthed.value = hasToken()
-
-  // Always send unauthenticated visitors to the login screen.
-  if (!isAuthed.value && route.path !== '/login') {
-    const query = route.fullPath ? { redirect: route.fullPath } : undefined
-    router.replace({ path: '/login', query })
-  }
-}
-
-// Run an initial auth check so first render shows the correct view.
-refreshAuth()
-checking.value = false
-
-/* Lifecycle hooks manage authentication redirects and listeners. */
-onMounted(() => {
-  // Listen for login/logout events emitted elsewhere in the app.
-  window.addEventListener('auth:changed', refreshAuth)
-
-  // Refresh auth status when the page becomes visible again.
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshAuth()
-  })
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('auth:changed', refreshAuth)
-})
-
-/* Validate authentication whenever the route changes. */
 watch(
-  () => route.fullPath,
+  () => [route.fullPath, isAuthenticated.value, isReady.value],
   () => {
-    refreshAuth()
-    if (!hasToken() && route.path !== '/login') {
-      router.replace('/login')
+    if (isReady.value && !isAuthenticated.value && route.path !== '/login') {
+      const query = route.fullPath ? { redirect: route.fullPath } : undefined
+      router.replace({ path: '/login', query })
     }
   },
   { immediate: true }

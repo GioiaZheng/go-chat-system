@@ -456,8 +456,6 @@ import { useRoute, useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import UserSearch from '@/components/UserSearch.vue'
 import {
-  isAuthed,
-  getMyProfile,
   getMyConversations,
   getConversationMembers,
   getMessages,
@@ -476,10 +474,13 @@ import {
   commentMessage,
   uncommentMessage,
   forwardMessage,
+  isAbortError,
   ticksFor,
   titleForConversation,
   avatarForConversation,
 } from '@/services/api'
+
+import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -505,7 +506,7 @@ const convLoading = ref(false)
 const convErr = ref('')
 const convSearch = ref('')
 
-const me = ref(null)
+const me = computed(() => currentUser.value)
 const meId = computed(() => String(me.value?.id || ''))
 const myAvatar = computed(() => getAvatarUrl(me.value || {}))
 
@@ -609,8 +610,15 @@ function normalizeConversationList(items = []) {
 }
 
 async function loadConversationList() {
-  convLoading.value = true
   convErr.value = ''
+  await ensureAuthReady()
+  if (!isAuthenticated.value) {
+    convList.value = []
+    convLoading.value = false
+    return
+  }
+
+  convLoading.value = true
   try {
     const raw = await getMyConversations()
     const items = raw?.data?.items || raw?.items || (Array.isArray(raw) ? raw : []) || []
@@ -752,14 +760,11 @@ watch(convList, () => {
   }
 })
 
-async function refreshProfile() {
-  // Handle both legacy and current envelopes for the profile response
-  const prof = await getMyProfile()
-  me.value = prof?.data?.user || prof?.user || prof || null
-}
-
 // Load conversation metadata (for title, participants, and type).
 async function loadConversationMeta() {
+  await ensureAuthReady()
+  if (!isAuthenticated.value) return
+
   try {
     if (!convList.value.length) {
       await loadConversationList()
@@ -796,7 +801,9 @@ async function loadConversationMeta() {
             conv = { ...conv, participants: memberList }
           }
         } catch (memberErr) {
-          console.error('loadConversationMeta members fallback failed', memberErr)
+          if (!isAbortError(memberErr)) {
+            console.error('loadConversationMeta members fallback failed', memberErr)
+          }
         }
       }
     }
@@ -809,8 +816,10 @@ async function loadConversationMeta() {
       groupInfo.value = null
     }
   } catch (e) {
-    // Let message loading continue; surface diagnostics in the console only
-    console.error('loadConversationMeta failed', e)
+    if (!isAbortError(e)) {
+      // Let message loading continue; surface diagnostics in the console only
+      console.error('loadConversationMeta failed', e)
+    }
   }
 }
 
@@ -894,6 +903,9 @@ function normalizeMessage(raw) {
 
 // Load messages for the active conversation and hydrate reply previews.
 async function loadMessages() {
+  await ensureAuthReady()
+  if (!isAuthenticated.value) return
+
   loading.value = true
   err.value = ''
   notice.value = ''
@@ -975,7 +987,7 @@ async function resolveGroupId() {
       return groupInfo.value.id
     }
   } catch (e) {
-    console.error('resolveGroupId failed', e)
+    if (!isAbortError(e)) console.error('resolveGroupId failed', e)
   }
   return ''
 }
@@ -1361,28 +1373,22 @@ function bumpConversationList(extra = {}) {
 
 // Initialize the view once authentication is confirmed.
 async function bootstrap() {
-  if (!isAuthed()) {
+  await ensureAuthReady()
+  if (!isAuthenticated.value) {
     return router.replace('/login')
   }
 
-  await refreshProfile()
   await loadConversationList()
   await loadConversationMeta()
   await loadMessages()
 }
 
-function handleAuthChanged() {
-  refreshProfile().catch(() => {})
-}
-
 onMounted(() => {
-  window.addEventListener('auth:changed', handleAuthChanged)
   window.addEventListener('conversations:refresh', loadConversationList)
   bootstrap()
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('auth:changed', handleAuthChanged)
   window.removeEventListener('conversations:refresh', loadConversationList)
 })
 

@@ -119,18 +119,19 @@ import {
   setGroupPhoto,
   addToGroup,
   leaveGroup,
-  getMyProfile,
   getAvatarUrl,
-  readToken,
 } from '@/services/api'
+
+import { ensureAuthReady, isAuthenticated, currentUser, refreshProfile } from '@/services/auth'
 
 const router = useRouter()
 
-// Authentication helpers and cached profile details.
-const authed = () => !!readToken()
 const meId = ref('')
 async function loadMe () {
-  try { const me = await getMyProfile(); meId.value = String(me?.id || '') } catch {}
+  try {
+    await refreshProfile()
+    meId.value = String(currentUser.value?.id || '')
+  } catch {}
 }
 
 // Page-level error, notice, and loading indicators.
@@ -317,7 +318,8 @@ async function onLeave(id) {
 
 // Bootstrap the page once authenticated.
 onMounted(async () => {
-  if (!authed()) { router.replace('/login'); return }
+  await ensureAuthReady()
+  if (!isAuthenticated.value) { router.replace('/login'); return }
   await loadMe()
   await loadList()
 })

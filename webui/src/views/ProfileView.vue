@@ -82,7 +82,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
-import { getMyProfile, setMyUserName, setMyPhotoFile, getAvatarUrl, readToken } from '@/services/api'
+import { setMyUserName, setMyPhotoFile, getAvatarUrl } from '@/services/api'
+import { ensureAuthReady, isAuthenticated, refreshProfile, currentUser } from '@/services/auth'
 
 const router = useRouter()
 const me = ref(null)
@@ -92,16 +93,14 @@ const loading = ref(false)
 const err = ref('')
 const imgBroken = ref(false)
 
-// Lightweight auth helper to detect an existing token.
-const authed = () => !!readToken()
-
 // Resolve avatar URLs through getAvatarUrl to avoid relative paths.
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
 
 const initials = computed(() => ((me.value?.name || me.value?.username || 'U')[0] || 'U').toUpperCase())
 
-onMounted(() => {
-  if (!authed()) {
+onMounted(async () => {
+  await ensureAuthReady()
+  if (!isAuthenticated.value) {
     router.replace('/login')
     return
   }
@@ -111,8 +110,8 @@ onMounted(() => {
 async function loadProfile() {
   err.value = ''
   try {
-    const data = await getMyProfile()
-    me.value = data?.data || data?.user || data || null
+    await refreshProfile()
+    me.value = currentUser.value
     newName.value = me.value?.name || ''
     localStorage.setItem('name', me.value?.name || '')
     localStorage.setItem('me', JSON.stringify(me.value || {}))
