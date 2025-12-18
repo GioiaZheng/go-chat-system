@@ -44,6 +44,7 @@ type AppDatabase interface {
 	DeleteConversation(conversationID string) error
 
 	// Section: messages
+	MarkConversationRead(conversationID, readerID string) error
 	SendMessageToConversation(message models.Message) error
 	SendPrivateMessage(message models.Message) error
 	SendGroupMessage(message models.Message) error
@@ -135,6 +136,7 @@ func initializeTables(db *sql.DB) error {
             file_url        TEXT,
             type            TEXT DEFAULT 'text',
             status          TEXT DEFAULT 'sent',
+            read            INTEGER DEFAULT 0,
             sender_id       TEXT NOT NULL,
             receiver_id     TEXT,
             group_id        TEXT,
@@ -190,6 +192,10 @@ func initializeTables(db *sql.DB) error {
 		return err
 	}
 
+	if err := ensureMessageReadColumn(db); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -219,6 +225,22 @@ func ensureMessageStatusColumn(db *sql.DB) error {
 
 	if _, err := db.Exec(`ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'sent';`); err != nil {
 		return fmt.Errorf("failed to add status column: %w", err)
+	}
+
+	return nil
+}
+
+func ensureMessageReadColumn(db *sql.DB) error {
+	exists, err := columnExists(db, "messages", "read")
+	if err != nil {
+		return fmt.Errorf("failed to inspect messages table: %w", err)
+	}
+	if exists {
+		return nil
+	}
+
+	if _, err := db.Exec(`ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0;`); err != nil {
+		return fmt.Errorf("failed to add read column: %w", err)
 	}
 
 	return nil

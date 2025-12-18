@@ -40,6 +40,7 @@ type Message struct {
 	// Type contains the message classification (text, image, or file).
 	Type   string `db:"type"`
 	Status string `db:"status"`
+	Read   bool   `db:"read"`
 
 	// ReplyToID links to another message when the current one is a reply.
 	ReplyToID *string `db:"reply_to_id"`

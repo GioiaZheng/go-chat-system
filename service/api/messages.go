@@ -29,6 +29,7 @@ type MessageDTO struct {
 	CreatedAt      string  `json:"createdAt"`
 	Type           string  `json:"type,omitempty"`
 	Status         string  `json:"status,omitempty"`
+	Read           bool    `json:"read,omitempty"`
 	ReplyToID      *string `json:"replyToId,omitempty"`
 }
 
@@ -43,6 +44,7 @@ func toMessageDTO(m models.Message) MessageDTO {
 		CreatedAt:      m.CreatedAt,
 		Type:           m.Type,
 		Status:         m.Status,
+		Read:           m.Read,
 		ReplyToID:      m.ReplyToID,
 	}
 }
@@ -171,6 +173,7 @@ func (rt *_router) sendMessage(
 		CreatedAt:      now,
 		Type:           req.Type,
 		Status:         "sent",
+		Read:           false,
 		ReplyToID:      req.ReplyToID,
 	}
 	if err := rt.db.SendMessageToConversation(msg); err != nil {
@@ -197,13 +200,19 @@ func (rt *_router) getMessages(
 	w http.ResponseWriter,
 	r *http.Request,
 	_ httprouter.Params,
-	_ reqcontext.RequestContext,
+	ctx reqcontext.RequestContext,
 ) {
 	q := r.URL.Query()
 	convID := strings.TrimSpace(q.Get("conversationId"))
 	if convID == "" {
 		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
 		return
+	}
+
+	// Simplified read receipts: mark every message in this conversation as read
+	// once the recipient opens it (no per-message polling or websockets).
+	if err := rt.db.MarkConversationRead(convID, strings.TrimSpace(ctx.UserID)); err != nil {
+		rt.baseLogger.WithError(err).Warn("getMessages: failed to mark conversation as read")
 	}
 	limit := parseLimit(q.Get("limit"), 20, 1, 100)
 	before := strings.TrimSpace(q.Get("beforeCursor"))

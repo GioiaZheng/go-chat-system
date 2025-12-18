@@ -617,6 +617,7 @@ export async function unreactToMessage(id, emoji) {
 /* Read receipt ticks (0=queued 1=sent 2=delivered 3=read; -1 for others) */
 export function ticksFor(m, myId) {
   if (!m || String(m.senderId) !== String(myId)) return -1
+  if (m.read) return 2
   const s = (m.status || '').toLowerCase()
   if (s === 'seen' || s === 'read') return 3
   if (s === 'delivered') return 2

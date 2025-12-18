@@ -905,6 +905,8 @@ function normalizeMessage(raw) {
   const replyType = raw.replyTo?.type || ''
   const replyPreview = replyContent || (replyType === 'image' ? '[image]' : '')
 
+  const read = Boolean(raw.read || raw.read_at || raw.readAt)
+
   // Image handling: when type === 'image', content is the image URL
   const possibleFileRel =
     raw.fileUrl ||
@@ -944,6 +946,7 @@ function normalizeMessage(raw) {
 
   return {
     id: raw.id,
+    read,
     content: contentText,
     type: raw.type === 'image' ? 'image' : 'text',
     fileAbsUrl: fileRel ? absUrl(fileRel) : null,
@@ -1365,10 +1368,11 @@ function jumpToMessage(targetId) {
 }
 
 function tickText(m) {
+  if (!isMine(m)) return ''
+  if (m.read) return '✓✓'
   const v = Math.max(ticksFor(m, meId.value), m?._localStatus || 0)
   if (v >= 2) return '✓✓'
-  if (v >= 1 || isMine(m)) return '✓'
-  return ''
+  return '✓'
 }
 
 // Group management helpers.

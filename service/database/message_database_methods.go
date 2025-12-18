@@ -38,14 +38,15 @@ content,
 file_url,
 type,
 status,
+read,
 sender_id,
-			receiver_id,
-			group_id,
-			conversation_id,
-			reply_to_id,
-			created_at
+                        receiver_id,
+                        group_id,
+                        conversation_id,
+                        reply_to_id,
+                        created_at
 ) VALUES (
-?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, COALESCE(?, datetime('now'))
+?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, COALESCE(?, datetime('now'))
 )
 `,
 		message.ID,
@@ -53,10 +54,11 @@ sender_id,
 		message.FileURL,
 		message.Type,
 		message.Status,
-                message.SenderID,
-                message.ReceiverID,
-                nullableReplyID(message.ReplyToID),
-                NullIfEmpty(message.CreatedAt),
+		message.Read,
+		message.SenderID,
+		message.ReceiverID,
+		nullableReplyID(message.ReplyToID),
+		NullIfEmpty(message.CreatedAt),
 	)
 	return err
 }
@@ -71,14 +73,15 @@ content,
 file_url,
 type,
 status,
+read,
 sender_id,
-			receiver_id,
-			group_id,
-			conversation_id,
-			reply_to_id,
-			created_at
+                        receiver_id,
+                        group_id,
+                        conversation_id,
+                        reply_to_id,
+                        created_at
 ) VALUES (
-?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, COALESCE(?, datetime('now'))
+?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, COALESCE(?, datetime('now'))
 )
 `,
 		message.ID,
@@ -86,6 +89,7 @@ sender_id,
 		message.FileURL,
 		message.Type,
 		message.Status,
+		message.Read,
 		message.SenderID,
 		message.ConversationID,
 		nullableReplyID(message.ReplyToID),
@@ -101,6 +105,27 @@ func (db *appdbimpl) SendGroupMessage(message models.Message) error {
 		return errors.New("conversation_id required for group message")
 	}
 	return db.SendMessageToConversation(message)
+}
+
+// MarkConversationRead marks every message in the conversation as read for the caller
+// (excluding the caller's own messages). It uses a coarse-grained update instead of
+// per-message receipts to avoid real-time/stateful complexity.
+func (db *appdbimpl) MarkConversationRead(conversationID, readerID string) error {
+	conversationID = strings.TrimSpace(conversationID)
+	readerID = strings.TrimSpace(readerID)
+	if conversationID == "" || readerID == "" {
+		return nil
+	}
+
+	_, err := db.c.Exec(`
+UPDATE messages
+   SET read = 1,
+       status = 'read'
+ WHERE conversation_id = ?
+   AND sender_id <> ?
+   AND read = 0
+`, conversationID, readerID)
+	return err
 }
 
 // Section: conversation reads with cursor support for paginating message history.
@@ -125,12 +150,13 @@ content,
 file_url,
 type,
 status,
+read,
 sender_id,
-			receiver_id,
-			group_id,
-			conversation_id,
-			reply_to_id,
-			created_at
+                        receiver_id,
+                        group_id,
+                        conversation_id,
+                        reply_to_id,
+                        created_at
         FROM messages
         WHERE conversation_id = ?`
 	args := []interface{}{convID}
@@ -163,6 +189,7 @@ sender_id,
 			&fileURL,
 			&m.Type,
 			&m.Status,
+			&m.Read,
 			&m.SenderID,
 			&recv,
 			&grp,
@@ -217,6 +244,7 @@ content,
 file_url,
 type,
 status,
+read,
 sender_id,
             receiver_id,
             group_id,
@@ -245,6 +273,7 @@ sender_id,
 			&fileURL,
 			&m.Type,
 			&m.Status,
+			&m.Read,
 			&m.SenderID,
 			&m.ReceiverID,
 			&m.GroupID,
@@ -281,6 +310,7 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 file_url,
                         type,
                         status,
+			read,
             sender_id,
             receiver_id,
             group_id,
@@ -307,6 +337,7 @@ file_url,
 			&fileURL,
 			&m.Type,
 			&m.Status,
+			&m.Read,
 			&m.SenderID,
 			&m.ReceiverID,
 			&m.GroupID,
@@ -347,6 +378,7 @@ content,
 file_url,
 type,
 status,
+read,
 sender_id,
 receiver_id,
 group_id,
@@ -391,7 +423,8 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 file_url,
                         type,
                         status,
-            sender_id,
+            read,
+			sender_id,
             receiver_id,
             group_id,
             conversation_id,
@@ -416,6 +449,8 @@ file_url,
 			&fileURL,
 			&m.Type,
 			&m.Status,
+			&m.Read,
+			&m.Read,
 			&m.SenderID,
 			&recv,
 			&grp,
@@ -472,6 +507,7 @@ content,
 file_url,
 type,
 status,
+read,
 sender_id,
             receiver_id,
             group_id,
