@@ -32,6 +32,7 @@ type GroupMember struct {
 type Message struct {
 	ID             string `db:"id"`
 	Content        string `db:"content"`
+	FileURL        string `db:"file_url"`
 	SenderID       string `db:"sender_id"`
 	ConversationID string `db:"conversation_id"`
 	CreatedAt      string `db:"created_at"`

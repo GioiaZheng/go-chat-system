@@ -32,29 +32,31 @@ func nullableReplyID(reply *string) interface{} {
 // It enforces that only sender_id and receiver_id are set, leaving group and conversation empty.
 func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
 	_, err := db.c.Exec(`
-		INSERT INTO messages (
-			id,
-			content,
-			type,
-			status,
-			sender_id,
+INSERT INTO messages (
+id,
+content,
+file_url,
+type,
+status,
+sender_id,
 			receiver_id,
 			group_id,
 			conversation_id,
 			reply_to_id,
 			created_at
-		) VALUES (
-			?, ?, ?, ?, ?, NULL, NULL, ?, COALESCE(?, datetime('now'))
-		)
-	`,
+) VALUES (
+?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, COALESCE(?, datetime('now'))
+)
+`,
 		message.ID,
 		message.Content,
+		message.FileURL,
 		message.Type,
 		message.Status,
-		message.SenderID,
-		message.ReceiverID,
-		nullableReplyID(message.ReplyToID),
-		NullIfEmpty(message.CreatedAt),
+                message.SenderID,
+                message.ReceiverID,
+                nullableReplyID(message.ReplyToID),
+                NullIfEmpty(message.CreatedAt),
 	)
 	return err
 }
@@ -63,23 +65,25 @@ func (db *appdbimpl) SendPrivateMessage(message models.Message) error {
 // Group messages are funneled through this path as well so ordering remains consistent.
 func (db *appdbimpl) SendMessageToConversation(message models.Message) error {
 	_, err := db.c.Exec(`
-		INSERT INTO messages (
-			id,
-			content,
-			type,
-			status,
-			sender_id,
+INSERT INTO messages (
+id,
+content,
+file_url,
+type,
+status,
+sender_id,
 			receiver_id,
 			group_id,
 			conversation_id,
 			reply_to_id,
 			created_at
-		) VALUES (
-			?, ?, ?, ?, ?, NULL, NULL, ?, ?, COALESCE(?, datetime('now'))
-		)
-	`,
+) VALUES (
+?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, COALESCE(?, datetime('now'))
+)
+`,
 		message.ID,
 		message.Content,
+		message.FileURL,
 		message.Type,
 		message.Status,
 		message.SenderID,
@@ -115,12 +119,13 @@ func (db *appdbimpl) GetMessagesByConversation(
 	after = strings.TrimSpace(after)
 
 	qb := `
-		SELECT
-			id,
-			content,
-			type,
-			status,
-			sender_id,
+SELECT
+id,
+content,
+file_url,
+type,
+status,
+sender_id,
 			receiver_id,
 			group_id,
 			conversation_id,
@@ -150,11 +155,12 @@ func (db *appdbimpl) GetMessagesByConversation(
 	out := make([]models.Message, 0, limit)
 	for rows.Next() {
 		var m models.Message
-		var recv, grp, conv, reply sql.NullString
+		var fileURL, recv, grp, conv, reply sql.NullString
 
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
+			&fileURL,
 			&m.Type,
 			&m.Status,
 			&m.SenderID,
@@ -167,9 +173,16 @@ func (db *appdbimpl) GetMessagesByConversation(
 			return nil, err
 		}
 
+		if fileURL.Valid {
+			m.FileURL = fileURL.String
+		}
 		m.ReceiverID = recv.String
 		m.GroupID = grp.String
 		m.ConversationID = conv.String
+
+		if fileURL.Valid {
+			m.FileURL = fileURL.String
+		}
 
 		if reply.Valid {
 			m.ReplyToID = &reply.String
@@ -198,12 +211,13 @@ func (db *appdbimpl) getPrivateConversationEx(
 ) ([]models.Message, error) {
 
 	rows, err := db.c.Query(`
-        SELECT
-            id,
-            content,
-			type,
-			status,
-            sender_id,
+SELECT
+id,
+content,
+file_url,
+type,
+status,
+sender_id,
             receiver_id,
             group_id,
             conversation_id,
@@ -223,11 +237,12 @@ func (db *appdbimpl) getPrivateConversationEx(
 	out := make([]models.Message, 0, limit)
 	for rows.Next() {
 		var m models.Message
-		var reply sql.NullString
+		var fileURL, reply sql.NullString
 
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
+			&fileURL,
 			&m.Type,
 			&m.Status,
 			&m.SenderID,
@@ -238,6 +253,10 @@ func (db *appdbimpl) getPrivateConversationEx(
 			&m.CreatedAt,
 		); err != nil {
 			return nil, err
+		}
+
+		if fileURL.Valid {
+			m.FileURL = fileURL.String
 		}
 
 		if reply.Valid {
@@ -259,8 +278,9 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
         SELECT
             id,
             content,
-			type,
-			status,
+file_url,
+                        type,
+                        status,
             sender_id,
             receiver_id,
             group_id,
@@ -279,11 +299,12 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 	out := make([]models.Message, 0, 64)
 	for rows.Next() {
 		var m models.Message
-		var reply sql.NullString
+		var fileURL, reply sql.NullString
 
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
+			&fileURL,
 			&m.Type,
 			&m.Status,
 			&m.SenderID,
@@ -294,6 +315,10 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 			&m.CreatedAt,
 		); err != nil {
 			return nil, err
+		}
+
+		if fileURL.Valid {
+			m.FileURL = fileURL.String
 		}
 
 		if reply.Valid {
@@ -313,25 +338,27 @@ func (db *appdbimpl) GetGroupConversation(groupID string) ([]models.Message, err
 
 func (db *appdbimpl) GetMessageByID(messageID string) (models.Message, error) {
 	var m models.Message
-	var recv, grp, conv, reply sql.NullString
+	var fileURL, recv, grp, conv, reply sql.NullString
 
 	err := db.c.QueryRow(`
-        SELECT
-            id,
-            content,
-			type,
-			status,
-            sender_id,
-            receiver_id,
-            group_id,
-            conversation_id,
-            reply_to_id,
-            created_at
-        FROM messages
-        WHERE id = ?
-    `, messageID).Scan(
+SELECT
+id,
+content,
+file_url,
+type,
+status,
+sender_id,
+receiver_id,
+group_id,
+conversation_id,
+reply_to_id,
+created_at
+FROM messages
+WHERE id = ?
+`, messageID).Scan(
 		&m.ID,
 		&m.Content,
+		&fileURL,
 		&m.Type,
 		&m.Status,
 		&m.SenderID,
@@ -361,8 +388,9 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
         SELECT
             id,
             content,
-			type,
-			status,
+file_url,
+                        type,
+                        status,
             sender_id,
             receiver_id,
             group_id,
@@ -380,11 +408,12 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 	out := make([]models.Message, 0, 256)
 	for rows.Next() {
 		var m models.Message
-		var recv, grp, conv, reply sql.NullString
+		var fileURL, recv, grp, conv, reply sql.NullString
 
 		if err := rows.Scan(
 			&m.ID,
 			&m.Content,
+			&fileURL,
 			&m.Type,
 			&m.Status,
 			&m.SenderID,
@@ -400,6 +429,10 @@ func (db *appdbimpl) GetAllMessages() ([]models.Message, error) {
 		m.ReceiverID = recv.String
 		m.GroupID = grp.String
 		m.ConversationID = conv.String
+
+		if fileURL.Valid {
+			m.FileURL = fileURL.String
+		}
 
 		if reply.Valid {
 			m.ReplyToID = &reply.String
@@ -433,23 +466,25 @@ func (db *appdbimpl) ForwardMessage(userID, messageID, toUserID, toGroupID strin
 	}
 
 	_, err = db.c.Exec(`
-        INSERT INTO messages (
-            id,
-            content,
-			type,
-			status,
-            sender_id,
+INSERT INTO messages (
+id,
+content,
+file_url,
+type,
+status,
+sender_id,
             receiver_id,
             group_id,
             conversation_id,
             reply_to_id,
             created_at
-        ) VALUES (
-            lower(hex(randomblob(16))),
-            ?, ?, NULL, NULL, ?, NULL, datetime('now')
-        )
-    `,
+) VALUES (
+lower(hex(randomblob(16))),
+?, ?, ?, NULL, NULL, ?, NULL, datetime('now')
+)
+`,
 		orig.Content,
+		orig.FileURL,
 		orig.Type,
 		orig.Status,
 		userID,
@@ -525,7 +560,6 @@ func (db *appdbimpl) GetMessageComments(messageID string) ([]models.Message, err
 	}
 	return out, nil
 }
-
 
 // CommentMessage creates a new comment on a message, preserving the provided type
 // and content and assigning a server-generated timestamp.

@@ -132,6 +132,7 @@ func initializeTables(db *sql.DB) error {
         CREATE TABLE IF NOT EXISTS messages (
             id              TEXT PRIMARY KEY,
             content         TEXT NOT NULL,
+            file_url        TEXT,
             type            TEXT DEFAULT 'text',
             status          TEXT DEFAULT 'sent',
             sender_id       TEXT NOT NULL,
@@ -170,6 +171,10 @@ func initializeTables(db *sql.DB) error {
 	}
 
 	if err := ensureMessageReplyColumn(db); err != nil {
+		return err
+	}
+
+	if err := ensureMessageFileURLColumn(db); err != nil {
 		return err
 	}
 
@@ -235,6 +240,22 @@ func ensureMessageReplyColumn(db *sql.DB) error {
 	return nil
 }
 
+func ensureMessageFileURLColumn(db *sql.DB) error {
+	exists, err := columnExists(db, "messages", "file_url")
+	if err != nil {
+		return fmt.Errorf("failed to inspect messages table: %w", err)
+	}
+	if exists {
+		return nil
+	}
+
+	if _, err := db.Exec(`ALTER TABLE messages ADD COLUMN file_url TEXT;`); err != nil {
+		return fmt.Errorf("failed to add file_url column: %w", err)
+	}
+
+	return nil
+}
+
 func ensureGroupConversationColumn(db *sql.DB) error {
 	exists, err := columnExists(db, "groups", "conversation_id")
 	if err != nil {
@@ -280,7 +301,6 @@ func columnExists(db *sql.DB, table, column string) (bool, error) {
 
 	return false, nil
 }
-
 
 // lifecycle
 func (db *appdbimpl) Close() error { return db.c.Close() }

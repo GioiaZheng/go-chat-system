@@ -497,10 +497,10 @@ export async function getMessages({ conversationId, limit = 50, beforeCursor, af
 export async function sendMessage({
   conversationId,
   content,
+  fileUrl,
   type = 'text',
   replyTo,
   replyToId,
-  fileUrl,
 } = {}) {
   const body = {
     conversationId: String(conversationId || ''),
@@ -508,13 +508,15 @@ export async function sendMessage({
     type,
   }
 
+  if (fileUrl !== undefined) {
+    body.fileUrl = fileUrl
+  }
+
   // Support reply metadata: accept various keys; replyToId is the backend field.
   const reply = replyToId || replyTo
   if (reply) {
     body.replyToId = reply
   }
-
-  if (fileUrl) body.fileUrl = fileUrl
 
   return unwrap(await post('/messages', body))
 }
@@ -526,9 +528,7 @@ export async function sendImageMessage({ conversationId, file, caption = '', rep
   const form = new FormData()
   form.append('upload', file, file.name)
 
-  const r = unwrap(await post('/upload/messages', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }))
+  const r = unwrap(await post('/upload/messages', form))
 
   const fileUrl  = r?.fileUrl  || r?.file_url  || ''
   const filename = r?.filename || file.name
@@ -541,9 +541,8 @@ export async function sendImageMessage({ conversationId, file, caption = '', rep
   // Step 2: Send a normal message referencing the uploaded image URL.
   return sendMessage({
     conversationId,
-    content: caption || fileUrl,
+    content: caption,
     type: 'image',
-    filename,
     fileUrl,
     replyToId,
   })

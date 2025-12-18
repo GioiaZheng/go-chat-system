@@ -20,10 +20,10 @@ import (
 
 // Section: DTOs (match OpenAPI JSON shapes; keep models.* as internal)
 
-// MessageDTO is the public JSON shape for a message (camelCase, per OpenAPI).
 type MessageDTO struct {
 	ID             string  `json:"id"`
 	Content        string  `json:"content"`
+	FileUrl        string  `json:"fileUrl,omitempty"`
 	SenderID       string  `json:"senderId"`
 	ConversationID string  `json:"conversationId,omitempty"`
 	CreatedAt      string  `json:"createdAt"`
@@ -37,6 +37,7 @@ func toMessageDTO(m models.Message) MessageDTO {
 	return MessageDTO{
 		ID:             m.ID,
 		Content:        m.Content,
+		FileUrl:        m.FileURL,
 		SenderID:       m.SenderID,
 		ConversationID: m.ConversationID,
 		CreatedAt:      m.CreatedAt,
@@ -104,6 +105,7 @@ func timeAfter(a, b string) bool  { return a > b }
 type sendMessageRequest struct {
 	ConversationID string  `json:"conversationId"`
 	Content        string  `json:"content"`
+	FileUrl        string  `json:"fileUrl,omitempty"`
 	Type           string  `json:"type,omitempty"`
 	ReplyToID      *string `json:"replyToId"`
 }
@@ -128,12 +130,27 @@ func (rt *_router) sendMessage(
 	}
 	req.ConversationID = strings.TrimSpace(req.ConversationID)
 	req.Content = strings.TrimSpace(req.Content)
-	if req.ConversationID == "" || req.Content == "" {
-		rt.sendError(w, http.StatusBadRequest, "conversationId and content are required")
+	req.FileUrl = strings.TrimSpace(req.FileUrl)
+
+	if req.ConversationID == "" {
+		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
 		return
 	}
-	if req.Type == "" {
+
+	if req.Content == "" && req.FileUrl == "" {
+		rt.sendError(w, http.StatusBadRequest, "content or fileUrl is required")
+		return
+	}
+
+	if req.FileUrl != "" && req.Type == "" {
+		req.Type = "image"
+	} else if req.Type == "" {
 		req.Type = "text"
+	}
+
+	if req.Type == "image" && req.FileUrl == "" {
+		rt.sendError(w, http.StatusBadRequest, "fileUrl is required for image messages")
+		return
 	}
 
 	id, err := newMsgID()
@@ -148,6 +165,7 @@ func (rt *_router) sendMessage(
 	msg := models.Message{
 		ID:             id,
 		Content:        req.Content,
+		FileURL:        req.FileUrl,
 		SenderID:       userID,
 		ConversationID: req.ConversationID,
 		CreatedAt:      now,
