@@ -7,14 +7,14 @@
     <!-- Signed-in user overview with avatar fallback and handle -->
     <div class="me" v-if="me">
       <div
-        class="me-avatar"
+        class="me-avatar avatar-circle"
         :style="avatarUrl ? { backgroundImage: `url('${avatarUrl}')` } : {}"
       >
         <span v-if="!avatarUrl">{{ initials }}</span>
       </div>
       <div class="me-info">
-        <div class="me-name">{{ me.name || '(no name)' }}</div>
-        <div class="me-username">@{{ me.username || me.id || 'unknown' }}</div>
+        <div class="me-name">{{ displayName }}</div>
+        <div class="me-username">{{ usernameLabel }}</div>
       </div>
     </div>
 
@@ -44,6 +44,8 @@ const me = computed(() => currentUser.value)
 
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
 const initials = computed(() => (me.value?.name || me.value?.username || me.value?.id || 'U')[0].toUpperCase())
+const displayName = computed(() => me.value?.name || me.value?.username || 'Unnamed')
+const usernameLabel = computed(() => (me.value?.username ? `@${me.value.username}` : me.value?.id || ''))
 
 async function logout() {
   clearAuth()
@@ -87,17 +89,7 @@ async function logout() {
 }
 
 .me-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #e0f7ee;
-  background-size: cover;
-  background-position: center;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  color: #0f766e;
-  border: 1px solid #a7f3d0;
+  --avatar-size: 44px;
 }
 
 .me-info {

@@ -40,21 +40,22 @@
                     v-for="c in privateConvs"
                     :key="c.id"
                     class="item"
-                    @click="open(c)"
-                  >
-                    <div class="left">
-                      <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
-                      <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
-                    </div>
+                  @click="open(c)"
+                >
+                  <div class="left">
+                    <span v-if="!avatarFor(c)" class="avatar-fallback avatar-circle">{{ initials(c) }}</span>
+                    <img v-else class="avatar avatar-circle" :src="avatarFor(c)" alt="avatar" />
+                  </div>
 
-                    <div class="info">
-                      <div class="top">
-                        <div class="name">{{ displayName(c) }}</div>
-                        <div class="time">{{ fmtTime(c.last_time) }}</div>
-                      </div>
-                      <div class="bottom">
-                        <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-                      </div>
+                  <div class="info">
+                    <div class="top">
+                      <div class="name">{{ displayName(c) }}</div>
+                      <div class="time">{{ fmtTime(c.last_time) }}</div>
+                    </div>
+                    <div v-if="handleFor(c)" class="handle">{{ handleFor(c) }}</div>
+                    <div class="bottom">
+                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                    </div>
                     </div>
 
                     <button class="del" @click.stop="warnDelete(c)">Delete</button>
@@ -74,20 +75,21 @@
                     v-for="c in groupConvs"
                     :key="c.id"
                     class="item"
-                    @click="open(c)"
-                  >
-                    <div class="left">
-                      <span v-if="!avatarFor(c)" class="avatar-fallback">{{ initials(c) }}</span>
-                      <img v-else class="avatar" :src="avatarFor(c)" alt="avatar" />
+                  @click="open(c)"
+                >
+                  <div class="left">
+                    <span v-if="!avatarFor(c)" class="avatar-fallback avatar-circle">{{ initials(c) }}</span>
+                    <img v-else class="avatar avatar-circle" :src="avatarFor(c)" alt="avatar" />
+                  </div>
+                  <div class="info">
+                    <div class="top">
+                      <div class="name">{{ displayName(c) }}</div>
+                      <div class="time">{{ fmtTime(c.last_time) }}</div>
                     </div>
-                    <div class="info">
-                      <div class="top">
-                        <div class="name">{{ displayName(c) }}</div>
-                        <div class="time">{{ fmtTime(c.last_time) }}</div>
-                      </div>
-                      <div class="bottom">
-                        <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-                      </div>
+                    <div v-if="handleFor(c)" class="handle">{{ handleFor(c) }}</div>
+                    <div class="bottom">
+                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                    </div>
                     </div>
                     <button class="del" @click.stop="warnDelete(c)">Delete</button>
                   </li>
@@ -98,8 +100,7 @@
 
             <div class="conversation-pane">
               <div class="preview-empty">
-                <h2 class="preview-title">Select a conversation to start chatting</h2>
-                <p class="preview-copy">Pick any chat on the left or start something new.</p>
+                <h2 class="preview-title">Choose a chat to view messages</h2>
                 <div class="preview-actions">
                   <RouterLink class="btn" to="/contacts">Find contacts</RouterLink>
                   <RouterLink class="btn btn-secondary" to="/new-group">New group</RouterLink>
@@ -153,7 +154,15 @@ function displayName(c) {
   const list = c.participants || []
   const other = list.find(u => String(u.id) !== myId())
 
-  return other?.name || 'Chat'
+  return other?.name || other?.username || 'Chat'
+}
+
+function handleFor(c) {
+  if (c.type === 'group') return ''
+  const list = c.participants || []
+  const other = list.find(u => String(u.id) !== myId())
+  if (!other) return ''
+  return other.username ? `@${other.username}` : other.id || ''
 }
 
 // Resolve the avatar for private or group conversations.
@@ -457,39 +466,23 @@ onUnmounted(() => {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 12px;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .item:hover {
-  background: #f8fafc;
-  border-color: #d1d5db;
-  transform: translateY(-1px);
+  background: #f9fafb;
+  border-color: #dfe3e8;
 }
 .left {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #d1d5db;
-  background: #fff;
-}
+.avatar,
 .avatar-fallback {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #d9f5e8;
-  color: #0f766e;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #b2e5cd;
+  --avatar-size: 44px;
 }
+
 .info {
   flex: 1;
   min-width: 0;
@@ -513,14 +506,19 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.handle {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
 .time {
-  font-size: 0.85rem;
-  color: #6b7280;
+  font-size: 0.82rem;
+  color: #9ca3af;
   white-space: nowrap;
 }
 .preview {
-  color: #6b7280;
-  font-size: 0.92rem;
+  color: #7b8794;
+  font-size: 0.9rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -542,6 +540,7 @@ onUnmounted(() => {
   color: #6b7280;
   padding: 16px 0;
 }
+
 .conversation-pane {
   flex: 1 1 auto;
   min-width: 0;
@@ -549,7 +548,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px;
+  padding: 20px;
   border-left: 1px solid #d9dde3;
 }
 
@@ -557,18 +556,14 @@ onUnmounted(() => {
   max-width: 420px;
   text-align: center;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   color: #1f2937;
 }
 
 .preview-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   margin: 0;
-}
-
-.preview-copy {
-  margin: 0;
-  color: #6b7280;
+  color: #1f2937;
 }
 
 .preview-actions {

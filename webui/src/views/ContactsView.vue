@@ -28,11 +28,11 @@
       <ul v-else class="list">
         <li v-for="u in users" :key="asId(u)" class="item">
           <div class="left">
-            <span v-if="!avatar(u)" class="avatar-fallback">{{ initials(u) }}</span>
-            <img v-else :src="avatar(u)" class="avatar" alt="avatar" />
+            <span v-if="!avatar(u)" class="avatar-fallback avatar-circle">{{ initials(u) }}</span>
+            <img v-else :src="avatar(u)" class="avatar avatar-circle" alt="avatar" />
             <div class="meta">
               <div class="name">{{ displayName(u) }}</div>
-              <div class="sub">@{{ usernameOf(u) }}</div>
+              <div class="sub">{{ usernameLabel(u) }}</div>
             </div>
           </div>
           <button class="btn" :disabled="creatingId===asId(u)" @click="message(u)">
@@ -65,11 +65,11 @@ const err = ref('')
 const users = ref([])
 const creatingId = ref('') // Prevent duplicate conversation creation on rapid clicks
 
-const asId        = (u) => String(u.id ?? u.user_id ?? u._id ?? '')
-const displayName = (u) => String(u.name ?? u.username ?? '(user)')
-const usernameOf  = (u) => String(u.username ?? u.name ?? '').toLowerCase()
-const avatar      = (u) => getAvatarUrl({ avatarUri: u.avatarUri ?? u.avatar_uri ?? u.avatar_url ?? u.avatar })
-const initials    = (u) => (displayName(u).match(/\b\w/g) || ['U']).slice(0,2).join('').toUpperCase()
+const asId          = (u) => String(u.id ?? u.user_id ?? u._id ?? '')
+const displayName   = (u) => String(u.name ?? u.username ?? 'Unnamed')
+const usernameLabel = (u) => (u.username ? `@${u.username}` : asId(u))
+const avatar        = (u) => getAvatarUrl({ avatarUri: u.avatarUri ?? u.avatar_uri ?? u.avatar_url ?? u.avatar })
+const initials      = (u) => (displayName(u).match(/\b\w/g) || ['U']).slice(0,2).join('').toUpperCase()
 
 async function load () {
   loading.value = true
@@ -189,11 +189,8 @@ onMounted(() => {
   box-shadow:0 6px 18px rgba(2,6,23,.06);
 }
 .left{ display:flex; align-items:center; gap:12px; }
-.avatar{ width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid #e2e8f0; }
-.avatar-fallback{
-  width:36px; height:36px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
-  background:#e0f7ee; color:#0f766e; font-weight:700; border:1px solid #a7f3d0;
-}
+.avatar,
+.avatar-fallback { --avatar-size: 40px; }
 .meta{ flex:1; min-width:0; }
 .name{ font-weight:600; color:#0f172a }
 .sub{ color:#64748b; font-size:.92rem }

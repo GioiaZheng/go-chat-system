@@ -16,16 +16,13 @@
       <div class="title">
         <div class="title-row">
           <div
-            class="header-avatar"
+            class="header-avatar avatar-circle"
             :style="headerAvatar ? { backgroundImage: `url('${headerAvatar}')` } : {}"
           >
             <span v-if="!headerAvatar">{{ headerTitle[0] || 'C' }}</span>
           </div>
           <div>
             <strong>{{ headerTitle }}</strong>
-            <small class="muted">
-              {{ isGroup ? 'Group' : 'Direct message' }}
-            </small>
           </div>
         </div>
       </div>
@@ -41,7 +38,6 @@
             <div class="conv-rail__header">
               <div>
                 <div class="conv-rail__title">Conversations</div>
-                <div class="conv-rail__hint">Switch chats without leaving the page.</div>
             </div>
             <span class="conv-rail__badge">{{ filteredConversations.length }}</span>
           </div>
@@ -68,7 +64,7 @@
                 @click="switchConversation(c)"
               >
                 <div
-                  class="conv-pill__avatar"
+                  class="conv-pill__avatar avatar-circle"
                   :class="{ placeholder: !avatarForConversation(c, meId) }"
                   :style="avatarForConversation(c, meId) ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` } : {}"
                 >
@@ -82,10 +78,6 @@
                   </div>
                   <div class="conv-pill__bottom">{{ c.last_preview || 'No messages yet' }}</div>
                 </div>
-
-                <span class="conv-pill__type" :class="{ group: c.type === 'group' }">
-                  {{ c.type === 'group' ? 'Group' : 'Direct' }}
-                </span>
               </button>
 
               <p v-if="!filteredConversations.length" class="muted">No conversations found.</p>
@@ -105,7 +97,7 @@
                 <!-- Left avatar for incoming messages. -->
                 <div
                   v-if="!isMine(m)"
-                  class="avatar"
+                  class="avatar avatar-circle"
                   :class="{ placeholder: !avatarFor(m) }"
                   :style="avatarBg(avatarFor(m))"
                 >
@@ -234,7 +226,7 @@
                 <!-- Right avatar when the current user sent the message. -->
                 <div
                   v-if="isMine(m)"
-                  class="avatar mine"
+                  class="avatar avatar-circle mine"
                   :class="{ placeholder: !myAvatar }"
                   :style="avatarBg(myAvatar)"
                 >
@@ -243,10 +235,7 @@
               </div>
             </template>
             <div v-else class="empty-thread" role="status" aria-live="polite">
-              <h2>No messages yet</h2>
-              <p class="muted">
-                {{ isGroup ? 'Say hello 👋 so everyone can join in.' : 'Say hello 👋 to start the conversation.' }}
-              </p>
+              <p class="muted">{{ isGroup ? 'Say hello to the group 👋' : 'Say hello 👋 to start the chat.' }}</p>
             </div>
           </div>
 
@@ -314,10 +303,7 @@
           <div v-if="forwardPanelOpen" class="forward-overlay">
             <div class="forward-modal">
               <header class="forward-header">
-                <div>
-                  <strong>Forward message</strong>
-                  <div class="muted small">Select a chat to forward this message.</div>
-                </div>
+                <strong>Forward message</strong>
                 <button
                   class="close-btn"
                   type="button"
@@ -348,7 +334,7 @@
                     @click="forwardToConversation(c.id)"
                   >
                     <div
-                      class="forward-avatar"
+                      class="forward-avatar avatar-circle"
                       :class="{ placeholder: !avatarForConversation(c, meId) }"
                       :style="
                         avatarForConversation(c, meId) ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` } : {}
@@ -386,7 +372,7 @@
             <div class="group-card">
               <div class="group-header">
                 <div
-                  class="group-avatar"
+                  class="group-avatar avatar-circle"
                   :class="{ placeholder: !groupInfo?.avatar }"
                   :style="groupInfo?.avatar ? { backgroundImage: `url('${groupInfo.avatar}')` } : {}"
                 >
@@ -394,10 +380,9 @@
                 </div>
                 <div class="group-meta">
                   <div class="group-name">{{ groupInfo?.name || headerTitle }}</div>
-                  <div class="group-sub">Conversation ID: {{ convId }}</div>
-                  <div class="group-sub">Members: {{ groupMembers.length }}</div>
+                  <div class="group-sub">{{ groupMembers.length === 1 ? '1 member' : `${groupMembers.length} members` }}</div>
                 </div>
-                <button class="link" type="button" @click="triggerGroupPhoto">Change photo</button>
+                <button class="link muted" type="button" @click="triggerGroupPhoto">Change photo</button>
                 <input
                   ref="groupPhotoInput"
                   type="file"
@@ -407,72 +392,72 @@
                 />
               </div>
 
-              <div class="field inline">
-                <input
-                  v-model.trim="groupNameDraft"
-                  class="input"
-                  placeholder="Group name"
-                  :disabled="groupBusy"
-                />
-                <button class="btn sm" type="button" :disabled="groupBusy || !groupNameDraft" @click="onRenameGroup">
-                  {{ groupBusy ? 'Saving…' : 'Save' }}
-                </button>
-              </div>
-
-              <div class="members-block">
-                <div class="members-title">Members ({{ groupMembers.length }})</div>
-                <p v-if="groupLoading" class="muted">Loading group info…</p>
-                <ErrorMsg v-else-if="groupErr" :text="groupErr" />
-                <div v-else class="member-scroll" role="list">
-                  <ul class="member-list">
-                    <li v-for="u in groupMembers" :key="u.id" class="member-item" role="listitem">
-                      <div class="member-left">
-                        <div
-                          class="member-avatar"
-                          :class="{ placeholder: !u.avatar }"
-                          :style="u.avatar ? { backgroundImage: `url('${u.avatar}')` } : {}"
-                        >
-                          <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
-                        </div>
-                        <div class="member-info">
-                          <div class="member-name">{{ u.name || 'User' }}</div>
-                          <div class="member-sub">ID: {{ u.id }}</div>
-                        </div>
-                      </div>
-                      <button
-                        v-if="String(u.id) !== meId"
-                        class="link danger"
-                        type="button"
-                        :disabled="groupBusy"
-                        @click="onRemoveMember(u.id)"
-                      >
-                        Remove
-                      </button>
-                    </li>
-                    <li v-if="!groupMembers.length" class="muted">No members found.</li>
-                  </ul>
-                </div>
-              </div>
-              <div class="members-add">
-                <div class="members-title">Add members</div>
-                <UserSearch
-                  placeholder="Search users to add"
-                  :class="{ disabled: addingMember }"
-                  @select="onSelectNewMember"
-                  @error="groupErr = $event || ''"
-                />
-              </div>
-
-              <button class="btn danger leave" type="button" :disabled="groupBusy" @click="onLeaveGroup">
-                Leave group
+            <div class="field inline group-rename">
+              <input
+                v-model.trim="groupNameDraft"
+                class="input"
+                placeholder="Group name"
+                :disabled="groupBusy"
+              />
+              <button class="btn sm" type="button" :disabled="groupBusy || !groupNameDraft" @click="onRenameGroup">
+                {{ groupBusy ? 'Saving…' : 'Save' }}
               </button>
-              <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
             </div>
-          </aside>
-        </div>
+
+            <div class="members-block">
+              <div class="members-title">Members</div>
+              <p v-if="groupLoading" class="muted">Loading group info…</p>
+              <ErrorMsg v-else-if="groupErr" :text="groupErr" />
+              <div v-else class="member-scroll" role="list">
+                <ul class="member-list">
+                  <li v-for="u in groupMembers" :key="u.id" class="member-item" role="listitem">
+                    <div class="member-left">
+                      <div
+                        class="member-avatar avatar-circle"
+                        :class="{ placeholder: !u.avatar }"
+                        :style="u.avatar ? { backgroundImage: `url('${u.avatar}')` } : {}"
+                      >
+                        <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
+                      </div>
+                      <div class="member-info">
+                        <div class="member-name">{{ u.name || 'User' }}</div>
+                        <div v-if="u.username" class="member-sub">@{{ u.username }}</div>
+                      </div>
+                    </div>
+                    <button
+                      v-if="String(u.id) !== meId"
+                      class="link danger"
+                      type="button"
+                      :disabled="groupBusy"
+                      @click="onRemoveMember(u.id)"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                  <li v-if="!groupMembers.length" class="muted">No members found.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="members-add">
+              <div class="members-title">Add members</div>
+              <UserSearch
+                placeholder="Search users to add"
+                :class="{ disabled: addingMember }"
+                @select="onSelectNewMember"
+                @error="groupErr = $event || ''"
+              />
+            </div>
+
+            <button class="btn danger leave" type="button" :disabled="groupBusy" @click="onLeaveGroup">
+              Leave group
+            </button>
+            <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
+          </div>
+        </aside>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
+</div>
 </template>
 
 <script setup>
@@ -576,6 +561,14 @@ const forwardSearch = ref('')
 const forwardList = ref([])
 const forwardTargetMessage = ref(null)
 
+function scrollToBottom() {
+  return nextTick(() => {
+    if (scrollbox.value) {
+      scrollbox.value.scrollTop = scrollbox.value.scrollHeight
+    }
+  })
+}
+
 // Conversation rail helpers.
 function convTime(t) {
   if (!t) return ''
@@ -668,6 +661,32 @@ async function loadConversationList() {
     convErr.value = e?.response?.data?.message || e?.message || 'Failed to load conversations'
   } finally {
     convLoading.value = false
+  }
+}
+
+function handleConversationRefresh(e) {
+  const detail = e?.detail || {}
+  const targetId = detail.conversationId ? String(detail.conversationId) : ''
+  const bumpedTime = detail.lastTime || ''
+  const bumpedPreview = detail.lastPreview
+
+  let updated = false
+  if (targetId && convList.value?.length) {
+    convList.value = convList.value
+      .map(c => {
+        if (String(c.id) !== targetId) return c
+        updated = true
+        return {
+          ...c,
+          last_time: bumpedTime || c.last_time || new Date().toISOString(),
+          ...(bumpedPreview ? { last_preview: bumpedPreview } : {}),
+        }
+      })
+      .sort((a, b) => new Date(b.last_time || 0) - new Date(a.last_time || 0))
+  }
+
+  if (!updated) {
+    loadConversationList()
   }
 }
 
@@ -769,7 +788,7 @@ function displayNameFor(m) {
   if (s?.name) return s.name
   if (s?.username) return s.username
   if (s?.tag) return s.tag
-  return s?.id || String(m.senderId || '')
+  return s?.id ? String(s.id) : 'User'
 }
 function nameForSender(userId, msg = null) {
   if (!userId && !msg?.senderId) return ''
@@ -779,7 +798,7 @@ function nameForSender(userId, msg = null) {
   if (s?.name) return s.name
   if (s?.username) return s.username
   if (s?.tag) return s.tag
-  return s?.id || String(userId || msg?.senderId || '')
+  return s?.id ? String(s.id) : String(userId || msg?.senderId || '')
 }
 
 // Header avatar and title helpers.
@@ -1014,10 +1033,7 @@ async function loadMessages() {
 
     messages.value = mapped
 
-    await nextTick()
-    if (scrollbox.value) {
-      scrollbox.value.scrollTop = scrollbox.value.scrollHeight
-    }
+    await scrollToBottom()
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to load messages'
   } finally {
@@ -1171,10 +1187,7 @@ async function onSend() {
     const normalized = normalizeMessage(sent?.message || sent || {})
     normalized._localStatus = 1
     messages.value = [...messages.value, normalized]
-    await nextTick()
-    if (scrollbox.value) {
-      scrollbox.value.scrollTop = scrollbox.value.scrollHeight
-    }
+    await scrollToBottom()
 
     draft.value = ''
     replyTarget.value = null
@@ -1495,13 +1508,20 @@ async function bootstrap() {
 }
 
 onMounted(() => {
-  window.addEventListener('conversations:refresh', loadConversationList)
+  window.addEventListener('conversations:refresh', handleConversationRefresh)
   bootstrap()
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('conversations:refresh', loadConversationList)
+  window.removeEventListener('conversations:refresh', handleConversationRefresh)
 })
+
+watch(
+  () => messages.value.length,
+  () => {
+    scrollToBottom()
+  }
+)
 
 watch(convId, async () => {
   await loadConversationList()
@@ -1562,17 +1582,10 @@ watch(convId, async () => {
 }
 
 .header-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  --avatar-size: 44px;
   background: var(--avatar-bg);
-  background-size: cover;
-  background-position: center;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
   color: var(--avatar-text);
-  border: 1px solid var(--avatar-border);
+  border-color: var(--avatar-border);
 }
 
 .muted {
@@ -1633,15 +1646,10 @@ watch(convId, async () => {
   color: #0f172a;
 }
 
-.conv-rail__hint {
-  color: #64748b;
-  font-size: 0.9rem;
-}
-
 .conv-rail__badge {
-  background: #e0f2fe;
+  background: #ecfeff;
   color: #0f172a;
-  border-radius: 0;
+  border-radius: 12px;
   padding: 4px 10px;
   font-weight: 700;
 }
@@ -1672,31 +1680,25 @@ watch(convId, async () => {
   padding: 12px;
   background: #f8fafc;
   cursor: pointer;
-  transition: border 0.2s, background 0.2s;
+  transition: border 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
 .conv-pill:hover {
-  border-color: #c7d2fe;
-  background: #eef2ff;
+  border-color: #d5dde7;
+  background: #f3f4f6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
 .conv-pill.active {
-  border-color: #3b82f6;
-  background: #e0f2fe;
+  border-color: #9ae6b4;
+  background: #eefbf3;
 }
 
 .conv-pill__avatar {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
+  --avatar-size: 46px;
   background: #e2e8f0;
-  background-size: cover;
-  background-position: center;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
   color: #475569;
-  border: 1px solid #d1d5db;
+  border-color: #d1d5db;
 }
 
 .conv-pill__avatar.placeholder {
@@ -1728,37 +1730,23 @@ watch(convId, async () => {
 }
 
 .conv-pill__time {
-  color: #94a3b8;
-  font-size: 0.85rem;
+  color: #9aa1ad;
+  font-size: 0.83rem;
 }
 
 .conv-pill__bottom {
-  color: #64748b;
-  font-size: 0.92rem;
+  color: #738396;
+  font-size: 0.9rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.conv-pill__type {
-  font-size: 0.85rem;
-  color: #0f172a;
-  background: #e2e8f0;
-  border-radius: 0;
-  padding: 4px 8px;
-  font-weight: 600;
-}
-
-.conv-pill__type.group {
-  background: #ecfdf3;
-  color: #166534;
 }
 
 .chat-main {
   background: #fff;
   border: 1px solid #d9dde3;
   border-radius: 0;
-  padding: 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1772,9 +1760,9 @@ watch(convId, async () => {
 
 .group-card {
   background: #fff;
-  border: 1px solid #d9dde3;
+  border: 1px solid #e4e7ec;
   border-radius: 0;
-  padding: 12px;
+  padding: 14px 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1790,15 +1778,9 @@ watch(convId, async () => {
 }
 
 .group-avatar {
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
+  --avatar-size: 54px;
   background: var(--avatar-bg);
-  border: 1px solid var(--avatar-border);
-  display: grid;
-  place-items: center;
-  background-size: cover;
-  background-position: center;
+  border-color: var(--avatar-border);
   color: var(--avatar-text);
   font-weight: 700;
 }
@@ -1816,11 +1798,29 @@ watch(convId, async () => {
 .group-name {
   font-weight: 700;
   color: #0f172a;
+  font-size: 1.05rem;
 }
 
 .group-sub {
-  color: #64748b;
-  font-size: 0.85rem;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.group-rename {
+  background: #f8fafc;
+  border: 1px solid #edf2f7;
+  padding: 10px 10px 10px 12px;
+}
+
+.group-rename .btn.sm {
+  background: #e5e7eb;
+  color: #1f2937;
+  box-shadow: none;
+}
+
+.group-rename .btn.sm:hover {
+  background: #e8ecf1;
+  filter: none;
 }
 
 .field.inline {
@@ -1831,16 +1831,26 @@ watch(convId, async () => {
 
 .field .input {
   flex: 1;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.field .input:focus {
+  border-color: #cbd5e1;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.14);
 }
 
 .members-block,
 .members-add {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #fff;
+  border: 1px solid #e8ecf1;
   border-radius: 0;
-  padding: 10px;
+  padding: 12px 12px 14px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .member-scroll {
@@ -1871,10 +1881,10 @@ watch(convId, async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e8ecf1;
   border-radius: 0;
-  padding: 8px;
-  background: #f8fafc;
+  padding: 8px 10px;
+  background: #f9fafb;
 }
 
 .member-left {
@@ -1884,15 +1894,9 @@ watch(convId, async () => {
 }
 
 .member-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  --avatar-size: 38px;
   background: var(--avatar-bg);
-  border: 1px solid var(--avatar-border);
-  display: grid;
-  place-items: center;
-  background-size: cover;
-  background-position: center;
+  border-color: var(--avatar-border);
   font-weight: 700;
   color: var(--avatar-text);
 }
@@ -1926,9 +1930,17 @@ watch(convId, async () => {
 .link {
   background: none;
   border: none;
-  color: #2563eb;
+  color: #4b5563;
   cursor: pointer;
   padding: 0;
+}
+
+.link.muted {
+  color: #6b7280;
+}
+
+.link:hover {
+  color: #334155;
 }
 
 .link.danger {
@@ -1949,7 +1961,7 @@ watch(convId, async () => {
   overflow-y: auto;
   background: #f8fafc;
   border-radius: 0;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid #e1e5eb;
 }
 
@@ -1958,39 +1970,25 @@ watch(convId, async () => {
   display: grid;
   place-items: center;
   text-align: center;
-  gap: 8px;
   color: #0f172a;
-}
-
-.empty-thread h2 {
-  margin: 0;
-  font-size: 1.2rem;
 }
 
 .row {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 8px 0;
+  margin: 10px 0;
 }
 
 .row.mine {
   justify-content: flex-end;
 }
-.avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  overflow: hidden;
 
+.avatar {
+  --avatar-size: 40px;
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
   background: var(--avatar-bg);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  border: 1px solid var(--avatar-border);
+  border-color: var(--avatar-border);
 }
 
 .avatar.mine {
@@ -2375,14 +2373,8 @@ watch(convId, async () => {
 }
 
 .forward-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  --avatar-size: 44px;
   background: #e2e8f0;
-  background-size: cover;
-  background-position: center;
-  display: grid;
-  place-items: center;
   font-weight: 700;
   color: #475569;
 }

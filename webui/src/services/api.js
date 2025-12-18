@@ -346,11 +346,11 @@ export function titleForConversation(c, myId = '') {
   if (isPrivate) {
     const list = c.participants
     const other = list.find(u => String(u.id) !== String(myId))
-    return other?.name || 'Chat'
+    return other?.name || other?.username || 'Chat'
   }
 
   // Group conversation fallback.
-  return c.name || 'Group'
+  return c.name || c.title || 'Group'
 }
 
 /** Conversation avatar: group avatar for groups, peer avatar for private chats. */

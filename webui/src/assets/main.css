@@ -33,6 +33,32 @@ body{
   color: var(--text);
 }
 
+/* Shared avatar styling to keep sizes/cropping consistent across the app. */
+.avatar-circle{
+  --avatar-size: 42px;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e0f7ee;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid #a7f3d0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #0f766e;
+  aspect-ratio: 1 / 1;
+}
+
+.avatar-circle img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* Utility layout helpers. */
 .container{
   max-width: 960px;
