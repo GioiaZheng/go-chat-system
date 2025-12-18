@@ -27,7 +27,7 @@
         <img v-else :src="avatar(u)" class="avatar" alt="avatar" />
         <div class="meta">
           <div class="name">{{ u.name || u.username || '(user)' }}</div>
-          <div class="sub">@{{ u.username || '-' }}</div>
+          <div class="sub">@{{ handle(u) }}</div>
         </div>
       </li>
       <li v-if="!users.length && !err" class="empty">No results.</li>
@@ -51,6 +51,11 @@ const loading = ref(false)
 const err = ref('')
 
 const avatar = (u) => getAvatarUrl(u)
+const handle = (u) => {
+  const h = String(u?.username || u?.id || 'unknown')
+  console.assert(h !== '-', 'Encountered placeholder username "-"', u)
+  return h
+}
 const initials = (u) => {
   const name = u?.name || u?.username || 'U'
   const match = String(name).match(/\b\w/g) || ['U']

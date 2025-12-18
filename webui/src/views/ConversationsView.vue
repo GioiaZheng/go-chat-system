@@ -31,7 +31,7 @@
 
               <div class="section">
                 <div class="section-head">
-                  <h3 class="section-title">Private Chats</h3>
+                  <h3 class="section-title">Direct messages</h3>
                   <span class="badge">{{ privateConvs.length }}</span>
                 </div>
 
@@ -60,12 +60,12 @@
                     <button class="del" @click.stop="warnDelete(c)">Delete</button>
                   </li>
 
-                  <li v-if="!privateConvs.length" class="empty">No private chats yet.</li>
+                  <li v-if="!privateConvs.length" class="empty">No direct messages yet.</li>
                 </ul>
               </div>
               <div class="section">
                 <div class="section-head second">
-                  <h3 class="section-title">Group Chats</h3>
+                  <h3 class="section-title">Group chats</h3>
                   <span class="badge badge--secondary">{{ groupConvs.length }}</span>
                 </div>
 
@@ -97,8 +97,13 @@
             </aside>
 
             <div class="conversation-pane">
-              <div class="preview-ghost">
-                <span class="ghost-icon">💬</span>
+              <div class="preview-empty">
+                <h2 class="preview-title">Select a conversation to start chatting</h2>
+                <p class="preview-copy">Pick any chat on the left or start something new.</p>
+                <div class="preview-actions">
+                  <RouterLink class="btn" to="/contacts">Find contacts</RouterLink>
+                  <RouterLink class="btn btn-secondary" to="/new-group">New group</RouterLink>
+                </div>
               </div>
             </div>
           </div>
@@ -548,27 +553,29 @@ onUnmounted(() => {
   border-left: 1px solid #d9dde3;
 }
 
-.preview-ghost {
+.preview-empty {
+  max-width: 420px;
   text-align: center;
-  color: #7a7a7a;
+  display: grid;
+  gap: 10px;
+  color: #1f2937;
+}
+
+.preview-title {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.preview-copy {
+  margin: 0;
+  color: #6b7280;
+}
+
+.preview-actions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ghost-icon {
-  font-size: 1.6rem;
-}
-
-.ghost-title {
-  margin: 0;
-  font-weight: 700;
-  color: #4a4a4a;
-}
-
-.ghost-sub {
-  margin: 0;
-  font-size: 0.95rem;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .loading {

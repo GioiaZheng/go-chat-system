@@ -24,7 +24,7 @@
           <div>
             <strong>{{ headerTitle }}</strong>
             <small class="muted">
-              {{ isGroup ? 'Group Chat' : 'Private Chat' }}
+              {{ isGroup ? 'Group' : 'Direct message' }}
             </small>
           </div>
         </div>
@@ -94,151 +94,159 @@
         </aside>
         <div class="chat-main">
           <div ref="scrollbox" class="scroll">
-            <div
-              v-for="m in messages"
-              :key="m.id"
-              class="row"
-              :id="`msg-${m.id}`"
-              :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
-            >
-              <!-- Left avatar for incoming messages. -->
+            <template v-if="messages.length">
               <div
-                v-if="!isMine(m)"
-                class="avatar"
-                :class="{ placeholder: !avatarFor(m) }"
-                :style="avatarBg(avatarFor(m))"
+                v-for="m in messages"
+                :key="m.id"
+                class="row"
+                :id="`msg-${m.id}`"
+                :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
               >
-                <span v-if="!avatarFor(m)" class="avatar-initial">{{ avatarInitial(m) }}</span>
-              </div>
-              <!-- Message block with reply preview, content, and timestamp. -->
-              <div class="bubble-wrap" :class="{ mine: isMine(m) }">
-                <!-- Sender label (group conversations only). -->
-                <div class="who" v-if="showSenderName && !isMine(m)">
-                  {{ displayNameFor(m) }}
+                <!-- Left avatar for incoming messages. -->
+                <div
+                  v-if="!isMine(m)"
+                  class="avatar"
+                  :class="{ placeholder: !avatarFor(m) }"
+                  :style="avatarBg(avatarFor(m))"
+                >
+                  <span v-if="!avatarFor(m)" class="avatar-initial">{{ avatarInitial(m) }}</span>
                 </div>
-                <!-- Bubble content (text or image). -->
-                <div class="bubble" :class="{ mine: isMine(m) }">
-                  <button
-                    v-if="m._replyPreview"
-                    class="inline-reply"
-                    type="button"
-                    @click="jumpToMessage(m.replyToId)"
-                  >
-                    <div v-if="m._replyFrom" class="reply-from">{{ m._replyFrom }}</div>
-                    <div class="reply-text">{{ m._replyPreview }}</div>
-                  </button>
+                <!-- Message block with reply preview, content, and timestamp. -->
+                <div class="bubble-wrap" :class="{ mine: isMine(m) }">
+                  <!-- Sender label (group conversations only). -->
+                  <div class="who" v-if="showSenderName && !isMine(m)">
+                    {{ displayNameFor(m) }}
+                  </div>
+                  <!-- Bubble content (text or image). -->
+                  <div class="bubble" :class="{ mine: isMine(m) }">
+                    <button
+                      v-if="m._replyPreview"
+                      class="inline-reply"
+                      type="button"
+                      @click="jumpToMessage(m.replyToId)"
+                    >
+                      <div v-if="m._replyFrom" class="reply-from">{{ m._replyFrom }}</div>
+                      <div class="reply-text">{{ m._replyPreview }}</div>
+                    </button>
 
-                  <div v-if="m.fileAbsUrl" class="img-wrap">
-                    <img :src="m.fileAbsUrl" class="img" />
+                    <div v-if="m.fileAbsUrl" class="img-wrap">
+                      <img :src="m.fileAbsUrl" class="img" />
+                    </div>
+
+                    <div v-if="m.content" class="text-block">
+                      {{ m.content }}
+                    </div>
+                  </div>
+                  <!-- Timestamp and delivery markers. -->
+                  <div class="meta">
+                    {{ fmtTime(m._ts) }}
+                    <span v-if="tickText(m)" class="ticks">{{ tickText(m) }}</span>
                   </div>
 
-                  <div v-if="m.content" class="text-block">
-                    {{ m.content }}
+                  <!-- Comment summary for the current user. -->
+                  <div
+                    v-if="m._myLastComment"
+                    class="comment-chip"
+                    :class="{ mine: isMine(m) }"
+                  >
+                    {{ m._myLastComment }}
+                  </div>
+
+                  <div
+                    v-if="m._myReactions && m._myReactions.length"
+                    class="my-reactions"
+                    role="group"
+                    aria-label="Your reactions"
+                  >
+                    <span class="my-reactions__label">You:</span>
+                    <span v-for="emoji in m._myReactions" :key="emoji" class="my-reactions__pill">
+                      {{ emoji }}
+                    </span>
+                  </div>
+
+                <!-- Message actions: reply, forward, react, delete. -->
+                  <div class="actions">
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-label="Reply to message"
+                      title="Reply"
+                      @click="setReplyTarget(m)"
+                    >
+                      ↩️
+                    </button>
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      aria-label="Forward message"
+                      title="Forward"
+                      @click="openForwardPicker(m)"
+                    >
+                      🔗
+                    </button>
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      :class="{ active: m._myReactions.includes('👍') }"
+                      :aria-pressed="m._myReactions.includes('👍')"
+                      aria-label="Toggle thumbs up reaction"
+                      @click="toggleReaction(m, '👍')"
+                    >
+                      👍
+                    </button>
+
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      :class="{ active: m._myReactions.includes('❤️') }"
+                      :aria-pressed="m._myReactions.includes('❤️')"
+                      aria-label="Toggle heart reaction"
+                      @click="toggleReaction(m, '❤️')"
+                    >
+                      ❤️
+                    </button>
+
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      :class="{ active: m._myReactions.includes('😂') }"
+                      :aria-pressed="m._myReactions.includes('😂')"
+                      aria-label="Toggle laugh reaction"
+                      @click="toggleReaction(m, '😂')"
+                    >
+                      😂
+                    </button>
+
+                    <button
+                      v-if="isMine(m)"
+                      class="icon-btn"
+                      :disabled="deletingMessageId === String(m.id)"
+                      type="button"
+                      title="Delete message"
+                      aria-label="Delete message"
+                      @click="confirmDeleteMessage(m)"
+                    >
+                      {{ deletingMessageId === String(m.id) ? '⌛' : '🗑️' }}
+                    </button>
                   </div>
                 </div>
-                <!-- Timestamp and delivery markers. -->
-                <div class="meta">
-                  {{ fmtTime(m._ts) }}
-                  <span v-if="tickText(m)" class="ticks">{{ tickText(m) }}</span>
-                </div>
 
-                <!-- Comment summary for the current user. -->
+                <!-- Right avatar when the current user sent the message. -->
                 <div
-                  v-if="m._myLastComment"
-                  class="comment-chip"
-                  :class="{ mine: isMine(m) }"
+                  v-if="isMine(m)"
+                  class="avatar mine"
+                  :class="{ placeholder: !myAvatar }"
+                  :style="avatarBg(myAvatar)"
                 >
-                  {{ m._myLastComment }}
-                </div>
-
-                <div
-                  v-if="m._myReactions && m._myReactions.length"
-                  class="my-reactions"
-                  role="group"
-                  aria-label="Your reactions"
-                >
-                  <span class="my-reactions__label">You:</span>
-                  <span v-for="emoji in m._myReactions" :key="emoji" class="my-reactions__pill">
-                    {{ emoji }}
-                  </span>
-                </div>
-
-              <!-- Message actions: reply, forward, react, delete. -->
-                <div class="actions">
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    aria-label="Reply to message"
-                    title="Reply"
-                    @click="setReplyTarget(m)"
-                  >
-                    ↩️
-                  </button>
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    aria-label="Forward message"
-                    title="Forward"
-                    @click="openForwardPicker(m)"
-                  >
-                    🔗
-                  </button>
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    :class="{ active: m._myReactions.includes('👍') }"
-                    :aria-pressed="m._myReactions.includes('👍')"
-                    aria-label="Toggle thumbs up reaction"
-                    @click="toggleReaction(m, '👍')"
-                  >
-                    👍
-                  </button>
-
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    :class="{ active: m._myReactions.includes('❤️') }"
-                    :aria-pressed="m._myReactions.includes('❤️')"
-                    aria-label="Toggle heart reaction"
-                    @click="toggleReaction(m, '❤️')"
-                  >
-                    ❤️
-                  </button>
-
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    :class="{ active: m._myReactions.includes('😂') }"
-                    :aria-pressed="m._myReactions.includes('😂')"
-                    aria-label="Toggle laugh reaction"
-                    @click="toggleReaction(m, '😂')"
-                  >
-                    😂
-                  </button>
-
-                  <button
-                    v-if="isMine(m)"
-                    class="icon-btn"
-                    :disabled="deletingMessageId === String(m.id)"
-                    type="button"
-                    title="Delete message"
-                    aria-label="Delete message"
-                    @click="confirmDeleteMessage(m)"
-                  >
-                    {{ deletingMessageId === String(m.id) ? '⌛' : '🗑️' }}
-                  </button>
+                  <span v-if="!myAvatar" class="avatar-initial">{{ avatarInitial(m) }}</span>
                 </div>
               </div>
-
-              <!-- Right avatar when the current user sent the message. -->
-              <div
-                v-if="isMine(m)"
-                class="avatar mine"
-                :class="{ placeholder: !myAvatar }"
-                :style="avatarBg(myAvatar)"
-              >
-                <span v-if="!myAvatar" class="avatar-initial">{{ avatarInitial(m) }}</span>
-              </div>
+            </template>
+            <div v-else class="empty-thread" role="status" aria-live="polite">
+              <h2>No messages yet</h2>
+              <p class="muted">
+                {{ isGroup ? 'Say hello 👋 so everyone can join in.' : 'Say hello 👋 to start the conversation.' }}
+              </p>
             </div>
           </div>
 
@@ -496,6 +504,7 @@ import {
   ticksFor,
   titleForConversation,
   avatarForConversation,
+  normalizeUser,
 } from '@/services/api'
 
 import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
@@ -634,6 +643,13 @@ function normalizeConversationList(items = []) {
     .sort((a, b) => new Date(b.last_time || 0) - new Date(a.last_time || 0))
 }
 
+function normalizeParticipantList(list = []) {
+  return (list || [])
+    .map(normalizeUser)
+    .map(u => ({ ...u, avatar: u.avatarUrl || u.avatar }))
+    .filter(u => u.id)
+}
+
 async function loadConversationList() {
   convErr.value = ''
   await ensureAuthReady()
@@ -691,17 +707,24 @@ function senderProfileFromRaw(raw = {}) {
     ''
 
   const senderTag = senderRaw.tag || senderRaw.role || senderRaw.label || senderRaw.title || ''
-  const senderAvatar = getAvatarUrl(senderRaw)
-  const senderId = senderIdValue != null ? String(senderIdValue) : ''
+
+  const normalized = normalizeUser({
+    ...senderRaw,
+    id: senderIdValue ?? senderRaw.id,
+    name: senderName,
+  })
+
+  const senderId = normalized.id ? String(normalized.id) : ''
 
   return senderId
     ? {
         id: senderId,
-        name: senderName,
-        avatar: senderAvatar,
-        tag: senderTag,
+        name: normalized.name || normalized.username || senderName,
+        username: normalized.username,
+        avatar: normalized.avatarUrl,
+        tag: senderTag || normalized.tag,
       }
-    : { id: '', name: senderName, avatar: senderAvatar, tag: senderTag }
+    : { id: '', name: normalized.name || senderName, avatar: normalized.avatarUrl, tag: senderTag }
 }
 
 function resolveSender(userId, msg = null) {
@@ -733,7 +756,7 @@ function avatarFor(m) {
 function avatarInitial(m) {
   if (isMine(m)) return (me.value?.name || 'Me')[0] || 'M'
   const sender = resolveSender(m.senderId, m)
-  const name = sender?.name || sender?.tag || sender?.id || 'U'
+  const name = sender?.name || sender?.username || sender?.tag || sender?.id || 'U'
   return (name[0] || 'U').toUpperCase()
 }
 
@@ -744,16 +767,17 @@ function avatarBg(src) {
 function displayNameFor(m) {
   const s = resolveSender(m.senderId, m)
   if (s?.name) return s.name
+  if (s?.username) return s.username
   if (s?.tag) return s.tag
   return s?.id || String(m.senderId || '')
 }
-
 function nameForSender(userId, msg = null) {
   if (!userId && !msg?.senderId) return ''
   if (String(userId || msg?.senderId) === meId.value) return me.value?.name || 'Me'
 
   const s = resolveSender(userId, msg)
   if (s?.name) return s.name
+  if (s?.username) return s.username
   if (s?.tag) return s.tag
   return s?.id || String(userId || msg?.senderId || '')
 }
@@ -823,13 +847,18 @@ async function loadConversationMeta() {
             []
 
           if (Array.isArray(memberList) && memberList.length > 0) {
-            conv = { ...conv, participants: memberList }
+            conv = { ...conv, participants: normalizeParticipantList(memberList) }
           }
         } catch (memberErr) {
           if (!isAbortError(memberErr)) {
             console.error('loadConversationMeta members fallback failed', memberErr)
           }
         }
+      }
+
+      const normalizedParticipants = normalizeParticipantList(conv.participants || [])
+      if (normalizedParticipants.length) {
+        conv = { ...conv, participants: normalizedParticipants }
       }
     }
 
@@ -919,14 +948,15 @@ function normalizeMessage(raw) {
     type: raw.type === 'image' ? 'image' : 'text',
     fileAbsUrl: fileRel ? absUrl(fileRel) : null,
     senderId: String(senderId || ''),
-    _sender: senderProfile.id
-      ? {
-          id: senderProfile.id,
-          name: senderProfile.name,
-          avatar: senderProfile.avatar,
-          tag: senderProfile.tag,
-        }
-      : null,
+      _sender: senderProfile.id
+        ? {
+            id: senderProfile.id,
+            name: senderProfile.name,
+            username: senderProfile.username,
+            avatar: senderProfile.avatar,
+            tag: senderProfile.tag,
+          }
+        : null,
     _ts: new Date(ts).toISOString(),
     replyToId: replyToId ? String(replyToId) : '',
     _showCommentBox: false,
@@ -993,16 +1023,12 @@ async function loadMessages() {
 }
 
 function normalizeMembers(list) {
-  return (list || [])
-    .map(u => ({
-      id: String(u?.id ?? u?.userId ?? u?.user_id ?? ''),
-      name: u?.name || u?.username || String(u?.id ?? u?.userId ?? u?.user_id ?? ''),
-      avatar: getAvatarUrl({
-        avatarUri: u?.avatarUri ?? u?.avatar_uri ?? u?.avatar_url ?? u?.avatar,
-        updatedAt: u?.updatedAt ?? u?.updated_at ?? Date.now(),
-      }),
-    }))
-    .filter(u => u.id)
+  return normalizeParticipantList(list).map(u => ({
+    id: u.id,
+    name: u.name || u.username || u.id,
+    avatar: u.avatar,
+    username: u.username,
+  }))
 }
 
 async function resolveGroupId() {
@@ -1056,7 +1082,7 @@ async function loadGroupPanel() {
     const members = normalizeMembers(membersRaw)
 
     if (membersRaw?.length) {
-      currentConv.value = { ...(currentConv.value || {}), participants: membersRaw }
+      currentConv.value = { ...(currentConv.value || {}), participants: normalizeParticipantList(membersRaw) }
     }
 
     groupInfo.value = {
@@ -1070,14 +1096,18 @@ async function loadGroupPanel() {
       ...(currentConv.value || {}),
       name: groupInfo.value.name,
       avatar: groupInfo.value.avatar,
-      participants: membersRaw?.length ? membersRaw : currentConv.value?.participants || [],
+      participants: membersRaw?.length
+        ? normalizeParticipantList(membersRaw)
+        : currentConv.value?.participants || [],
     }
 
     currentConv.value = {
       ...(currentConv.value || {}),
       name: groupInfo.value.name,
       avatar: groupInfo.value.avatar,
-      participants: membersRaw?.length ? membersRaw : currentConv.value?.participants || [],
+      participants: membersRaw?.length
+        ? normalizeParticipantList(membersRaw)
+        : currentConv.value?.participants || [],
     }
 
     groupNameDraft.value = groupInfo.value.name || ''
@@ -1917,6 +1947,20 @@ watch(convId, async () => {
   border-radius: 0;
   padding: 12px;
   border: 1px solid #e1e5eb;
+}
+
+.empty-thread {
+  min-height: 50vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 8px;
+  color: #0f172a;
+}
+
+.empty-thread h2 {
+  margin: 0;
+  font-size: 1.2rem;
 }
 
 .row {

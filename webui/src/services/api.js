@@ -154,6 +154,39 @@ const del   = (url, cfg)       => axios.delete(url, withAuthConfig(cfg))
 const post  = (url, data, cfg) => axios.post(url,   data, withAuthConfig(cfg))
 const put   = (url, data, cfg) => axios.put(url,    data, withAuthConfig(cfg))
 
+/**
+ * Normalize user-like payloads to a consistent shape consumed by the UI.
+ * Ensures we never surface placeholder handles like "-" by falling back to
+ * id/"unknown" when the username is missing.
+ */
+export function normalizeUser(u = {}) {
+  const rawId =
+    u.id ?? u.user_id ?? u.userId ?? u._id ?? u.uid ?? u.uuid ?? u.userID ?? null
+  const id = String(rawId || '').trim() || 'unknown'
+
+  const usernameCandidate = String(
+    u.username ?? u.user_name ?? u.userName ?? u.handle ?? ''
+  ).trim()
+  const nameCandidate = String(u.name ?? u.full_name ?? u.fullName ?? '').trim()
+
+  const username = usernameCandidate && usernameCandidate !== '-' ? usernameCandidate : null
+  const name = nameCandidate || username || null
+
+  const avatarUri =
+    u.avatarUri || u.avatar_uri || u.avatar_url || u.avatar || u.photo_url || u.photo || ''
+  const updatedAt = u.updatedAt ?? u.updated_at ?? Date.now()
+
+  return {
+    ...u,
+    id,
+    username,
+    name,
+    avatarUri,
+    avatarUrl: getAvatarUrl({ ...u, avatarUri, updatedAt }),
+    updatedAt,
+  }
+}
+
 /* API base URL helpers */
 
 // Resolve the API base URL using axios defaults, runtime overrides, or Vite env values.
@@ -221,14 +254,7 @@ export function doLogout() {
 
 export async function getMyProfile() {
   const u = unwrap(await get('/users/me')) || {}
-  // Normalize to the keys expected by the UI.
-  return {
-    ...u,
-    id: String(u.id ?? ''),
-    name: u.name ?? '',
-    avatarUri: u.avatarUri ?? u.avatar_uri ?? u.avatar_url ?? u.avatar ?? '',
-    updatedAt: u.updatedAt ?? u.updated_at ?? Date.now(),
-  }
+  return normalizeUser(u)
 }
 
 export async function getUserProfile(userId) {
@@ -278,7 +304,8 @@ export function getAvatarUrl(userLike) {
 /** Search users via /users/search?q. */
 export async function searchUsers(q = '') {
   const v = unwrap(await get('/users/search', { params: { q } }))
-  return Array.isArray(v) ? v : (v?.items ?? v?.users ?? v?.list ?? [])
+  const list = Array.isArray(v) ? v : (v?.items ?? v?.users ?? v?.list ?? [])
+  return list.map(normalizeUser)
 }
 
 /**

@@ -14,7 +14,7 @@
       </div>
       <div class="me-info">
         <div class="me-name">{{ me.name || '(no name)' }}</div>
-        <div class="me-username">@{{ me.username || 'user' }}</div>
+        <div class="me-username">@{{ me.username || me.id || 'unknown' }}</div>
       </div>
     </div>
 
@@ -43,7 +43,7 @@ const router = useRouter()
 const me = computed(() => currentUser.value)
 
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
-const initials = computed(() => (me.value?.name || me.value?.username || 'U')[0].toUpperCase())
+const initials = computed(() => (me.value?.name || me.value?.username || me.value?.id || 'U')[0].toUpperCase())
 
 async function logout() {
   clearAuth()
