@@ -17,6 +17,12 @@
   --radius-bubble: 12px;
   --radius-control: 8px;
 
+    /* Spacing scale */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+
     /* Typography scale */
     --font-title: 1.05rem;
     --font-primary: 1rem;
@@ -52,6 +58,7 @@ body{
   background-position: center;
   border: 1px solid #a7f3d0;
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   font-weight: 700;

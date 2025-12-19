@@ -24,11 +24,6 @@
       <section v-else class="body">
         <!-- Basic info -->
         <div class="row">
-          <label>ID</label>
-          <div>#{{ group.id }}</div>
-        </div>
-
-        <div class="row">
           <label>Name</label>
           <form class="inline" @submit.prevent="saveName">
             <input v-model="name" placeholder="Group name" />
@@ -53,8 +48,8 @@
           <label>Members ({{ (group.members || []).length }})</label>
           <div class="members">
             <div v-for="m in group.members || []" :key="m.id" class="member">
-              <span class="mn">{{ m.username || m.name || m.id }}</span>
-              <span class="mid">#{{ m.id }}</span>
+              <span class="mn">{{ displayName(m) }}</span>
+              <span v-if="handle(m)" class="mid">{{ handle(m) }}</span>
             </div>
           </div>
         </div>
@@ -69,7 +64,7 @@
             </button>
             <div v-if="toAdd.length" class="chips">
               <span v-for="u in toAdd" :key="u.id" class="chip">
-                {{ u.username || u.name || u.id }}
+                {{ displayName(u) }}
               </span>
             </div>
           </div>
@@ -90,7 +85,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axios from "../services/axios";
-import { isAbortError, withAuthConfig } from "../services/api";
+import { isAbortError, withAuthConfig, preferredDisplayName, safeUsername } from "../services/api";
 import LoadingSpinner from "./LoadingSpinner.vue";
 import UserSearchBox from "./UserSearchBox.vue";
 
@@ -110,6 +105,9 @@ const leaving = ref(false);
 
 // Users queued for addition.
 const toAdd = ref([]);
+
+const displayName = (u) => preferredDisplayName(u);
+const handle = (u) => safeUsername(u);
 
 // API helpers (axios-only).
 

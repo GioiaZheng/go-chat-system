@@ -12,16 +12,12 @@
             v-if="avatarUrl && !imgBroken"
             :src="avatarUrl"
             alt="avatar"
-            class="avatar"
+            class="avatar avatar-circle"
             @error="imgBroken = true"
           />
-          <div v-else class="avatar placeholder">{{ initials }}</div>
+          <div v-else class="avatar-fallback avatar-circle">{{ initials }}</div>
 
           <div class="idblock">
-            <div class="row">
-              <span class="key">id:</span>
-              <span class="val">{{ me.id }}</span>
-            </div>
             <div class="row">
               <span class="key">name:</span>
               <span class="val">{{ me.name || '(unset)' }}</span>
@@ -35,11 +31,6 @@
             <p class="summary-label">Display name</p>
             <p class="summary-value">{{ me.name || '(unset)' }}</p>
             <p class="summary-hint">Shown to friends across private and group chats.</p>
-          </div>
-          <div class="summary-card">
-            <p class="summary-label">Account ID</p>
-            <p class="summary-value">{{ me.id }}</p>
-            <p class="summary-hint">Share this if someone needs to add you directly.</p>
           </div>
           <div class="summary-card">
             <p class="summary-label">Profile photo</p>
@@ -218,24 +209,7 @@ function handleError(e, fallback) {
   border-bottom: 1px solid #e2e8f0;
   margin-bottom: 12px;
 }
-.avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #e2e8f0;
-}
-.avatar.placeholder {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: #e0f7ee;
-  border: 1px solid #a7f3d0;
-  color: #0f766e;
-  font-weight: 800;
-}
+
 .idblock .row {
   display: flex;
   gap: 8px;

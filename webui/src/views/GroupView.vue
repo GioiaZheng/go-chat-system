@@ -19,11 +19,10 @@
           <input
             v-model.trim="memberIdsRaw"
             class="input"
-            placeholder="Member IDs (comma separated)"
+            placeholder="Members (comma separated)"
           />
           <div class="muted tip">
-            You can enter any user IDs (not limited to your contacts).<br />
-            Your own ID is appended automatically if it is missing.
+            Add members separated by commas. Your account is included automatically if missing.
           </div>
         </div>
         <div class="actions">
@@ -50,8 +49,7 @@
               alt="group avatar"
             />
             <div class="info">
-              <div class="name">{{ g.name || ('Group ' + (g.id || '').slice(0,8)) }}</div>
-              <div class="sub">conversation_id: {{ g.conversation_id || '(unknown)' }}</div>
+              <div class="name">{{ groupName(g) }}</div>
             </div>
           </div>
 
@@ -120,11 +118,14 @@ import {
   addToGroup,
   leaveGroup,
   getAvatarUrl,
+  preferredDisplayName,
 } from '@/services/api'
 
 import { ensureAuthReady, isAuthenticated, currentUser, refreshProfile } from '@/services/auth'
 
 const router = useRouter()
+
+const groupName = (g) => preferredDisplayName(g) || 'Group'
 
 const meId = ref('')
 async function loadMe () {

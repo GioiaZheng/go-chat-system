@@ -6,12 +6,8 @@
 
     <!-- Signed-in user overview with avatar fallback and handle -->
     <div class="me" v-if="me">
-      <div
-        class="me-avatar avatar-circle"
-        :style="avatarUrl ? { backgroundImage: `url('${avatarUrl}')` } : {}"
-      >
-        <span v-if="!avatarUrl">{{ initials }}</span>
-      </div>
+      <span v-if="!avatarUrl" class="me-avatar avatar-fallback avatar-circle">{{ initials }}</span>
+      <img v-else class="me-avatar avatar avatar-circle" :src="avatarUrl" alt="avatar" />
       <div class="me-info">
         <div class="me-name">{{ displayName }}</div>
         <div v-if="usernameLabel" class="me-username">{{ usernameLabel }}</div>

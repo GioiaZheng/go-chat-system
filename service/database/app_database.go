@@ -56,7 +56,7 @@ type AppDatabase interface {
 	GetMessageByID(messageID string) (models.Message, error)
 	GetMessageComments(messageID string) ([]models.Message, error)
 	CommentMessage(messageID, userID, ctype, content string) error
-	UncommentMessage(messageID string) error
+	UncommentMessage(messageID, userID string) error
 	ForwardMessage(userID, messageID, toUserID, toGroupID string) error
 
 	IsMessageOwner(userID, messageID string) (bool, error)

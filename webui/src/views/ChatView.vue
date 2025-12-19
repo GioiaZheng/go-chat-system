@@ -14,12 +14,8 @@
       </button>
 
       <div class="title-row">
-        <div
-          class="header-avatar avatar-circle"
-          :style="headerAvatar ? { backgroundImage: `url('${headerAvatar}')` } : {}"
-        >
-          <span v-if="!headerAvatar">{{ headerTitle[0] || 'C' }}</span>
-        </div>
+        <span v-if="!headerAvatar" class="header-avatar avatar-fallback avatar-circle">{{ headerTitle[0] || 'C' }}</span>
+        <img v-else class="header-avatar avatar avatar-circle" :src="headerAvatar" alt="avatar" />
         <div class="title text-title">{{ headerTitle }}</div>
       </div>
     </header>
@@ -57,17 +53,18 @@
                   :class="{ active: String(c.id) === convId }"
                   @click="switchConversation(c)"
                 >
-                  <div
-                    class="conv-pill__avatar avatar-circle"
-                    :class="{ placeholder: !avatarForConversation(c, meId) }"
-                    :style="
-                      avatarForConversation(c, meId)
-                        ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` }
-                        : {}
-                    "
+                  <span
+                    v-if="!avatarForConversation(c, meId)"
+                    class="conv-pill__avatar avatar-fallback avatar-circle"
                   >
-                    <span v-if="!avatarForConversation(c, meId)">{{ titleForConversation(c, meId)[0] || 'C' }}</span>
-                  </div>
+                    {{ titleForConversation(c, meId)[0] || 'C' }}
+                  </span>
+                  <img
+                    v-else
+                    class="conv-pill__avatar avatar avatar-circle"
+                    :src="avatarForConversation(c, meId)"
+                    alt="avatar"
+                  />
 
                   <div class="conv-pill__meta">
                     <div class="conv-pill__top">
@@ -94,14 +91,18 @@
                 :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
               >
                 <!-- Left avatar for incoming messages. -->
-                <div
-                  v-if="!isMine(m)"
-                  class="avatar avatar-circle"
-                  :class="{ placeholder: !avatarFor(m) }"
-                  :style="avatarBg(avatarFor(m))"
+                <span
+                  v-if="!isMine(m) && !avatarFor(m)"
+                  class="avatar-fallback avatar-circle"
                 >
-                  <span v-if="!avatarFor(m)" class="avatar-initial">{{ avatarInitial(m) }}</span>
-                </div>
+                  {{ avatarInitial(m) }}
+                </span>
+                <img
+                  v-else-if="!isMine(m)"
+                  class="avatar avatar-circle"
+                  :src="avatarFor(m)"
+                  alt="avatar"
+                />
                 <!-- Message block with reply preview, content, and timestamp. -->
                 <div class="bubble-wrap" :class="{ mine: isMine(m) }">
                   <!-- Sender label (group conversations only). -->
@@ -117,7 +118,10 @@
                       @click="jumpToMessage(m.replyToId)"
                     >
                       <div v-if="m._replyFrom" class="reply-from">{{ m._replyFrom }}</div>
-                      <div class="reply-text">{{ m._replyPreview }}</div>
+                      <div class="reply-body">
+                        <img v-if="m._replyImage" :src="m._replyImage" alt="Reply image" class="reply-thumb" />
+                        <div class="reply-text">{{ m._replyPreview }}</div>
+                      </div>
                     </button>
 
                     <div v-if="m.fileAbsUrl" class="img-wrap">
@@ -141,6 +145,17 @@
                     :class="{ mine: isMine(m) }"
                   >
                     {{ m._myLastComment }}
+                  </div>
+
+                  <div
+                    v-if="m._reactions && m._reactions.length"
+                    class="reactions"
+                    role="group"
+                    aria-label="Reactions"
+                  >
+                    <span v-for="emoji in m._reactions" :key="emoji" class="reaction-pill">
+                      {{ emoji }}
+                    </span>
                   </div>
 
                   <div
@@ -223,14 +238,18 @@
                 </div>
 
                 <!-- Right avatar when the current user sent the message. -->
-                <div
-                  v-if="isMine(m)"
-                  class="avatar avatar-circle mine"
-                  :class="{ placeholder: !myAvatar }"
-                  :style="avatarBg(myAvatar)"
+                <span
+                  v-if="isMine(m) && !myAvatar"
+                  class="avatar avatar-fallback avatar-circle mine"
                 >
-                  <span v-if="!myAvatar" class="avatar-initial">{{ avatarInitial(m) }}</span>
-                </div>
+                  {{ avatarInitial(m) }}
+                </span>
+                <img
+                  v-else-if="isMine(m)"
+                  class="avatar avatar-circle mine"
+                  :src="myAvatar"
+                  alt="avatar"
+                />
               </div>
             </template>
             <div v-else class="empty-thread" role="status" aria-live="polite">
@@ -244,6 +263,12 @@
             <div v-if="replyTarget" class="reply-banner">
               Replying to {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}:
               <span class="reply-snippet">
+                <img
+                  v-if="replyTarget.fileAbsUrl"
+                  :src="replyTarget.fileAbsUrl"
+                  alt="Reply image"
+                  class="reply-thumb"
+                />
                 {{
                   replyTarget.content ||
                     replyTarget._replyPreview ||
@@ -299,7 +324,7 @@
           </div>
 
           <!-- Forward picker for choosing a destination chat. -->
-          <div v-if="forwardPanelOpen" class="forward-overlay">
+          <div v-if="forwardPanelOpen" class="forward-overlay" @click.self="closeForwardPicker">
             <div class="forward-modal">
               <header class="forward-header">
                 <strong>Forward message</strong>
@@ -332,17 +357,18 @@
                     type="button"
                     @click="forwardToConversation(c.id)"
                   >
-                    <div
-                      class="forward-avatar avatar-circle"
-                      :class="{ placeholder: !avatarForConversation(c, meId) }"
-                      :style="
-                        avatarForConversation(c, meId) ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` } : {}
-                      "
+                    <span
+                      v-if="!avatarForConversation(c, meId)"
+                      class="forward-avatar avatar-fallback avatar-circle"
                     >
-                      <span v-if="!avatarForConversation(c, meId)">
-                        {{ titleForConversation(c, meId)[0] || 'C' }}
-                      </span>
-                    </div>
+                      {{ titleForConversation(c, meId)[0] || 'C' }}
+                    </span>
+                    <img
+                      v-else
+                      class="forward-avatar avatar avatar-circle"
+                      :src="avatarForConversation(c, meId)"
+                      alt="avatar"
+                    />
 
                     <div class="forward-meta">
                       <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
@@ -367,13 +393,18 @@
           <aside v-if="isGroup" class="group-panel">
             <div class="group-card">
               <div class="group-header">
-                <div
-                  class="group-avatar avatar-circle"
-                  :class="{ placeholder: !groupInfo?.avatar }"
-                  :style="groupInfo?.avatar ? { backgroundImage: `url('${groupInfo.avatar}')` } : {}"
+                <span
+                  v-if="!groupInfo?.avatar"
+                  class="group-avatar avatar-fallback avatar-circle"
                 >
-                  <span v-if="!groupInfo?.avatar">{{ (groupInfo?.name || headerTitle)[0] || 'G' }}</span>
-                </div>
+                  {{ (groupInfo?.name || headerTitle)[0] || 'G' }}
+                </span>
+                <img
+                  v-else
+                  class="group-avatar avatar avatar-circle"
+                  :src="groupInfo.avatar"
+                  alt="avatar"
+                />
                 <div class="group-meta">
                   <div class="group-name">{{ groupInfo?.name || headerTitle }}</div>
                   <div class="group-sub">{{ groupMembers.length === 1 ? '1 member' : `${groupMembers.length} members` }}</div>
@@ -408,16 +439,21 @@
                 <ul class="member-list">
                   <li v-for="u in groupMembers" :key="u.id" class="member-item" role="listitem">
                     <div class="member-left">
-                      <div
-                        class="member-avatar avatar-circle"
-                        :class="{ placeholder: !u.avatar }"
-                        :style="u.avatar ? { backgroundImage: `url('${u.avatar}')` } : {}"
+                      <span
+                        v-if="!u.avatar"
+                        class="member-avatar avatar-fallback avatar-circle"
                       >
-                        <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
-                      </div>
+                        {{ initialsFor(u, 'U') }}
+                      </span>
+                      <img
+                        v-else
+                        class="member-avatar avatar avatar-circle"
+                        :src="u.avatar"
+                        alt="avatar"
+                      />
                       <div class="member-info">
                         <div class="member-name">{{ u.name || 'Unknown' }}</div>
-                        <div v-if="u.username" class="member-sub">{{ u.username }}</div>
+                        <div v-if="safeUsername(u)" class="member-sub">{{ safeUsername(u) }}</div>
                       </div>
                     </div>
                     <button
@@ -487,6 +523,7 @@ import {
   avatarForConversation,
   normalizeUser,
   preferredDisplayName,
+  initialsFor,
   safeUsername,
 } from '@/services/api'
 
@@ -689,6 +726,8 @@ function handleConversationRefresh(e) {
   const targetId = detail.conversationId ? String(detail.conversationId) : ''
   const bumpedTime = detail.lastTime || ''
   const bumpedPreview = detail.lastPreview
+  const bumpedName = detail.name
+  const bumpedAvatar = detail.avatar
 
   let updated = false
   if (targetId && convList.value?.length) {
@@ -698,8 +737,10 @@ function handleConversationRefresh(e) {
         updated = true
         return {
           ...c,
-          last_time: bumpedTime || c.last_time || new Date().toISOString(),
+          ...(bumpedTime ? { last_time: bumpedTime } : {}),
           ...(bumpedPreview ? { last_preview: bumpedPreview } : {}),
+          ...(bumpedName ? { name: bumpedName } : {}),
+          ...(bumpedAvatar ? { avatar: bumpedAvatar } : {}),
         }
       })
       .sort((a, b) => new Date(b.last_time || 0) - new Date(a.last_time || 0))
@@ -707,6 +748,14 @@ function handleConversationRefresh(e) {
 
   if (!updated) {
     loadConversationList()
+  }
+
+  if (updated && String(currentConv.value?.id || '') === targetId) {
+    currentConv.value = {
+      ...(currentConv.value || {}),
+      ...(bumpedName ? { name: bumpedName } : {}),
+      ...(bumpedAvatar ? { avatar: bumpedAvatar } : {}),
+    }
   }
 }
 
@@ -797,10 +846,6 @@ function avatarInitial(m) {
   const sender = resolveSender(m.senderId, m)
   const name = preferredDisplayName(sender || {})
   return (name[0] || 'U').toUpperCase()
-}
-
-function avatarBg(src) {
-  return src ? { backgroundImage: `url('${src}')` } : {}
 }
 
 function displayNameFor(m) {
@@ -939,6 +984,15 @@ function normalizeMessage(raw) {
   const replyType = raw.replyTo?.type || ''
   const replyPreview = replyContent || (replyType === 'image' ? '[image]' : '')
 
+  const replyFileRel =
+    raw.replyTo?.fileUrl ||
+    raw.replyTo?.file_url ||
+    raw.replyTo?.imageUrl ||
+    raw.replyTo?.image_url ||
+    raw.replyTo?.file ||
+    (replyType === 'image' && looksLikeFileUrl(raw.replyTo?.content) ? raw.replyTo?.content : null)
+  const replyImageAbs = replyFileRel ? absUrl(replyFileRel) : ''
+
   const read = Boolean(raw.read || raw.read_at || raw.readAt)
 
   // Image handling: when type === 'image', content is the image URL
@@ -959,13 +1013,21 @@ function normalizeMessage(raw) {
     raw.Replies ||
     []
 
-  const byMe = commentList.filter(c =>
-    String(c?.senderId || c?.userId || c?.user_id || '') === meId.value
-  )
+  const senderKey = (c) =>
+    String(c?.senderId || c?.userId || c?.user_id || c?.authorId || c?.author_id || '')
+
+  const typeFor = (c) => (c?.type || c?.Type || '').toLowerCase()
+  const contentFor = (c) => c?.content || c?.Content || ''
+
+  const byMe = commentList.filter(c => senderKey(c) === meId.value)
 
   const myEmojis = byMe
-    .filter(c => (c?.type || '').toLowerCase() === 'emoji' && c?.content)
-    .map(c => c.content)
+    .filter(c => typeFor(c) === 'emoji' && contentFor(c))
+    .map(c => contentFor(c))
+
+  const allEmojis = commentList
+    .filter(c => typeFor(c) === 'emoji' && contentFor(c))
+    .map(c => contentFor(c))
 
   const myLastComment = [...byMe]
     .reverse()
@@ -1001,7 +1063,9 @@ function normalizeMessage(raw) {
     _myLastComment:
       (myLastComment?.content || myLastComment?.text || '').trim(),
     _myReactions: Array.from(new Set(myEmojis)),
+    _reactions: Array.from(new Set(allEmojis)),
     _replyPreview: replyPreview,
+    _replyImage: replyImageAbs,
     _replyFrom: preferredDisplayName(replySenderProfile),
   }
 }
@@ -1034,6 +1098,7 @@ async function loadMessages() {
         if (target) {
           const preview = target.content || (target.type === 'image' ? '[image]' : '')
           m._replyPreview = preview
+          m._replyImage = target.fileAbsUrl || m._replyImage
           m._replyFrom = nameForSender(target.senderId, target)
         }
       }
@@ -1042,6 +1107,7 @@ async function loadMessages() {
         const target = byId.get(String(m.replyToId))
         if (target) {
           m._replyFrom = nameForSender(target.senderId, target)
+          m._replyImage = target.fileAbsUrl || m._replyImage
         }
       }
     })
@@ -1250,7 +1316,6 @@ async function toggleReaction(m, emoji) {
 
   try {
     if (has) {
-      // remove all reactions/comments on this message for simplicity
       await uncommentMessage(m.id)
       m._myReactions = []
     } else {
@@ -1260,11 +1325,11 @@ async function toggleReaction(m, emoji) {
       })
       m._myReactions = [emoji]
     }
+    await loadMessages()
   } catch (e) {
-    err.value = e?.response?.data?.message || 'Failed to react'
+    err.value = e?.response?.data?.message || e?.message || 'Failed to react'
   }
 }
-
 
 async function loadForwardList() {
   forwardLoading.value = true
@@ -1421,7 +1486,7 @@ async function onPickGroupPhoto(e) {
     await setGroupPhoto(groupId.value, file)
     groupNotice.value = 'Group photo updated.'
     await loadGroupPanel()
-    await refreshConversations()
+    updateConversationMeta({ name: groupInfo.value?.name, avatar: groupInfo.value?.avatar })
   } catch (er) {
     groupErr.value = er?.response?.data?.message || er?.message || 'Failed to update group photo'
   } finally {
@@ -1439,7 +1504,7 @@ async function onRenameGroup() {
     await setGroupName(groupId.value, groupNameDraft.value)
     groupNotice.value = 'Group name saved.'
     await loadGroupPanel()
-    await refreshConversations()
+    updateConversationMeta({ name: groupInfo.value?.name, avatar: groupInfo.value?.avatar })
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to rename group'
   } finally {
@@ -1510,6 +1575,18 @@ function bumpConversationList(extra = {}) {
   )
 }
 
+function updateConversationMeta(extra = {}) {
+  if (!convId.value) return
+  window.dispatchEvent(
+    new CustomEvent('conversations:refresh', {
+      detail: {
+        conversationId: convId.value,
+        ...(extra || {}),
+      },
+    })
+  )
+}
+
 // Initialize the view once authentication is confirmed.
 async function bootstrap() {
   await ensureAuthReady()
@@ -1540,6 +1617,12 @@ watch(
 
 watch(convId, async () => {
   pinnedToBottom.value = true
+  forwardPanelOpen.value = false
+  forwardTargetMessage.value = null
+  forwardSearch.value = ''
+  forwardError.value = ''
+  replyTarget.value = null
+  clearImageSelection()
   await loadConversationList()
   await loadConversationMeta()
   await loadMessages()
@@ -1613,6 +1696,7 @@ watch(convId, async () => {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
+  overflow: hidden;
 }
 
 .content-inner {
@@ -1622,6 +1706,7 @@ watch(convId, async () => {
   gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
 }
 
 .chat-layout {
@@ -1631,6 +1716,7 @@ watch(convId, async () => {
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
 }
 
 .chat-layout.has-group {
@@ -1714,12 +1800,6 @@ watch(convId, async () => {
   border-color: #d1d5db;
 }
 
-.conv-pill__avatar.placeholder {
-  background: #e0f7ee;
-  color: #0f766e;
-  border-color: #a7f3d0;
-}
-
 .conv-pill__meta {
   display: flex;
   flex-direction: column;
@@ -1765,6 +1845,8 @@ watch(convId, async () => {
   gap: 12px;
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .group-panel {
@@ -1796,10 +1878,6 @@ watch(convId, async () => {
   border-color: var(--avatar-border);
   color: var(--avatar-text);
   font-weight: 700;
-}
-
-.group-avatar.placeholder {
-  border: 1px solid var(--avatar-border);
 }
 
 .group-meta {
@@ -1914,10 +1992,6 @@ watch(convId, async () => {
   color: var(--avatar-text);
 }
 
-.member-avatar.placeholder {
-  border: 1px solid var(--avatar-border);
-}
-
 .member-info {
   display: flex;
   flex-direction: column;
@@ -1988,13 +2062,14 @@ watch(convId, async () => {
 
 .row {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
 }
 
 .row.mine {
   justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .avatar {
@@ -2005,16 +2080,6 @@ watch(convId, async () => {
 
 .avatar.mine {
   margin-left: 4px;    /* Keep a small gap between my avatar and bubble */
-}
-.avatar.placeholder {
-  background: var(--avatar-bg);
-  border: 1px solid var(--avatar-border);
-  color: var(--avatar-text);
-  font-weight: 700;
-}
-
-.avatar-initial {
-  font-size: 0.9rem;
 }
 
 .bubble-wrap {
@@ -2068,6 +2133,20 @@ watch(convId, async () => {
   color: #334155;
   border-radius: var(--radius-control);
   cursor: pointer;
+}
+
+.reply-body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reply-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
 }
 
 .inline-reply:hover {
@@ -2134,6 +2213,23 @@ watch(convId, async () => {
   margin-top: 6px;
 }
 
+.reactions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.reaction-pill {
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 2px 8px;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
 .my-reactions__label {
   color: #475569;
   font-size: 0.82rem;
@@ -2150,8 +2246,8 @@ watch(convId, async () => {
 
 .actions {
   display: flex;
-  gap: 8px;
-  margin-top: 6px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
   align-items: center;
 }
 
@@ -2159,14 +2255,16 @@ watch(convId, async () => {
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  line-height: 1;
   padding: 0;
   border-radius: var(--radius-control);
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: #334155;
 }
 
 .icon-btn:focus-visible,
@@ -2396,12 +2494,6 @@ watch(convId, async () => {
   background: #e2e8f0;
   font-weight: 700;
   color: #475569;
-}
-
-.forward-avatar.placeholder {
-  background: #e0f7ee;
-  color: #0f766e;
-  border: 1px solid #a7f3d0;
 }
 
 .forward-meta {

@@ -516,13 +516,14 @@ sender_id,
             created_at
 ) VALUES (
 lower(hex(randomblob(16))),
-?, ?, ?, NULL, NULL, ?, NULL, datetime('now')
+?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, datetime('now')
 )
 `,
 		orig.Content,
 		orig.FileURL,
 		orig.Type,
 		orig.Status,
+		0,
 		userID,
 		convID,
 	)
@@ -563,6 +564,7 @@ func (db *appdbimpl) GetMessageComments(messageID string) ([]models.Message, err
 	rows, err := db.c.Query(`
         SELECT
             id,
+            type,
             content,
             sender_id,
             message_id,
@@ -581,6 +583,7 @@ func (db *appdbimpl) GetMessageComments(messageID string) ([]models.Message, err
 		var m models.Message
 		if err := rows.Scan(
 			&m.ID,
+			&m.Type,
 			&m.Content,
 			&m.SenderID,
 			&m.ConversationID,
@@ -618,11 +621,18 @@ func (db *appdbimpl) CommentMessage(
 	return err
 }
 
-// UncommentMessage deletes all comments linked to a specific message.
-func (db *appdbimpl) UncommentMessage(messageID string) error {
+// UncommentMessage deletes the caller's comments linked to a specific message.
+func (db *appdbimpl) UncommentMessage(messageID, userID string) error {
+	messageID = strings.TrimSpace(messageID)
+	userID = strings.TrimSpace(userID)
+	if messageID == "" || userID == "" {
+		return errors.New("message_id and user_id required to remove comments")
+	}
+
 	_, err := db.c.Exec(
-		`DELETE FROM message_comments WHERE message_id = ?`,
+		`DELETE FROM message_comments WHERE message_id = ? AND sender_id = ?`,
 		messageID,
+		userID,
 	)
 	return err
 }

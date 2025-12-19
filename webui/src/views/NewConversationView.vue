@@ -14,9 +14,8 @@
       <div v-if="picked" class="picked">
         <div class="who">
           <div class="name">
-            {{ picked.username || picked.email || picked.name || ('User ' + (picked.id || '').slice(0,8)) }}
+            {{ displayName(picked) }}
           </div>
-          <div class="sub">id: {{ picked.id }}</div>
         </div>
         <button class="btn" :disabled="loading" @click="start">
           <span v-if="loading">Starting…</span>
@@ -34,12 +33,13 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import UserSearch from '@/components/UserSearch.vue'
-import { isAuthed, startPrivateConversation } from '@/services/api'
+import { isAuthed, startPrivateConversation, preferredDisplayName } from '@/services/api'
 
 const router = useRouter()
 const picked = ref(null)
 const loading = ref(false)
 const err = ref('')
+const displayName = (u) => preferredDisplayName(u)
 
 onMounted(() => {
   if (!isAuthed()) router.replace('/login')

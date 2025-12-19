@@ -274,21 +274,26 @@ const handleRefreshEvent = e => {
   const detail = e?.detail || {}
   const targetId = detail.conversationId ? String(detail.conversationId) : ''
 
-  if (targetId && Array.isArray(convs.value) && convs.value.length > 0) {
-    const bumpedTime = detail.lastTime || new Date().toISOString()
-    const bumpedPreview = detail.lastPreview
+  const bumpedName = detail.name
+  const bumpedAvatar = detail.avatar
 
+  if (targetId && Array.isArray(convs.value) && convs.value.length > 0) {
+    const bumpedTime = detail.lastTime
+    const bumpedPreview = detail.lastPreview
     convs.value = convs.value
       .map(c =>
         String(c.id) === targetId
           ? {
               ...c,
-              last_time: bumpedTime,
+              ...(bumpedTime ? { last_time: bumpedTime } : {}),
               ...(bumpedPreview ? { last_preview: bumpedPreview } : {}),
+              ...(bumpedName ? { name: bumpedName } : {}),
+              ...(bumpedAvatar ? { avatar: bumpedAvatar } : {}),
             }
           : c
       )
       .sort((a, b) => new Date(b.last_time || 0) - new Date(a.last_time || 0))
+    return
   }
 
   load()

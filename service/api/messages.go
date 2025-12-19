@@ -31,6 +31,7 @@ type MessageDTO struct {
 	Status         string  `json:"status,omitempty"`
 	Read           bool    `json:"read,omitempty"`
 	ReplyToID      *string `json:"replyToId,omitempty"`
+	Comments       []CommentDTO `json:"comments,omitempty"`
 }
 
 // toMessageDTO maps internal models.Message (snake_case tags) to public MessageDTO.
@@ -53,8 +54,10 @@ func toMessageDTO(m models.Message) MessageDTO {
 type CommentDTO struct {
 	ID        string `json:"id"`
 	AuthorID  string `json:"authorId"`
+	SenderID  string `json:"senderId,omitempty"`
 	Content   string `json:"content"`
 	CreatedAt string `json:"createdAt"`
+	Type      string `json:"type,omitempty"`
 }
 
 // messageRowToCommentDTO converts an internal models.Message row used as a comment
@@ -63,8 +66,10 @@ func messageRowToCommentDTO(m models.Message) CommentDTO {
 	return CommentDTO{
 		ID:        m.ID,
 		AuthorID:  m.SenderID,
+		SenderID:  m.SenderID,
 		Content:   m.Content,
 		CreatedAt: m.CreatedAt,
+		Type:      m.Type,
 	}
 }
 
@@ -278,7 +283,17 @@ func (rt *_router) getMessages(
 	// DTO
 	out := make([]MessageDTO, 0, len(items))
 	for _, m := range items {
-		out = append(out, toMessageDTO(m))
+		dto := toMessageDTO(m)
+		comments, err := rt.db.GetMessageComments(m.ID)
+		if err != nil {
+			rt.baseLogger.WithError(err).Warn("getMessages: failed to load message comments")
+		} else if len(comments) > 0 {
+			dto.Comments = make([]CommentDTO, 0, len(comments))
+			for _, c := range comments {
+				dto.Comments = append(dto.Comments, messageRowToCommentDTO(c))
+			}
+		}
+		out = append(out, dto)
 	}
 
 	resp := map[string]interface{}{
@@ -311,10 +326,21 @@ func (rt *_router) getMessageByID(
 		rt.sendError(w, http.StatusNotFound, "Message not found")
 		return
 	}
+	dto := toMessageDTO(m)
+	comments, err := rt.db.GetMessageComments(m.ID)
+	if err != nil {
+		rt.baseLogger.WithError(err).Warn("getMessageByID: failed to load message comments")
+	} else if len(comments) > 0 {
+		dto.Comments = make([]CommentDTO, 0, len(comments))
+		for _, c := range comments {
+			dto.Comments = append(dto.Comments, messageRowToCommentDTO(c))
+		}
+	}
+
 	resp := map[string]interface{}{
 		"code": http.StatusOK,
 		"data": map[string]interface{}{
-			"resource": toMessageDTO(m),
+			"resource": dto,
 		},
 	}
 	_ = writeJSON(w, http.StatusOK, resp)
@@ -466,14 +492,14 @@ func (rt *_router) uncommentMessage(
 	w http.ResponseWriter,
 	_ *http.Request,
 	ps httprouter.Params,
-	_ reqcontext.RequestContext,
+	ctx reqcontext.RequestContext,
 ) {
 	msgID := strings.TrimSpace(ps.ByName("id"))
 	if msgID == "" {
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
-	if err := rt.db.UncommentMessage(msgID); err != nil {
+	if err := rt.db.UncommentMessage(msgID, ctx.UserID); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to remove comment(s)")
 		return
 	}
