@@ -170,6 +170,49 @@ function normalizeGroups(list) {
     .filter(g => !!g.id)
 }
 
+function resolveGroupMeta(raw = {}) {
+  const detail = raw?.group || raw || {}
+  const avatarUri = detail.avatarUri || detail.avatar_uri || detail.avatar_url || detail.avatar || ''
+  return {
+    id: detail.id ?? detail.group_id ?? detail._id,
+    name: preferredDisplayName(detail),
+    conversationId:
+      detail.conversation_id ??
+      detail.conversationId ??
+      detail.cid ??
+      detail.conversation?.id ??
+      null,
+    avatar: avatarUri ? getAvatarUrl({ avatarUri, updatedAt: detail.updatedAt || detail.updated_at }) : '',
+  }
+}
+
+function emitConversationRefresh({ conversationId, name, avatar }) {
+  if (!conversationId) return
+  window.dispatchEvent(
+    new CustomEvent('conversations:refresh', {
+      detail: {
+        conversationId: String(conversationId),
+        ...(name ? { name } : {}),
+        ...(avatar ? { avatar } : {}),
+      },
+    })
+  )
+}
+
+async function refreshGroupMeta(id, fallback = {}) {
+  try {
+    const detail = await getGroupDetail(id)
+    const meta = resolveGroupMeta(detail)
+    emitConversationRefresh({
+      conversationId: meta.conversationId,
+      name: meta.name || fallback.name,
+      avatar: meta.avatar || fallback.avatar,
+    })
+  } catch {
+    emitConversationRefresh({ conversationId: fallback.conversationId, name: fallback.name, avatar: fallback.avatar })
+  }
+}
+
 function initials(g) {
   const src = g?.name || g?.title || 'G'
   const match = String(src).match(/\b\w/g) || ['G']
@@ -258,6 +301,12 @@ async function onRename(id) {
   busy.value = true
   try {
     await setGroupName(id, editName.value)
+    const target = groups.value.find(g => String(g.id) === String(id))
+    await refreshGroupMeta(id, {
+      conversationId: target?.conversation_id,
+      name: editName.value,
+      avatar: target?.avatar,
+    })
     await loadList()
   } catch (e) {
     panelErr.value = e?.response?.data?.message || e?.message || 'Failed to rename group'
@@ -277,6 +326,12 @@ async function onPickPhoto(id, e) {
   busy.value = true
   try {
     await setGroupPhoto(id, file)
+    const target = groups.value.find(g => String(g.id) === String(id))
+    await refreshGroupMeta(id, {
+      conversationId: target?.conversation_id,
+      name: target?.name,
+      avatar: target?.avatar,
+    })
     await loadList()
   } catch (er) {
     panelErr.value = er?.response?.data?.message || er?.message || 'Failed to upload photo'
@@ -284,6 +339,7 @@ async function onPickPhoto(id, e) {
     busy.value = false
   }
 }
+
 
 async function onAddMembers(id) {
   panelErr.value = ''

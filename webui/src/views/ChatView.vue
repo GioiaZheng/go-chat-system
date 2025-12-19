@@ -1,7 +1,7 @@
 <!-- src/views/ChatView.vue: Chat experience with in-place conversation switching. -->
 <template>
   <div class="page">
-    <!-- Top bar: back navigation and counterpart details. -->
+    <!-- ================= TOP BAR ================= -->
     <header class="topbar">
       <button
         class="back"
@@ -14,22 +14,40 @@
       </button>
 
       <div class="title-row">
-        <span v-if="!headerAvatar" class="header-avatar avatar-fallback avatar-circle">{{ headerTitle[0] || 'C' }}</span>
-        <img v-else class="header-avatar avatar avatar-circle" :src="headerAvatar" alt="avatar" />
+        <span
+          v-if="!headerAvatar"
+          class="header-avatar avatar-fallback avatar-circle"
+        >
+          {{ headerInitial }}
+        </span>
+        <img
+          v-else
+          class="header-avatar avatar avatar-circle"
+          :src="headerAvatar"
+          alt="avatar"
+        />
         <div class="title text-title">{{ headerTitle }}</div>
       </div>
     </header>
 
-    <!-- Main content area: errors/notices, conversation rail, and chat canvas. -->
+    <!-- ================= CONTENT ================= -->
     <section class="content">
       <div class="content-inner">
         <ErrorMsg v-if="err" :text="err" class="mb-2" />
-        <p v-else-if="notice" class="notice" role="status" aria-live="polite">{{ notice }}</p>
+        <p v-else-if="notice" class="notice" role="status" aria-live="polite">
+          {{ notice }}
+        </p>
+
+        <!-- ================= GRID LAYOUT ================= -->
         <div class="chat-layout" :class="{ 'has-group': isGroup }">
+
+          <!-- ===== LEFT: CONVERSATION LIST ===== -->
           <aside class="conv-rail">
             <div class="conv-rail__header">
               <div class="conv-rail__title text-title">Conversations</div>
-              <span class="conv-rail__badge">{{ filteredConversations.length }}</span>
+              <span class="conv-rail__badge">
+                {{ filteredConversations.length }}
+              </span>
             </div>
 
             <div class="conv-rail__search">
@@ -44,6 +62,7 @@
             <div class="conv-rail__list" role="list">
               <p v-if="convLoading" class="muted">Loading conversations…</p>
               <ErrorMsg v-else-if="convErr" :text="convErr" />
+
               <template v-else>
                 <button
                   v-for="c in filteredConversations"
@@ -57,7 +76,7 @@
                     v-if="!avatarForConversation(c, meId)"
                     class="conv-pill__avatar avatar-fallback avatar-circle"
                   >
-                    {{ titleForConversation(c, meId)[0] || 'C' }}
+                    {{ conversationInitial(c) }}
                   </span>
                   <img
                     v-else
@@ -68,328 +87,257 @@
 
                   <div class="conv-pill__meta">
                     <div class="conv-pill__top">
-                      <span class="conv-pill__name text-primary">{{ titleForConversation(c, meId) }}</span>
-                      <span class="conv-pill__time text-secondary">{{ convTime(c.last_time) }}</span>
+                      <span class="conv-pill__name text-primary">
+                        {{ titleForConversation(c, meId) }}
+                      </span>
+                      <span class="conv-pill__time text-secondary">
+                        {{ convTime(c.last_time) }}
+                      </span>
                     </div>
-                    <div class="conv-pill__bottom text-secondary">{{ c.last_preview || 'No messages yet' }}</div>
+                    <div class="conv-pill__bottom text-secondary">
+                      {{ c.last_preview || 'No messages yet' }}
+                    </div>
                   </div>
                 </button>
 
-                <p v-if="!filteredConversations.length" class="muted">No conversations found.</p>
+                <p v-if="!filteredConversations.length" class="muted">
+                  No conversations found.
+                </p>
               </template>
             </div>
           </aside>
 
+          <!-- ===== CENTER: CHAT ===== -->
           <div class="chat-main">
-            <div ref="scrollbox" class="scroll" @scroll="handleScroll">
+            <div
+              ref="scrollbox"
+              class="scroll"
+              @scroll="handleScroll"
+            >
               <template v-if="messages.length">
-              <div
-                v-for="m in messages"
-                :key="m.id"
-                class="row"
-                :id="`msg-${m.id}`"
-                :class="{ mine: isMine(m), highlight: replyHighlightId === String(m.id) }"
-              >
-                <!-- Left avatar for incoming messages. -->
-                <span
-                  v-if="!isMine(m) && !avatarFor(m)"
-                  class="avatar-fallback avatar-circle"
+                <div
+                  v-for="m in messages"
+                  :key="m.id"
+                  class="row"
+                  :id="`msg-${m.id}`"
+                  :class="{
+                    mine: isMine(m),
+                    highlight: replyHighlightId === String(m.id)
+                  }"
                 >
-                  {{ avatarInitial(m) }}
-                </span>
-                <img
-                  v-else-if="!isMine(m)"
-                  class="avatar avatar-circle"
-                  :src="avatarFor(m)"
-                  alt="avatar"
-                />
-                <!-- Message block with reply preview, content, and timestamp. -->
-                <div class="bubble-wrap" :class="{ mine: isMine(m) }">
-                  <!-- Sender label (group conversations only). -->
-                  <div class="who" v-if="showSenderName && !isMine(m)">
-                    {{ displayNameFor(m) }}
-                  </div>
-                  <!-- Bubble content (text or image). -->
-                  <div class="bubble" :class="{ mine: isMine(m) }">
-                    <button
-                      v-if="m._replyPreview"
-                      class="inline-reply"
-                      type="button"
-                      @click="jumpToMessage(m.replyToId)"
+                  <!-- Incoming avatar -->
+                  <span
+                    v-if="!isMine(m) && !avatarUrlForMessage(m)"
+                    class="avatar avatar-fallback avatar-circle"
+                  >
+                    {{ avatarInitial(m) }}
+                  </span>
+                  <img
+                    v-else-if="!isMine(m)"
+                    class="avatar avatar-circle"
+                    :src="avatarUrlForMessage(m)"
+                    alt="avatar"
+                    @error="onAvatarError(avatarUrlForMessage(m))"
+                  />
+
+                  <!-- Bubble -->
+                  <div class="bubble-wrap" :class="{ mine: isMine(m) }">
+                    <div
+                      v-if="showSenderName && !isMine(m)"
+                      class="who"
                     >
-                      <div v-if="m._replyFrom" class="reply-from">{{ m._replyFrom }}</div>
-                      <div class="reply-body">
-                        <img v-if="m._replyImage" :src="m._replyImage" alt="Reply image" class="reply-thumb" />
-                        <div class="reply-text">{{ m._replyPreview }}</div>
+                      {{ displayNameFor(m) }}
+                    </div>
+
+                    <div class="bubble" :class="{ mine: isMine(m) }">
+                      <button
+                        v-if="m._replyPreview"
+                        class="inline-reply"
+                        type="button"
+                        @click="jumpToMessage(m.replyToId)"
+                      >
+                        <div
+                          v-if="m._replyFrom"
+                          class="reply-from"
+                        >
+                          {{ m._replyFrom }}
+                        </div>
+                        <div class="reply-body">
+                          <img
+                            v-if="m._replyImage"
+                            :src="m._replyImage"
+                            class="reply-thumb"
+                            alt="reply image"
+                          />
+                          <div class="reply-text">
+                            {{ m._replyPreview }}
+                          </div>
+                        </div>
+                      </button>
+
+                      <div v-if="m.fileAbsUrl" class="img-wrap">
+                        <img :src="m.fileAbsUrl" class="img" />
                       </div>
-                    </button>
 
-                    <div v-if="m.fileAbsUrl" class="img-wrap">
-                      <img :src="m.fileAbsUrl" class="img" />
+                      <div
+                        v-if="m.content"
+                        class="text-block text-primary"
+                      >
+                        {{ m.content }}
+                      </div>
                     </div>
 
-                    <div v-if="m.content" class="text-block text-primary">
-                      {{ m.content }}
+                    <div class="meta text-secondary">
+                      {{ fmtTime(m._ts) }}
+                      <span v-if="tickText(m)" class="ticks">
+                        {{ tickText(m) }}
+                      </span>
+                    </div>
+
+                    <div
+                      v-if="m._myLastComment"
+                      class="comment-chip"
+                      :class="{ mine: isMine(m) }"
+                    >
+                      {{ m._myLastComment }}
+                    </div>
+
+                    <div
+                      v-if="m._reactions && m._reactions.length"
+                      class="reactions"
+                    >
+                      <span
+                        v-for="emoji in m._reactions"
+                        :key="emoji"
+                        class="reaction-pill"
+                      >
+                        {{ emoji }}
+                      </span>
+                    </div>
+
+                    <div
+                      v-if="m._myReactions && m._myReactions.length"
+                      class="my-reactions"
+                    >
+                      <span class="my-reactions__label">You:</span>
+                      <span
+                        v-for="emoji in m._myReactions"
+                        :key="emoji"
+                        class="my-reactions__pill"
+                      >
+                        {{ emoji }}
+                      </span>
+                    </div>
+
+                    <div class="actions">
+                      <button class="icon-btn" @click="setReplyTarget(m)">↩️</button>
+                      <button class="icon-btn" @click="openForwardPicker(m)">🔗</button>
+                      <button class="icon-btn" @click="toggleReaction(m, '👍')">👍</button>
+                      <button class="icon-btn" @click="toggleReaction(m, '❤️')">❤️</button>
+                      <button class="icon-btn" @click="toggleReaction(m, '😂')">😂</button>
+                      <button
+                        v-if="isMine(m)"
+                        class="icon-btn"
+                        @click="confirmDeleteMessage(m)"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
-                  <!-- Timestamp and delivery markers. -->
-                  <div class="meta text-secondary">
-                    {{ fmtTime(m._ts) }}
-                    <span v-if="tickText(m)" class="ticks">{{ tickText(m) }}</span>
-                  </div>
 
-                  <!-- Comment summary for the current user. -->
-                  <div
-                    v-if="m._myLastComment"
-                    class="comment-chip text-secondary"
-                    :class="{ mine: isMine(m) }"
+                  <!-- My avatar -->
+                  <span
+                    v-if="isMine(m) && !myAvatarUrl"
+                    class="avatar avatar-fallback avatar-circle mine"
                   >
-                    {{ m._myLastComment }}
-                  </div>
-
-                  <div
-                    v-if="m._reactions && m._reactions.length"
-                    class="reactions"
-                    role="group"
-                    aria-label="Reactions"
-                  >
-                    <span v-for="emoji in m._reactions" :key="emoji" class="reaction-pill">
-                      {{ emoji }}
-                    </span>
-                  </div>
-
-                  <div
-                    v-if="m._myReactions && m._myReactions.length"
-                    class="my-reactions"
-                    role="group"
-                    aria-label="Your reactions"
-                  >
-                    <span class="my-reactions__label">You:</span>
-                    <span v-for="emoji in m._myReactions" :key="emoji" class="my-reactions__pill">
-                      {{ emoji }}
-                    </span>
-                  </div>
-
-                <!-- Message actions: reply, forward, react, delete. -->
-                  <div class="actions">
-                    <button
-                      class="icon-btn"
-                      type="button"
-                      aria-label="Reply to message"
-                      title="Reply"
-                      @click="setReplyTarget(m)"
-                    >
-                      ↩️
-                    </button>
-                    <button
-                      class="icon-btn"
-                      type="button"
-                      aria-label="Forward message"
-                      title="Forward"
-                      @click="openForwardPicker(m)"
-                    >
-                      🔗
-                    </button>
-                    <button
-                      class="icon-btn"
-                      type="button"
-                      :class="{ active: m._myReactions.includes('👍') }"
-                      :aria-pressed="m._myReactions.includes('👍')"
-                      aria-label="Toggle thumbs up reaction"
-                      @click="toggleReaction(m, '👍')"
-                    >
-                      👍
-                    </button>
-
-                    <button
-                      class="icon-btn"
-                      type="button"
-                      :class="{ active: m._myReactions.includes('❤️') }"
-                      :aria-pressed="m._myReactions.includes('❤️')"
-                      aria-label="Toggle heart reaction"
-                      @click="toggleReaction(m, '❤️')"
-                    >
-                      ❤️
-                    </button>
-
-                    <button
-                      class="icon-btn"
-                      type="button"
-                      :class="{ active: m._myReactions.includes('😂') }"
-                      :aria-pressed="m._myReactions.includes('😂')"
-                      aria-label="Toggle laugh reaction"
-                      @click="toggleReaction(m, '😂')"
-                    >
-                      😂
-                    </button>
-
-                    <button
-                      v-if="isMine(m)"
-                      class="icon-btn"
-                      :disabled="deletingMessageId === String(m.id)"
-                      type="button"
-                      title="Delete message"
-                      aria-label="Delete message"
-                      @click="confirmDeleteMessage(m)"
-                    >
-                      {{ deletingMessageId === String(m.id) ? '⌛' : '🗑️' }}
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Right avatar when the current user sent the message. -->
-                <span
-                  v-if="isMine(m) && !myAvatar"
-                  class="avatar avatar-fallback avatar-circle mine"
-                >
-                  {{ avatarInitial(m) }}
-                </span>
-                <img
-                  v-else-if="isMine(m)"
-                  class="avatar avatar-circle mine"
-                  :src="myAvatar"
-                  alt="avatar"
-                />
-              </div>
-            </template>
-            <div v-else class="empty-thread" role="status" aria-live="polite">
-              <p class="muted">{{ isGroup ? 'Say hello to the group 👋' : 'Say hello 👋 to start the chat.' }}</p>
-            </div>
-          </div>
-
-          <!-- Composer for text and image messages. -->
-          <div class="composer">
-
-            <div v-if="replyTarget" class="reply-banner">
-              Replying to {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}:
-              <span class="reply-snippet">
-                <img
-                  v-if="replyTarget.fileAbsUrl"
-                  :src="replyTarget.fileAbsUrl"
-                  alt="Reply image"
-                  class="reply-thumb"
-                />
-                {{
-                  replyTarget.content ||
-                    replyTarget._replyPreview ||
-                    (replyTarget.type === 'image' ? '[image]' : 'message')
-                }}
-              </span>
-
-              <button class="btn-xs btn-secondary" type="button" @click="clearReplyTarget">Cancel</button>
-            </div>
-            <div v-if="imagePreview" class="attach-preview" aria-label="Selected image preview">
-              <img :src="imagePreview" alt="Selected upload" class="attach-thumb" />
-              <div class="attach-meta">
-                <div class="attach-name">{{ imageFile?.name || 'Image' }}</div>
-                <button class="btn-xs btn-secondary" type="button" @click="clearImageSelection">
-                  Remove
-                </button>
-              </div>
-            </div>
-            <div class="composer-row">
-              <textarea
-                v-model="draft"
-                ref="composerInput"
-                class="input"
-                placeholder="Type a message…"
-                aria-label="Message input"
-                rows="1"
-                @keyup.enter.exact.prevent="onSend"
-              ></textarea>
-
-              <!-- Attach button for images -->
-              <button
-                type="button"
-                class="icon-btn attach"
-                aria-label="Attach image"
-                @click="triggerImagePicker"
-                title="Send image"
-              >
-                📎
-              </button>
-              <!-- Hidden file input -->
-              <input
-                ref="imageInput"
-                type="file"
-                class="filepick"
-                accept="image/*"
-                @change="onPickImage"
-              />
-
-              <button class="btn" type="button" aria-label="Send message" :disabled="!canSend" @click="onSend">
-                {{ sending ? 'Sending…' : 'Send' }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Forward picker for choosing a destination chat. -->
-          <div v-if="forwardPanelOpen" class="forward-overlay" @click.self="closeForwardPicker">
-            <div class="forward-modal">
-              <header class="forward-header">
-                <strong>Forward message</strong>
-                <button
-                  class="close-btn"
-                  type="button"
-                  aria-label="Close forward picker"
-                  @click="closeForwardPicker"
-                >
-                  ✕
-                </button>
-              </header>
-
-              <input
-                v-model="forwardSearch"
-                class="forward-search"
-                type="text"
-                placeholder="Search chats"
-              />
-
-              <div class="forward-body">
-                <p v-if="forwardLoading" class="muted">Loading conversations…</p>
-                <ErrorMsg v-else-if="forwardError" :text="forwardError" />
-
-                <template v-else>
-                  <button
-                    v-for="c in filteredForwardList"
-                    :key="c.id"
-                    class="forward-item"
-                    type="button"
-                    @click="forwardToConversation(c.id)"
-                  >
-                    <span
-                      v-if="!avatarForConversation(c, meId)"
-                      class="forward-avatar avatar-fallback avatar-circle"
-                    >
-                      {{ titleForConversation(c, meId)[0] || 'C' }}
-                    </span>
-                    <img
-                      v-else
-                      class="forward-avatar avatar avatar-circle"
-                      :src="avatarForConversation(c, meId)"
-                      alt="avatar"
-                    />
-
-                    <div class="forward-meta">
-                      <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
-                    </div>
-                  </button>
-
-                  <p v-if="!filteredForwardList.length" class="muted">No conversations found.</p>
-                </template>
-                <div class="forward-new">
-                  <div class="forward-new__title">Forward to a new user</div>
-                  <UserSearch
-                    placeholder="Search users"
-                    @select="forwardToUser"
-                    @error="forwardError = $event || ''"
+                    {{ avatarInitial(m) }}
+                  </span>
+                  <img
+                    v-else-if="isMine(m)"
+                    class="avatar avatar-circle mine"
+                    :src="myAvatarUrl"
+                    alt="avatar"
                   />
                 </div>
+              </template>
+
+              <div v-else class="empty-thread" role="status">
+                <p class="muted">
+                  {{ isGroup ? 'Say hello to the group 👋' : 'Say hello 👋 to start the chat.' }}
+                </p>
+              </div>
+            </div>
+
+            <!-- ===== COMPOSER ===== -->
+            <div class="composer">
+              <div v-if="replyTarget" class="reply-banner">
+                Replying to
+                {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}
+                <span class="reply-snippet">
+                  {{ replyTarget.content || replyTarget._replyPreview || '[message]' }}
+                </span>
+                <button
+                  class="btn-xs btn-secondary"
+                  type="button"
+                  @click="clearReplyTarget"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div v-if="imagePreview" class="attach-preview">
+                <img :src="imagePreview" class="attach-thumb" />
+                <div class="attach-meta">
+                  <div class="attach-name">{{ imageFile?.name || 'Image' }}</div>
+                  <button
+                    class="btn-xs btn-secondary"
+                    type="button"
+                    @click="clearImageSelection"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+
+              <div class="composer-row">
+                <textarea
+                  v-model="draft"
+                  ref="composerInput"
+                  class="input"
+                  placeholder="Type a message…"
+                  rows="1"
+                  @keyup.enter.exact.prevent="onSend"
+                ></textarea>
+
+                <button
+                  type="button"
+                  class="icon-btn attach"
+                  @click="triggerImagePicker"
+                >
+                  📎
+                </button>
+
+                <input
+                  ref="imageInput"
+                  type="file"
+                  class="filepick"
+                  accept="image/*"
+                  @change="onPickImage"
+                />
+
+                <button
+                  class="btn"
+                  type="button"
+                  :disabled="!canSend"
+                  @click="onSend"
+                >
+                  {{ sending ? 'Sending…' : 'Send' }}
+                </button>
               </div>
             </div>
           </div>
-        </div>
 
+          <!-- ===== RIGHT: GROUP PANEL ===== -->
           <aside v-if="isGroup" class="group-panel">
             <div class="group-card">
               <div class="group-header">
@@ -484,12 +432,12 @@
               Leave group
             </button>
             <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
-          </div>
-        </aside>
+            </div>
+          </aside>
+        </div>
       </div>
-    </div>
-  </section>
-</div>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -559,6 +507,7 @@ const convSearch = ref('')
 const me = computed(() => currentUser.value)
 const meId = computed(() => String(me.value?.id || ''))
 const myAvatar = computed(() => getAvatarUrl(me.value || {}))
+const brokenAvatars = ref(new Set())
 
 const currentConv = ref(null)
 const isGroup = ref(false)
@@ -841,11 +790,26 @@ function avatarFor(m) {
   return ''
 }
 
+function isAvatarBroken(url) {
+  return !!url && brokenAvatars.value.has(url)
+}
+
+function onAvatarError(url) {
+  if (!url) return
+  brokenAvatars.value = new Set(brokenAvatars.value).add(url)
+}
+
+function avatarUrlForMessage(m) {
+  const url = avatarFor(m)
+  return isAvatarBroken(url) ? '' : url
+}
+
+const myAvatarUrl = computed(() => (isAvatarBroken(myAvatar.value) ? '' : myAvatar.value))
+
 function avatarInitial(m) {
-  if (isMine(m)) return preferredDisplayName(me.value || {})[0] || 'M'
+  if (isMine(m)) return initialsFor(me.value || {}, 'M')
   const sender = resolveSender(m.senderId, m)
-  const name = preferredDisplayName(sender || {})
-  return (name[0] || 'U').toUpperCase()
+  return initialsFor(sender || {}, 'U')
 }
 
 function displayNameFor(m) {
@@ -871,6 +835,12 @@ const headerTitle = computed(() => {
   if (!isGroup.value) return preferredDisplayName(peer.value || {}) || 'Unknown'
   return preferredDisplayName(currentConv.value || {})
 })
+
+const headerInitial = computed(() => initialsFor({ name: headerTitle.value }, 'C'))
+
+function conversationInitial(c) {
+  return initialsFor({ name: titleForConversation(c, meId.value) }, 'C')
+}
 
 const headerAvatar = computed(() => {
   if (!currentConv.value) return ''
@@ -982,7 +952,6 @@ function normalizeMessage(raw) {
 
   const replyContent = raw.replyTo?.content || raw.replyTo?.text || ''
   const replyType = raw.replyTo?.type || ''
-  const replyPreview = replyContent || (replyType === 'image' ? '[image]' : '')
 
   const replyFileRel =
     raw.replyTo?.fileUrl ||
@@ -992,6 +961,10 @@ function normalizeMessage(raw) {
     raw.replyTo?.file ||
     (replyType === 'image' && looksLikeFileUrl(raw.replyTo?.content) ? raw.replyTo?.content : null)
   const replyImageAbs = replyFileRel ? absUrl(replyFileRel) : ''
+  let replyPreview = replyContent || (replyType === 'image' ? '[image]' : '')
+  if (!replyPreview && replyImageAbs) {
+    replyPreview = '[image]'
+  }
 
   const read = Boolean(raw.read || raw.read_at || raw.readAt)
 
@@ -1040,8 +1013,16 @@ function normalizeMessage(raw) {
       ? raw.caption || raw.text || (contentIsUrl ? '' : raw.content || '')
       : raw.content || raw.text || ''
 
+  const rawId =
+    raw.id ??
+    raw.message_id ??
+    raw.messageId ??
+    raw.msg_id ??
+    raw.msgId ??
+    raw.message?.id
+
   return {
-    id: raw.id,
+    id: rawId,
     read,
     content: contentText,
     type: raw.type === 'image' ? 'image' : 'text',
@@ -1096,20 +1077,23 @@ async function loadMessages() {
       if (!m._replyPreview && m.replyToId) {
         const target = byId.get(String(m.replyToId))
         if (target) {
-          const preview = target.content || (target.type === 'image' ? '[image]' : '')
+          const preview =
+            target.content ||
+            (target.fileAbsUrl ? '[image]' : '') ||
+            (target.type === 'image' ? '[image]' : '')
           m._replyPreview = preview
           m._replyImage = target.fileAbsUrl || m._replyImage
           m._replyFrom = nameForSender(target.senderId, target)
         }
       }
 
-      if (m._replyPreview && !m._replyFrom && m.replyToId) {
-        const target = byId.get(String(m.replyToId))
-        if (target) {
-          m._replyFrom = nameForSender(target.senderId, target)
-          m._replyImage = target.fileAbsUrl || m._replyImage
-        }
+    if (m._replyPreview && !m._replyFrom && m.replyToId) {
+      const target = byId.get(String(m.replyToId))
+      if (target) {
+        m._replyFrom = nameForSender(target.senderId, target)
+        m._replyImage = target.fileAbsUrl || m._replyImage
       }
+    }
     })
 
     messages.value = mapped
@@ -1634,8 +1618,9 @@ watch(convId, async () => {
   --avatar-bg: #e0f7ee;
   --avatar-border: #a7f3d0;
   --avatar-text: #0f766e;
-  min-height: 100%;
-  height: 100%;
+  --panel-pad: 16px;
+  min-height: 100dvh;
+  height: 100dvh;
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
@@ -1692,7 +1677,7 @@ watch(convId, async () => {
 
 .content {
   width: 100%;
-  padding: 16px;
+  padding: var(--panel-pad);
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -1706,6 +1691,7 @@ watch(convId, async () => {
   gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -1726,7 +1712,7 @@ watch(convId, async () => {
 .conv-rail {
   background: var(--panel);
   border: 1px solid var(--border);
-  padding: 16px;
+  padding: var(--panel-pad);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1795,9 +1781,9 @@ watch(convId, async () => {
 }
 
 .conv-pill__avatar {
-  background: #e2e8f0;
-  color: #475569;
-  border-color: #d1d5db;
+  background: var(--avatar-bg);
+  color: var(--avatar-text);
+  border-color: var(--avatar-border);
 }
 
 .conv-pill__meta {
@@ -1839,12 +1825,13 @@ watch(convId, async () => {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 0;
-  padding: 16px;
+  padding: var(--panel-pad);
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   flex: 1 1 auto;
   overflow: hidden;
 }
@@ -1857,7 +1844,7 @@ watch(convId, async () => {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 0;
-  padding: 16px;
+  padding: var(--panel-pad);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2165,10 +2152,17 @@ watch(convId, async () => {
 .img-wrap {
   display: inline-flex;
   margin-bottom: 6px;
+  max-width: 260px;
+  max-height: 260px;
 }
 
 .img {
-  max-width: 260px;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
   border-radius: var(--radius-bubble);
 }
 
@@ -2246,7 +2240,7 @@ watch(convId, async () => {
 
 .actions {
   display: flex;
-  gap: var(--space-2);
+  gap: 6px;
   margin-top: var(--space-2);
   align-items: center;
 }
@@ -2255,12 +2249,12 @@ watch(convId, async () => {
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 1rem;
   line-height: 1;
   padding: 0;
   border-radius: var(--radius-control);
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2311,6 +2305,7 @@ watch(convId, async () => {
 
 .composer {
   margin-top: 12px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2318,6 +2313,8 @@ watch(convId, async () => {
   background: white;
   border-radius: 0;
   border: 1px solid #e1e5eb;
+  position: sticky;
+  bottom: 0;
 }
 
 .attach-preview {
@@ -2362,6 +2359,7 @@ watch(convId, async () => {
   border-radius: var(--radius-control);
   border: 1px solid #cbd5e1;
   resize: none;
+  min-height: 38px;
 }
 
 .reply-banner {
@@ -2388,6 +2386,7 @@ watch(convId, async () => {
   padding: 10px 16px;
   color: white;
   white-space: nowrap;
+  height: 38px;
 }
 
 .btn.sm {
@@ -2491,11 +2490,11 @@ watch(convId, async () => {
 }
 
 .forward-avatar {
-  background: #e2e8f0;
+  background: var(--avatar-bg);
   font-weight: 700;
-  color: #475569;
+  color: var(--avatar-text);
+  border-color: var(--avatar-border);
 }
-
 .forward-meta {
   text-align: left;
 }

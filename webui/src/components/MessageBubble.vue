@@ -89,10 +89,17 @@ const props = defineProps({
   align-items: center;
   gap: 4px;
 }
+
 .msg-img {
-  max-width: 200px;
+  display: block;
+  max-width: 220px;
+  max-height: 220px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
   border-radius: var(--radius-bubble);
 }
+
 .reply-preview {
   margin-top: 4px;
   padding: 4px 6px;

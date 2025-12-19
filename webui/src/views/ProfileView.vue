@@ -2,49 +2,61 @@
 <template>
   <div class="page">
     <main class="wrap">
-      <h2 class="title">My Profile</h2>
+      <div class="page-title">
+        <div>
+          <h2 class="title">My Profile</h2>
+          <p class="subtitle">Manage how you appear across chats and groups.</p>
+        </div>
+      </div>
 
       <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
-      <section v-if="me" class="card">
-        <div class="head">
-          <img
-            v-if="avatarUrl && !imgBroken"
-            :src="avatarUrl"
-            alt="avatar"
-            class="avatar avatar-circle"
-            @error="imgBroken = true"
-          />
-          <div v-else class="avatar-fallback avatar-circle">{{ initials }}</div>
+      <section v-if="me" class="card profile-card">
+        <header class="profile-header">
+          <div class="avatar-wrap">
+            <img
+              v-if="avatarUrl && !imgBroken"
+              :src="avatarUrl"
+              alt="avatar"
+              class="avatar avatar-circle profile-avatar"
+              @error="imgBroken = true"
+            />
+            <div v-else class="avatar-fallback avatar-circle profile-avatar">{{ initials }}</div>
+          </div>
 
-          <div class="idblock">
-            <div class="row">
-              <span class="key">name:</span>
-              <span class="val">{{ me.name || '(unset)' }}</span>
+          <div class="profile-meta">
+            <p class="eyebrow">Account</p>
+            <h3 class="profile-name">{{ me.name || 'Unnamed' }}</h3>
+            <div class="profile-id">
+              <span class="id-label">User ID</span>
+              <span class="id-value">{{ me.id || me.userId || me.user_id || '—' }}</span>
+            </div>
+            <div class="profile-id">
+              <span class="id-label">Username</span>
+              <span class="id-value">{{ me.username || me.handle || '—' }}</span>
             </div>
           </div>
-        </div>
 
-
-        <div class="summary-grid">
-          <div class="summary-card">
-            <p class="summary-label">Display name</p>
-            <p class="summary-value">{{ me.name || '(unset)' }}</p>
-            <p class="summary-hint">Shown to friends across private and group chats.</p>
+          <div class="profile-status">
+            <div class="status-card">
+              <p class="status-label">Profile photo</p>
+              <p class="status-value">{{ avatarUrl && !imgBroken ? 'Custom image' : 'Default badge' }}</p>
+              <p class="status-hint">Keep your chats recognizable.</p>
+            </div>
+            <div class="status-card">
+              <p class="status-label">Display name</p>
+              <p class="status-value">{{ me.name || '(unset)' }}</p>
+              <p class="status-hint">Shown in private and group chats.</p>
+            </div>
           </div>
-          <div class="summary-card">
-            <p class="summary-label">Profile photo</p>
-            <p class="summary-value">{{ avatarUrl && !imgBroken ? 'Custom image' : 'Default badge' }}</p>
-            <p class="summary-hint">Use a friendly photo to keep your chats recognizable.</p>
-          </div>
-        </div>
+        </header>
 
-        <div class="grid">
-          <!-- Display name editor -->
-          <div class="field">
-            <label class="label">Change name</label>
+        <div class="panel-grid">
+          <div class="panel">
+            <h4 class="panel-title">Update display name</h4>
+            <p class="panel-subtitle">Choose a friendly name for your profile.</p>
             <div class="hstack">
-              <input v-model.trim="newName" class="input" placeholder="new name" />
+              <input v-model.trim="newName" class="input" placeholder="New display name" />
               <button class="btn" :disabled="loading || !newName" @click="saveName">
                 <span v-if="loading" class="spinner"></span>
                 Save
@@ -52,9 +64,9 @@
             </div>
           </div>
 
-          <!-- Profile photo uploader -->
-          <div class="field">
-            <label class="label">Set photo</label>
+          <div class="panel">
+            <h4 class="panel-title">Update profile photo</h4>
+            <p class="panel-subtitle">Upload a square image for best results.</p>
             <div class="hstack">
               <input type="file" accept="image/*" @change="onFile" />
               <button class="btn" :disabled="loading || !file" @click="uploadPhoto">
@@ -184,92 +196,150 @@ function handleError(e, fallback) {
   flex: 1 1 auto;
   max-width: 900px;
   margin: 0 auto;
-  padding: 18px;
+  padding: 24px;
   width: 100%;
 }
+.page-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
 .title {
-  font-size: 1.5rem;
+  font-size: 1.65rem;
   font-weight: 800;
-  color: #334155;
-  margin: 10px 0 14px;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+.subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
 }
 
 .card {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 0;
-  padding: 16px;
-  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
+  border: 0;
+  border-radius: 18px;
+  padding: 20px 22px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
 }
-.head {
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.profile-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 12px;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #eefbf3, #eef2ff);
 }
-
-.idblock .row {
+.avatar-wrap {
   display: flex;
-  gap: 8px;
-  line-height: 1.8;
+  align-items: center;
+  justify-content: center;
 }
-.key {
-  color: #64748b;
-  width: 100px;
+.profile-avatar {
+  width: 72px !important;
+  height: 72px !important;
+  font-size: 1.4rem;
+  border: 2px solid #bbf7d0;
 }
-.val {
+.profile-meta {
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  font-weight: 700;
+}
+.profile-name {
+  margin: 0 0 10px;
+  font-size: 1.3rem;
   color: #0f172a;
+  font-weight: 700;
+}
+.profile-id {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.92rem;
+  color: #475569;
+  margin-bottom: 6px;
+}
+.id-label {
+  min-width: 90px;
+  color: #64748b;
+  font-weight: 600;
+}
+.id-value {
+  color: #0f172a;
+  font-weight: 600;
   word-break: break-all;
 }
-
-.summary-grid {
+.profile-status {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
-  margin-bottom: 12px;
+  min-width: 220px;
+  flex: 1 1 260px;
 }
 
-.summary-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 0;
-  padding: 10px 12px;
-  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.04);
+.status-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
 }
-
-.summary-label {
+.status-label {
   margin: 0;
   color: #64748b;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
-
-.summary-value {
+.status-value {
   margin: 4px 0;
   font-weight: 700;
   color: #0f172a;
 }
-
-.summary-hint {
+.status-hint {
   margin: 0;
   color: #94a3b8;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
-.grid {
+.panel-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
 }
-.field {
+.panel {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
-.label {
-  font-weight: 600;
-  color: #334155;
+.panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.panel-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.88rem;
 }
 .hstack {
   display: flex;
@@ -284,7 +354,9 @@ function handleError(e, fallback) {
   border-radius: var(--radius-control);
   padding: 0.55rem 0.75rem;
   outline: none;
+  background: #fff;
 }
+
 .input:focus {
   border-color: #22c55e;
   box-shadow: 0 0 0 0.2rem rgba(34, 197, 94, 0.15);
