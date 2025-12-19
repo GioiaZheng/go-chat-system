@@ -23,11 +23,11 @@
         class="item"
         @click="$emit('select', u)"
       >
-        <span v-if="!avatar(u)" class="avatar-fallback">{{ initials(u) }}</span>
-        <img v-else :src="avatar(u)" class="avatar" alt="avatar" />
+        <span v-if="!avatar(u)" class="avatar-fallback avatar-circle">{{ initials(u) }}</span>
+        <img v-else :src="avatar(u)" class="avatar avatar-circle" alt="avatar" />
         <div class="meta">
-          <div class="name">{{ u.name || u.username || '(user)' }}</div>
-          <div class="sub">@{{ handle(u) }}</div>
+          <div class="name">{{ displayName(u) }}</div>
+          <div v-if="handle(u)" class="sub">{{ handle(u) }}</div>
         </div>
       </li>
       <li v-if="!users.length && !err" class="empty">No results.</li>
@@ -38,7 +38,7 @@
 <script setup>
 import { ref } from 'vue'
 import ErrorMsg from '@/components/ErrorMsg.vue'
-import { searchUsers, getAvatarUrl } from '@/services/api'
+import { searchUsers, getAvatarUrl, preferredDisplayName, safeUsername, initialsFor } from '@/services/api'
 
 const props = defineProps({
   placeholder: String,
@@ -51,16 +51,9 @@ const loading = ref(false)
 const err = ref('')
 
 const avatar = (u) => getAvatarUrl(u)
-const handle = (u) => {
-  const h = String(u?.username || u?.id || 'unknown')
-  console.assert(h !== '-', 'Encountered placeholder username "-"', u)
-  return h
-}
-const initials = (u) => {
-  const name = u?.name || u?.username || 'U'
-  const match = String(name).match(/\b\w/g) || ['U']
-  return match.slice(0, 2).join('').toUpperCase()
-}
+const displayName = (u) => preferredDisplayName(u)
+const handle = (u) => safeUsername(u)
+const initials = (u) => initialsFor({ name: displayName(u) }, 'U')
 
 async function onSearch() {
   if (!q.value) {
@@ -125,25 +118,7 @@ async function onSearch() {
 .item:hover {
   background: #f1f5f9;
 }
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #e2e8f0;
-}
-.avatar-fallback {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #e0f7ee;
-  color: #0f766e;
-  font-weight: 700;
-  border: 1px solid #a7f3d0;
-}
+
 .meta {
   flex: 1;
   min-width: 0;

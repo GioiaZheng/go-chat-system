@@ -14,7 +14,7 @@
       </div>
       <div class="me-info">
         <div class="me-name">{{ displayName }}</div>
-        <div class="me-username">{{ usernameLabel }}</div>
+        <div v-if="usernameLabel" class="me-username">{{ usernameLabel }}</div>
       </div>
     </div>
 
@@ -36,16 +36,16 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getAvatarUrl } from '@/services/api'
+import { getAvatarUrl, preferredDisplayName, safeUsername, initialsFor } from '@/services/api'
 import { logout as clearAuth, currentUser } from '@/services/auth'
 
 const router = useRouter()
 const me = computed(() => currentUser.value)
 
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
-const initials = computed(() => (me.value?.name || me.value?.username || me.value?.id || 'U')[0].toUpperCase())
-const displayName = computed(() => me.value?.name || me.value?.username || 'Unnamed')
-const usernameLabel = computed(() => (me.value?.username ? `@${me.value.username}` : me.value?.id || ''))
+const initials = computed(() => initialsFor(me.value || {}, 'U'))
+const displayName = computed(() => preferredDisplayName(me.value || {}))
+const usernameLabel = computed(() => safeUsername(me.value || ''))
 
 async function logout() {
   clearAuth()
@@ -86,10 +86,6 @@ async function logout() {
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   margin-bottom: 14px;
-}
-
-.me-avatar {
-  --avatar-size: 44px;
 }
 
 .me-info {

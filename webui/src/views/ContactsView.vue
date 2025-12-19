@@ -32,7 +32,7 @@
             <img v-else :src="avatar(u)" class="avatar avatar-circle" alt="avatar" />
             <div class="meta">
               <div class="name">{{ displayName(u) }}</div>
-              <div class="sub">{{ usernameLabel(u) }}</div>
+              <div v-if="usernameLabel(u)" class="sub">{{ usernameLabel(u) }}</div>
             </div>
           </div>
           <button class="btn" :disabled="creatingId===asId(u)" @click="message(u)">
@@ -55,6 +55,9 @@ import {
   searchUsers,
   startPrivateConversation,
   getAvatarUrl,
+  preferredDisplayName,
+  safeUsername,
+  initialsFor,
 } from '@/services/api'
 
 const router = useRouter()
@@ -66,10 +69,10 @@ const users = ref([])
 const creatingId = ref('') // Prevent duplicate conversation creation on rapid clicks
 
 const asId          = (u) => String(u.id ?? u.user_id ?? u._id ?? '')
-const displayName   = (u) => String(u.name ?? u.username ?? 'Unnamed')
-const usernameLabel = (u) => (u.username ? `@${u.username}` : asId(u))
+const displayName   = (u) => preferredDisplayName(u)
+const usernameLabel = (u) => safeUsername(u)
 const avatar        = (u) => getAvatarUrl({ avatarUri: u.avatarUri ?? u.avatar_uri ?? u.avatar_url ?? u.avatar })
-const initials      = (u) => (displayName(u).match(/\b\w/g) || ['U']).slice(0,2).join('').toUpperCase()
+const initials      = (u) => initialsFor({ name: displayName(u) }, 'U')
 
 async function load () {
   loading.value = true
@@ -189,8 +192,6 @@ onMounted(() => {
   box-shadow:0 6px 18px rgba(2,6,23,.06);
 }
 .left{ display:flex; align-items:center; gap:12px; }
-.avatar,
-.avatar-fallback { --avatar-size: 40px; }
 .meta{ flex:1; min-width:0; }
 .name{ font-weight:600; color:#0f172a }
 .sub{ color:#64748b; font-size:.92rem }

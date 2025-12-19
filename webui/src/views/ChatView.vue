@@ -13,18 +13,14 @@
         ←
       </button>
 
-      <div class="title">
-        <div class="title-row">
-          <div
-            class="header-avatar avatar-circle"
-            :style="headerAvatar ? { backgroundImage: `url('${headerAvatar}')` } : {}"
-          >
-            <span v-if="!headerAvatar">{{ headerTitle[0] || 'C' }}</span>
-          </div>
-          <div>
-            <strong>{{ headerTitle }}</strong>
-          </div>
+      <div class="title-row">
+        <div
+          class="header-avatar avatar-circle"
+          :style="headerAvatar ? { backgroundImage: `url('${headerAvatar}')` } : {}"
+        >
+          <span v-if="!headerAvatar">{{ headerTitle[0] || 'C' }}</span>
         </div>
+        <div class="title text-title">{{ headerTitle }}</div>
       </div>
     </header>
 
@@ -36,57 +32,60 @@
         <div class="chat-layout" :class="{ 'has-group': isGroup }">
           <aside class="conv-rail">
             <div class="conv-rail__header">
-              <div>
-                <div class="conv-rail__title">Conversations</div>
+              <div class="conv-rail__title text-title">Conversations</div>
+              <span class="conv-rail__badge">{{ filteredConversations.length }}</span>
             </div>
-            <span class="conv-rail__badge">{{ filteredConversations.length }}</span>
-          </div>
 
-          <div class="conv-rail__search">
-            <input
-              v-model.trim="convSearch"
-              type="text"
-              placeholder="Search by name or group"
-              aria-label="Search conversations"
-            />
-          </div>
+            <div class="conv-rail__search">
+              <input
+                v-model.trim="convSearch"
+                type="text"
+                placeholder="Search by name or group"
+                aria-label="Search conversations"
+              />
+            </div>
 
-          <div class="conv-rail__list" role="list">
-            <p v-if="convLoading" class="muted">Loading conversations…</p>
-            <ErrorMsg v-else-if="convErr" :text="convErr" />
-            <template v-else>
-              <button
-                v-for="c in filteredConversations"
-                :key="c.id"
-                type="button"
-                class="conv-pill"
-                :class="{ active: String(c.id) === convId }"
-                @click="switchConversation(c)"
-              >
-                <div
-                  class="conv-pill__avatar avatar-circle"
-                  :class="{ placeholder: !avatarForConversation(c, meId) }"
-                  :style="avatarForConversation(c, meId) ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` } : {}"
+            <div class="conv-rail__list" role="list">
+              <p v-if="convLoading" class="muted">Loading conversations…</p>
+              <ErrorMsg v-else-if="convErr" :text="convErr" />
+              <template v-else>
+                <button
+                  v-for="c in filteredConversations"
+                  :key="c.id"
+                  type="button"
+                  class="conv-pill"
+                  :class="{ active: String(c.id) === convId }"
+                  @click="switchConversation(c)"
                 >
-                  <span v-if="!avatarForConversation(c, meId)">{{ titleForConversation(c, meId)[0] || 'C' }}</span>
-                </div>
-
-                <div class="conv-pill__meta">
-                  <div class="conv-pill__top">
-                    <span class="conv-pill__name">{{ titleForConversation(c, meId) }}</span>
-                    <span class="conv-pill__time">{{ convTime(c.last_time) }}</span>
+                  <div
+                    class="conv-pill__avatar avatar-circle"
+                    :class="{ placeholder: !avatarForConversation(c, meId) }"
+                    :style="
+                      avatarForConversation(c, meId)
+                        ? { backgroundImage: `url('${avatarForConversation(c, meId)}')` }
+                        : {}
+                    "
+                  >
+                    <span v-if="!avatarForConversation(c, meId)">{{ titleForConversation(c, meId)[0] || 'C' }}</span>
                   </div>
-                  <div class="conv-pill__bottom">{{ c.last_preview || 'No messages yet' }}</div>
-                </div>
-              </button>
 
-              <p v-if="!filteredConversations.length" class="muted">No conversations found.</p>
-            </template>
-          </div>
-        </aside>
-        <div class="chat-main">
-          <div ref="scrollbox" class="scroll">
-            <template v-if="messages.length">
+                  <div class="conv-pill__meta">
+                    <div class="conv-pill__top">
+                      <span class="conv-pill__name text-primary">{{ titleForConversation(c, meId) }}</span>
+                      <span class="conv-pill__time text-secondary">{{ convTime(c.last_time) }}</span>
+                    </div>
+                    <div class="conv-pill__bottom text-secondary">{{ c.last_preview || 'No messages yet' }}</div>
+                  </div>
+                </button>
+
+                <p v-if="!filteredConversations.length" class="muted">No conversations found.</p>
+              </template>
+            </div>
+          </aside>
+
+          <div class="chat-main">
+            <div ref="scrollbox" class="scroll" @scroll="handleScroll">
+              <template v-if="messages.length">
               <div
                 v-for="m in messages"
                 :key="m.id"
@@ -125,12 +124,12 @@
                       <img :src="m.fileAbsUrl" class="img" />
                     </div>
 
-                    <div v-if="m.content" class="text-block">
+                    <div v-if="m.content" class="text-block text-primary">
                       {{ m.content }}
                     </div>
                   </div>
                   <!-- Timestamp and delivery markers. -->
-                  <div class="meta">
+                  <div class="meta text-secondary">
                     {{ fmtTime(m._ts) }}
                     <span v-if="tickText(m)" class="ticks">{{ tickText(m) }}</span>
                   </div>
@@ -138,7 +137,7 @@
                   <!-- Comment summary for the current user. -->
                   <div
                     v-if="m._myLastComment"
-                    class="comment-chip"
+                    class="comment-chip text-secondary"
                     :class="{ mine: isMine(m) }"
                   >
                     {{ m._myLastComment }}
@@ -347,9 +346,6 @@
 
                     <div class="forward-meta">
                       <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
-                      <div class="forward-type muted small">
-                        {{ c.type === 'group' ? 'Group chat' : 'Direct chat' }}
-                      </div>
                     </div>
                   </button>
 
@@ -405,7 +401,7 @@
             </div>
 
             <div class="members-block">
-              <div class="members-title">Members</div>
+              <div class="section-label text-secondary">Members</div>
               <p v-if="groupLoading" class="muted">Loading group info…</p>
               <ErrorMsg v-else-if="groupErr" :text="groupErr" />
               <div v-else class="member-scroll" role="list">
@@ -420,8 +416,8 @@
                         <span v-if="!u.avatar">{{ (u.name || 'User')[0] || 'U' }}</span>
                       </div>
                       <div class="member-info">
-                        <div class="member-name">{{ u.name || 'User' }}</div>
-                        <div v-if="u.username" class="member-sub">@{{ u.username }}</div>
+                        <div class="member-name">{{ u.name || 'Unknown' }}</div>
+                        <div v-if="u.username" class="member-sub">{{ u.username }}</div>
                       </div>
                     </div>
                     <button
@@ -439,7 +435,7 @@
               </div>
             </div>
             <div class="members-add">
-              <div class="members-title">Add members</div>
+              <div class="section-label text-secondary">Add members</div>
               <UserSearch
                 placeholder="Search users to add"
                 :class="{ disabled: addingMember }"
@@ -490,6 +486,8 @@ import {
   titleForConversation,
   avatarForConversation,
   normalizeUser,
+  preferredDisplayName,
+  safeUsername,
 } from '@/services/api'
 
 import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
@@ -506,6 +504,7 @@ const sending = ref(false)
 const draft = ref('')
 const messages = ref([])
 const scrollbox = ref(null)
+const pinnedToBottom = ref(true)
 const imageInput = ref(null)
 const imageFile = ref(null)
 const imagePreview = ref('')
@@ -561,12 +560,24 @@ const forwardSearch = ref('')
 const forwardList = ref([])
 const forwardTargetMessage = ref(null)
 
-function scrollToBottom() {
+function scrollToBottom(force = false) {
   return nextTick(() => {
-    if (scrollbox.value) {
+    if (!scrollbox.value) return
+
+    const distance =
+      scrollbox.value.scrollHeight - (scrollbox.value.scrollTop + scrollbox.value.clientHeight)
+
+    if (force || distance < 48 || pinnedToBottom.value) {
       scrollbox.value.scrollTop = scrollbox.value.scrollHeight
+      pinnedToBottom.value = true
     }
   })
+}
+
+function handleScroll() {
+  if (!scrollbox.value) return
+  const distance = scrollbox.value.scrollHeight - (scrollbox.value.scrollTop + scrollbox.value.clientHeight)
+  pinnedToBottom.value = distance < 64
 }
 
 // Conversation rail helpers.
@@ -629,6 +640,7 @@ function normalizeConversationList(items = []) {
       return {
         ...c,
         type: isGroupType ? 'group' : c?.type,
+        participants: normalizeParticipantList(c.participants || c.members || []),
         last_preview: previewContent || 'No messages yet',
         last_time: time,
       }
@@ -661,6 +673,14 @@ async function loadConversationList() {
     convErr.value = e?.response?.data?.message || e?.message || 'Failed to load conversations'
   } finally {
     convLoading.value = false
+  }
+}
+
+async function refreshConversations() {
+  await loadConversationList()
+  const fresh = convList.value.find(c => String(c.id) === convId.value)
+  if (fresh) {
+    currentConv.value = { ...(currentConv.value || {}), ...fresh }
   }
 }
 
@@ -773,9 +793,9 @@ function avatarFor(m) {
 }
 
 function avatarInitial(m) {
-  if (isMine(m)) return (me.value?.name || 'Me')[0] || 'M'
+  if (isMine(m)) return preferredDisplayName(me.value || {})[0] || 'M'
   const sender = resolveSender(m.senderId, m)
-  const name = sender?.name || sender?.username || sender?.tag || sender?.id || 'U'
+  const name = preferredDisplayName(sender || {})
   return (name[0] || 'U').toUpperCase()
 }
 
@@ -785,20 +805,15 @@ function avatarBg(src) {
 
 function displayNameFor(m) {
   const s = resolveSender(m.senderId, m)
-  if (s?.name) return s.name
-  if (s?.username) return s.username
-  if (s?.tag) return s.tag
-  return s?.id ? String(s.id) : 'User'
+  if (String(m.senderId) === meId.value) return preferredDisplayName(me.value || {})
+  return s ? preferredDisplayName(s) : 'Unknown'
 }
 function nameForSender(userId, msg = null) {
   if (!userId && !msg?.senderId) return ''
-  if (String(userId || msg?.senderId) === meId.value) return me.value?.name || 'Me'
+  if (String(userId || msg?.senderId) === meId.value) return preferredDisplayName(me.value || {})
 
   const s = resolveSender(userId, msg)
-  if (s?.name) return s.name
-  if (s?.username) return s.username
-  if (s?.tag) return s.tag
-  return s?.id ? String(s.id) : String(userId || msg?.senderId || '')
+  return s ? preferredDisplayName(s) : 'Unknown'
 }
 
 // Header avatar and title helpers.
@@ -808,8 +823,8 @@ const headerTitle = computed(() => {
   const title = titleForConversation(currentConv.value, meId.value)
   if (title && title !== 'Chat') return title
 
-  if (!isGroup.value) return peer.value?.name || peer.value?.username || 'Chat'
-  return currentConv.value.name || 'Group'
+  if (!isGroup.value) return preferredDisplayName(peer.value || {}) || 'Unknown'
+  return preferredDisplayName(currentConv.value || {})
 })
 
 const headerAvatar = computed(() => {
@@ -987,7 +1002,7 @@ function normalizeMessage(raw) {
       (myLastComment?.content || myLastComment?.text || '').trim(),
     _myReactions: Array.from(new Set(myEmojis)),
     _replyPreview: replyPreview,
-    _replyFrom: replySenderProfile.name || replySenderProfile.tag || replySenderProfile.id || '',
+    _replyFrom: preferredDisplayName(replySenderProfile),
   }
 }
 
@@ -1033,7 +1048,7 @@ async function loadMessages() {
 
     messages.value = mapped
 
-    await scrollToBottom()
+    await scrollToBottom(true)
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to load messages'
   } finally {
@@ -1044,9 +1059,9 @@ async function loadMessages() {
 function normalizeMembers(list) {
   return normalizeParticipantList(list).map(u => ({
     id: u.id,
-    name: u.name || u.username || u.id,
+    name: preferredDisplayName(u),
     avatar: u.avatar,
-    username: u.username,
+    username: safeUsername(u),
   }))
 }
 
@@ -1063,7 +1078,7 @@ async function resolveGroupId() {
     if (hit?.id || hit?.group_id) {
       groupInfo.value = {
         id: String(hit.id ?? hit.group_id ?? ''),
-        name: hit.name || '',
+        name: preferredDisplayName(hit),
         avatar: getAvatarUrl(hit || {}),
         members: normalizeMembers(hit.members || []),
       }
@@ -1106,7 +1121,7 @@ async function loadGroupPanel() {
 
     groupInfo.value = {
       id: String(detail?.id ?? detail?.group_id ?? gid),
-      name: detail?.name || detail?.title || detail?.group?.name || headerTitle.value,
+      name: preferredDisplayName(detail?.group || detail || {}),
       avatar: getAvatarUrl(detail || detail?.group || {}),
       members,
     }
@@ -1187,7 +1202,7 @@ async function onSend() {
     const normalized = normalizeMessage(sent?.message || sent || {})
     normalized._localStatus = 1
     messages.value = [...messages.value, normalized]
-    await scrollToBottom()
+    await scrollToBottom(true)
 
     draft.value = ''
     replyTarget.value = null
@@ -1256,8 +1271,8 @@ async function loadForwardList() {
   forwardError.value = ''
   try {
     const raw = await getMyConversations()
-    forwardList.value =
-      raw?.data?.items || raw?.items || (Array.isArray(raw) ? raw : []) || []
+    const items = raw?.data?.items || raw?.items || (Array.isArray(raw) ? raw : []) || []
+    forwardList.value = normalizeConversationList(items)
   } catch (e) {
     forwardError.value =
       e?.response?.data?.message || e?.message || 'Failed to load conversations'
@@ -1306,6 +1321,7 @@ async function forwardToConversation(targetConvId) {
         },
       })
     )
+    await scrollToBottom(true)
     closeForwardPicker()
   } catch (e) {
     forwardError.value =
@@ -1405,7 +1421,7 @@ async function onPickGroupPhoto(e) {
     await setGroupPhoto(groupId.value, file)
     groupNotice.value = 'Group photo updated.'
     await loadGroupPanel()
-    bumpConversationList()
+    await refreshConversations()
   } catch (er) {
     groupErr.value = er?.response?.data?.message || er?.message || 'Failed to update group photo'
   } finally {
@@ -1421,10 +1437,9 @@ async function onRenameGroup() {
   groupNotice.value = ''
   try {
     await setGroupName(groupId.value, groupNameDraft.value)
-    currentConv.value = { ...(currentConv.value || {}), name: groupNameDraft.value }
     groupNotice.value = 'Group name saved.'
     await loadGroupPanel()
-    bumpConversationList()
+    await refreshConversations()
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to rename group'
   } finally {
@@ -1524,6 +1539,7 @@ watch(
 )
 
 watch(convId, async () => {
+  pinnedToBottom.value = true
   await loadConversationList()
   await loadConversationMeta()
   await loadMessages()
@@ -1565,24 +1581,22 @@ watch(convId, async () => {
 }
 
 .title {
-  font-weight: 800;
+  font-weight: 700;
   color: #1e293b;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-width: 0;
-  text-align: center;
 }
 
 .title-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .header-avatar {
-  --avatar-size: 44px;
   background: var(--avatar-bg);
   color: var(--avatar-text);
   border-color: var(--avatar-border);
@@ -1595,7 +1609,7 @@ watch(convId, async () => {
 
 .content {
   width: 100%;
-  padding: 12px 12px 16px;
+  padding: 16px;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -1613,7 +1627,7 @@ watch(convId, async () => {
 .chat-layout {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  gap: 12px;
+  gap: 16px;
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
@@ -1624,9 +1638,9 @@ watch(convId, async () => {
 }
 
 .conv-rail {
-  background: #f8fafc;
-  border-right: 1px solid #d9dde3;
-  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1659,7 +1673,7 @@ watch(convId, async () => {
   border: 1px solid #e2e8f0;
   border-radius: var(--radius-control);
   padding: 10px 12px;
-  font-size: 0.95rem;
+  font-size: var(--font-primary);
 }
 
 .conv-rail__list {
@@ -1675,10 +1689,10 @@ watch(convId, async () => {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 0;
   padding: 12px;
-  background: #f8fafc;
+  background: var(--panel);
   cursor: pointer;
   transition: border 0.2s, background 0.2s, box-shadow 0.2s;
 }
@@ -1695,7 +1709,6 @@ watch(convId, async () => {
 }
 
 .conv-pill__avatar {
-  --avatar-size: 46px;
   background: #e2e8f0;
   color: #475569;
   border-color: #d1d5db;
@@ -1731,42 +1744,43 @@ watch(convId, async () => {
 
 .conv-pill__time {
   color: #9aa1ad;
-  font-size: 0.83rem;
+  font-size: var(--font-secondary);
 }
 
 .conv-pill__bottom {
   color: #738396;
-  font-size: 0.9rem;
+  font-size: var(--font-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .chat-main {
-  background: #fff;
-  border: 1px solid #d9dde3;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 0;
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  min-height: 0;
 }
 
 .group-panel {
-  position: sticky;
-  top: 68px;
+  align-self: stretch;
 }
 
 .group-card {
-  background: #fff;
-  border: 1px solid #e4e7ec;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 0;
-  padding: 14px 14px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: calc(100vh - 90px);
+  min-height: 0;
+  max-height: 100%;
   overflow: auto;
 }
 
@@ -1778,7 +1792,6 @@ watch(convId, async () => {
 }
 
 .group-avatar {
-  --avatar-size: 54px;
   background: var(--avatar-bg);
   border-color: var(--avatar-border);
   color: var(--avatar-text);
@@ -1798,12 +1811,12 @@ watch(convId, async () => {
 .group-name {
   font-weight: 700;
   color: #0f172a;
-  font-size: 1.05rem;
+  font-size: var(--font-title);
 }
 
 .group-sub {
   color: #94a3b8;
-  font-size: 0.88rem;
+  font-size: var(--font-secondary);
 }
 
 .group-rename {
@@ -1845,12 +1858,12 @@ watch(convId, async () => {
 
 .members-block,
 .members-add {
-  background: #fff;
-  border: 1px solid #e8ecf1;
+  background: transparent;
+  border: 1px solid var(--border);
   border-radius: 0;
-  padding: 12px 12px 14px;
+  padding: 12px;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .member-scroll {
@@ -1864,9 +1877,10 @@ watch(convId, async () => {
   pointer-events: none;
 }
 
-.members-title {
-  font-weight: 700;
-  color: #0f172a;
+.section-label {
+  font-size: var(--font-secondary);
+  font-weight: 600;
+  color: #475569;
 }
 
 .member-list {
@@ -1874,17 +1888,17 @@ watch(convId, async () => {
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .member-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid #e8ecf1;
+  border: 1px solid var(--border);
   border-radius: 0;
-  padding: 8px 10px;
-  background: #f9fafb;
+  padding: 6px 10px;
+  background: #fff;
 }
 
 .member-left {
@@ -1894,7 +1908,6 @@ watch(convId, async () => {
 }
 
 .member-avatar {
-  --avatar-size: 38px;
   background: var(--avatar-bg);
   border-color: var(--avatar-border);
   font-weight: 700;
@@ -1957,12 +1970,12 @@ watch(convId, async () => {
 }
 
 .scroll {
-  height: 65vh;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  background: #f8fafc;
+  background: transparent;
   border-radius: 0;
-  padding: 14px;
-  border: 1px solid #e1e5eb;
+  padding: 4px 6px 12px;
 }
 
 .empty-thread {
@@ -1985,7 +1998,6 @@ watch(convId, async () => {
 }
 
 .avatar {
-  --avatar-size: 40px;
   flex-shrink: 0;
   background: var(--avatar-bg);
   border-color: var(--avatar-border);
@@ -2017,7 +2029,7 @@ watch(convId, async () => {
 }
 
 .who {
-  font-size: 0.8rem;
+  font-size: var(--font-secondary);
   margin-bottom: 3px;
   color: #475569;
 }
@@ -2031,6 +2043,8 @@ watch(convId, async () => {
   width: fit-content;
   max-width: 100%;
   word-wrap: break-word;
+  font-size: var(--font-primary);
+  line-height: 1.5;
 }
 
 .bubble.mine {
@@ -2084,7 +2098,7 @@ watch(convId, async () => {
 }
 
 .meta {
-  font-size: 0.7rem;
+  font-size: var(--font-secondary);
   color: #6b7280;
   margin-top: 3px;
 }
@@ -2103,7 +2117,7 @@ watch(convId, async () => {
   background: #ffffff;
   border-radius: 0;
   padding: 4px 12px;
-  font-size: 0.82rem;
+  font-size: var(--font-secondary);
   max-width: 80%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
@@ -2136,17 +2150,23 @@ watch(convId, async () => {
 
 .actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   margin-top: 6px;
+  align-items: center;
 }
 
 .icon-btn {
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 1.05rem;
-  padding: 3px;
+  font-size: 1rem;
+  padding: 0;
   border-radius: var(--radius-control);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-btn:focus-visible,
@@ -2360,9 +2380,9 @@ watch(convId, async () => {
   gap: 10px;
   align-items: center;
   padding: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 0;
-  background: #f8fafc;
+  background: var(--panel);
   cursor: pointer;
   transition: 0.2s;
 }
@@ -2373,7 +2393,6 @@ watch(convId, async () => {
 }
 
 .forward-avatar {
-  --avatar-size: 44px;
   background: #e2e8f0;
   font-weight: 700;
   color: #475569;
@@ -2392,10 +2411,7 @@ watch(convId, async () => {
 .forward-name {
   font-weight: 700;
   color: #0f172a;
-}
-
-.forward-type {
-  margin-top: 2px;
+  font-size: var(--font-primary);
 }
 
 .close-btn {

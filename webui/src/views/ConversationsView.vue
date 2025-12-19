@@ -31,7 +31,7 @@
 
               <div class="section">
                 <div class="section-head">
-                  <h3 class="section-title">Direct messages</h3>
+                  <h3 class="section-title text-secondary">Direct</h3>
                   <span class="badge">{{ privateConvs.length }}</span>
                 </div>
 
@@ -52,7 +52,6 @@
                       <div class="name">{{ displayName(c) }}</div>
                       <div class="time">{{ fmtTime(c.last_time) }}</div>
                     </div>
-                    <div v-if="handleFor(c)" class="handle">{{ handleFor(c) }}</div>
                     <div class="bottom">
                       <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
                     </div>
@@ -61,12 +60,12 @@
                     <button class="del" @click.stop="warnDelete(c)">Delete</button>
                   </li>
 
-                  <li v-if="!privateConvs.length" class="empty">No direct messages yet.</li>
+                  <li v-if="!privateConvs.length" class="empty">No direct chats yet.</li>
                 </ul>
               </div>
               <div class="section">
                 <div class="section-head second">
-                  <h3 class="section-title">Group chats</h3>
+                  <h3 class="section-title text-secondary">Groups</h3>
                   <span class="badge badge--secondary">{{ groupConvs.length }}</span>
                 </div>
 
@@ -86,7 +85,6 @@
                       <div class="name">{{ displayName(c) }}</div>
                       <div class="time">{{ fmtTime(c.last_time) }}</div>
                     </div>
-                    <div v-if="handleFor(c)" class="handle">{{ handleFor(c) }}</div>
                     <div class="bottom">
                       <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
                     </div>
@@ -119,7 +117,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 
-import { getMyConversations, getAvatarUrl, deleteConversation } from '@/services/api'
+import { getMyConversations, getAvatarUrl, deleteConversation, preferredDisplayName, initialsFor, normalizeUser } from '@/services/api'
 import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
 
 const router = useRouter()
@@ -149,20 +147,12 @@ function fmtTime(t) {
 // Resolve the display name for a conversation.
 // Private chats show the peer name; groups show the conversation name.
 function displayName(c) {
-  if (c.type === 'group') return c.name || 'Group'
+  if (c.type === 'group') return preferredDisplayName(c)
 
   const list = c.participants || []
   const other = list.find(u => String(u.id) !== myId())
 
-  return other?.name || other?.username || 'Chat'
-}
-
-function handleFor(c) {
-  if (c.type === 'group') return ''
-  const list = c.participants || []
-  const other = list.find(u => String(u.id) !== myId())
-  if (!other) return ''
-  return other.username ? `@${other.username}` : other.id || ''
+  return preferredDisplayName(other || {})
 }
 
 // Resolve the avatar for private or group conversations.
@@ -179,9 +169,7 @@ function avatarFor(c) {
 
 // Fallback initials when no avatar is available.
 function initials(c) {
-  const name = displayName(c)
-  const match = name.match(/\b\w/g) || ['U']
-  return match.slice(0, 2).join('').toUpperCase()
+  return initialsFor({ name: displayName(c) }, 'U')
 }
 
 // Load conversations and normalize varying backend payload shapes.
@@ -249,6 +237,7 @@ async function load() {
         return {
           ...c,
           type: isGroupType ? 'group' : c?.type,
+          participants: (c.participants || []).map(normalizeUser),
           last_preview: previewContent || 'No messages yet',
           last_time: time,
         }
@@ -340,9 +329,10 @@ onUnmounted(() => {
   top: 0;
   z-index: 1;
 }
+
 .title {
-  font-weight: 800;
-  font-size: 1.3rem;
+  font-weight: 700;
+  font-size: var(--font-title);
   color: #0f172a;
   text-align: center;
 }
@@ -352,7 +342,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 12px 12px 16px;
+  padding: 16px;
 }
 
 .content-inner {
@@ -369,16 +359,16 @@ onUnmounted(() => {
   min-height: 0;
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  background: #f8fafc;
-  border: 1px solid #d9dde3;
+  background: var(--panel);
+  border: 1px solid var(--border);
 }
 .list-pane {
   flex: 0 0 320px;
-  background: #f7f7f7;
-  border-right: 1px solid #d9dde3;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 16px;
   gap: 10px;
 }
 
@@ -392,7 +382,7 @@ onUnmounted(() => {
   border-radius: var(--radius-control);
   padding: 10px 12px;
   background: #ffffff;
-  font-size: 0.95rem;
+  font-size: var(--font-primary);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -426,7 +416,7 @@ onUnmounted(() => {
   margin: 0;
   font-weight: 700;
   color: #0f172a;
-  font-size: 1.02rem;
+  font-size: var(--font-secondary);
 }
 
 .badge {
@@ -439,10 +429,11 @@ onUnmounted(() => {
   justify-content: center;
   border: 1px solid #cbd5e1;
   background: #fff;
-  font-size: 0.82rem;
+  font-size: var(--font-secondary);
   color: #475569;
   font-weight: 600;
 }
+
 .badge--secondary {
   background: #f1f5f9;
   border-color: #d8e0e8;
@@ -459,7 +450,7 @@ onUnmounted(() => {
 
 .item {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 0;
   padding: 10px 12px;
   display: grid;
@@ -473,14 +464,11 @@ onUnmounted(() => {
   background: #f9fafb;
   border-color: #dfe3e8;
 }
+
 .left {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.avatar,
-.avatar-fallback {
-  --avatar-size: 44px;
 }
 
 .info {
@@ -500,7 +488,7 @@ onUnmounted(() => {
 .name {
   font-weight: 600;
   color: #111827;
-  font-size: 1rem;
+  font-size: var(--font-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -508,30 +496,33 @@ onUnmounted(() => {
 
 .handle {
   color: #64748b;
-  font-size: 0.9rem;
+  font-size: var(--font-secondary);
 }
 
 .time {
-  font-size: 0.82rem;
+  font-size: var(--font-secondary);
   color: #9ca3af;
   white-space: nowrap;
 }
+
 .preview {
   color: #7b8794;
-  font-size: 0.9rem;
+  font-size: var(--font-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .del {
   border: 0;
   border-radius: var(--radius-control);
   padding: 0.35rem 0.7rem;
-  font-size: 0.8rem;
+  font-size: var(--font-secondary);
   color: #fff;
   background: linear-gradient(135deg, #ef4444, #dc2626);
   transition: 0.2s;
 }
+
 .del:hover {
   opacity: 0.9;
 }
@@ -544,12 +535,12 @@ onUnmounted(() => {
 .conversation-pane {
   flex: 1 1 auto;
   min-width: 0;
-  background: #fff;
+  background: var(--panel);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  border-left: 1px solid #d9dde3;
+  border-left: 1px solid var(--border);
 }
 
 .preview-empty {
@@ -561,7 +552,7 @@ onUnmounted(() => {
 }
 
 .preview-title {
-  font-size: 1.1rem;
+  font-size: var(--font-primary);
   margin: 0;
   color: #1f2937;
 }
@@ -579,6 +570,7 @@ onUnmounted(() => {
   gap: 0.5rem;
   color: #475569;
 }
+
 .spinner {
   width: 1rem;
   height: 1rem;

@@ -154,23 +154,45 @@ const del   = (url, cfg)       => axios.delete(url, withAuthConfig(cfg))
 const post  = (url, data, cfg) => axios.post(url,   data, withAuthConfig(cfg))
 const put   = (url, data, cfg) => axios.put(url,    data, withAuthConfig(cfg))
 
+function stripAt(value = '') {
+  const v = String(value || '').trim()
+  return v.startsWith('@') ? v.slice(1) : v
+}
+
+export function safeUsername(u = {}) {
+  const usernameCandidate = stripAt(
+    u.username ?? u.user_name ?? u.userName ?? u.handle ?? ''
+  )
+  if (!usernameCandidate || usernameCandidate === '-') return ''
+  return usernameCandidate
+}
+
+export function preferredDisplayName(u = {}) {
+  const display = stripAt(u.displayName ?? u.display_name ?? '')
+  const name = stripAt(u.name ?? u.title ?? u.groupName ?? u.group_name ?? u.full_name ?? u.fullName ?? '')
+  const username = safeUsername(u)
+
+  return display || name || username || 'Unknown'
+}
+
+export function initialsFor(u = {}, fallback = 'U') {
+  const name = preferredDisplayName(u)
+  const match = name.match(/\b\w/g) || [fallback]
+  return match.slice(0, 2).join('').toUpperCase()
+}
+
 /**
  * Normalize user-like payloads to a consistent shape consumed by the UI.
  * Ensures we never surface placeholder handles like "-" by falling back to
- * id/"unknown" when the username is missing.
+ * the preferred display name.
  */
 export function normalizeUser(u = {}) {
   const rawId =
     u.id ?? u.user_id ?? u.userId ?? u._id ?? u.uid ?? u.uuid ?? u.userID ?? null
   const id = String(rawId || '').trim() || 'unknown'
 
-  const usernameCandidate = String(
-    u.username ?? u.user_name ?? u.userName ?? u.handle ?? ''
-  ).trim()
-  const nameCandidate = String(u.name ?? u.full_name ?? u.fullName ?? '').trim()
-
-  const username = usernameCandidate && usernameCandidate !== '-' ? usernameCandidate : null
-  const name = nameCandidate || username || null
+  const username = safeUsername(u)
+  const name = preferredDisplayName({ ...u, username })
 
   const avatarUri =
     u.avatarUri || u.avatar_uri || u.avatar_url || u.avatar || u.photo_url || u.photo || ''
@@ -181,6 +203,7 @@ export function normalizeUser(u = {}) {
     id,
     username,
     name,
+    displayName: name,
     avatarUri,
     avatarUrl: getAvatarUrl({ ...u, avatarUri, updatedAt }),
     updatedAt,
@@ -346,11 +369,11 @@ export function titleForConversation(c, myId = '') {
   if (isPrivate) {
     const list = c.participants
     const other = list.find(u => String(u.id) !== String(myId))
-    return other?.name || other?.username || 'Chat'
+    return other ? preferredDisplayName(other) : 'Unknown'
   }
 
   // Group conversation fallback.
-  return c.name || c.title || 'Group'
+  return preferredDisplayName(c)
 }
 
 /** Conversation avatar: group avatar for groups, peer avatar for private chats. */

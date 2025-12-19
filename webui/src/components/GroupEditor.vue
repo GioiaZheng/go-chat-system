@@ -245,7 +245,7 @@ export default {
 .row { display: grid; grid-template-columns: 140px 1fr; gap: 10px; align-items: center; }
 .inline { display: flex; gap: 8px; }
 .photo-actions { display: flex; align-items: center; gap: 12px; }
-.avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+.avatar { object-fit: cover; }
 .members { display: flex; flex-wrap: wrap; gap: 8px; }
 .member { background: #f7f7f7; padding: 4px 8px; border-radius: 0; }
 .mn { font-weight: 600; margin-right: 6px; }

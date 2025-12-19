@@ -381,15 +381,11 @@ onMounted(async () => {
 .sub{ color:#64748b; font-size:.9rem }
 .empty{ text-align:center; color:#64748b }
 
-.avatar{
-  width:36px; height:36px; border-radius:50%; object-fit:cover;
-  border:1px solid #e2e8f0; background:#fff;
-}
+.avatar{ object-fit:cover; }
 
 .avatar-fallback{
-  width:36px; height:36px; border-radius:50%; display:inline-flex;
+  display:inline-flex;
   align-items:center; justify-content:center;
-  background:#e0f7ee; color:#0f766e; font-weight:700; border:1px solid #a7f3d0;
 }
 
 .manage{
