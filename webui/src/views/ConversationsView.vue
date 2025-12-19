@@ -126,6 +126,24 @@ const convs = ref([])
 const loading = ref(false)
 const err = ref('')
 
+function previewForMessage(raw = {}) {
+  const isForwarded = Boolean(raw?.forwardedFrom || raw?.forwarded_from)
+  if (isForwarded) return '[Forwarded message]'
+  if (raw?.type === 'image') return '[Image]'
+  if (raw?.type === 'file') return '[File]'
+
+  return (
+    raw?.content ||
+    raw?.text ||
+    raw?.body ||
+    raw?.message ||
+    raw?.Content ||
+    raw?.Text ||
+    raw?.Body ||
+    (raw?.fileAbsUrl ? '[image]' : '')
+  )
+}
+
 // Helper to read the current user identifier as a string.
 const me = computed(() => currentUser.value)
 const myId = () => String(me.value?.id ?? '')
@@ -214,16 +232,7 @@ async function load() {
       .map(c => {
         const isGroupType = c?.type === 'group' || !!(c?.groupId || c?.group_id || c?.group?.id)
         const last = pickLastMessage(c) || {}
-        const previewContent =
-          last.type === 'image' ? '[Image]' :
-          last.type === 'file'  ? '[File]'  :
-          last.content ||
-          last.text ||
-          last.body ||
-          last.message ||
-          last.Content ||
-          last.Text ||
-          last.Body || ''
+        const previewContent = previewForMessage(last)
 
         const time =
           last.createdAt ||

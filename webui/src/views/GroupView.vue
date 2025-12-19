@@ -325,12 +325,33 @@ async function onPickPhoto(id, e) {
   panelErr.value = ''
   busy.value = true
   try {
-    await setGroupPhoto(id, file)
+    const response = await setGroupPhoto(id, file)
+    const avatarRaw =
+      response?.avatarUrl ||
+      response?.avatar_url ||
+      response?.avatarUri ||
+      response?.avatar_uri ||
+      response?.avatar ||
+      response?.group?.avatarUrl ||
+      response?.group?.avatar_url ||
+      response?.group?.avatarUri ||
+      response?.group?.avatar_uri ||
+      response?.group?.avatar ||
+      ''
+    const newAvatar = avatarRaw
+      ? getAvatarUrl({
+        avatarUri: avatarRaw,
+        updatedAt: response?.updatedAt || response?.updated_at || response?.group?.updatedAt || response?.group?.updated_at,
+      })
+      : getAvatarUrl(response?.group || response || {})
     const target = groups.value.find(g => String(g.id) === String(id))
+    if (newAvatar && target) {
+      target.avatar = newAvatar
+    }
     await refreshGroupMeta(id, {
       conversationId: target?.conversation_id,
       name: target?.name,
-      avatar: target?.avatar,
+      avatar: newAvatar || target?.avatar,
     })
     await loadList()
   } catch (er) {
@@ -339,7 +360,6 @@ async function onPickPhoto(id, e) {
     busy.value = false
   }
 }
-
 
 async function onAddMembers(id) {
   panelErr.value = ''

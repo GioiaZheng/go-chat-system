@@ -574,6 +574,24 @@ function convTime(t) {
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric' })
 }
 
+function previewForMessage(raw = {}) {
+  const isForwarded = Boolean(raw?.forwardedFrom || raw?.forwarded_from)
+  if (isForwarded) return '[Forwarded message]'
+  if (raw?.type === 'image') return '[Image]'
+  if (raw?.type === 'file') return '[File]'
+
+  return (
+    raw?.content ||
+    raw?.text ||
+    raw?.body ||
+    raw?.message ||
+    raw?.Content ||
+    raw?.Text ||
+    raw?.Body ||
+    (raw?.fileAbsUrl ? '[image]' : '')
+  )
+}
+
 function normalizeConversationList(items = []) {
   const pickLastMessage = (c) => {
     if (!c) return null
@@ -602,12 +620,7 @@ function normalizeConversationList(items = []) {
         !!(c?.groupId || c?.group_id || c?.group?.id)
 
       const last = pickLastMessage(c) || {}
-      const previewContent =
-        last.type === 'image'
-          ? '[Image]'
-          : last.type === 'file'
-          ? '[File]'
-          : last.content || last.text || last.body || last.message || last.Content || last.Text || last.Body || ''
+      const previewContent = previewForMessage(last)
 
       const time =
         last.createdAt ||
@@ -1245,7 +1258,8 @@ async function onSend() {
       sent = await sendMessage({
         conversationId: convId.value,
         content: t,
-        replyToId: replyTarget.value?.id,
+        forwardedFrom: null,
+        replyToId: replyTarget.value?.id || null,
       })
     }
 
@@ -1258,7 +1272,7 @@ async function onSend() {
     replyTarget.value = null
     clearImageSelection()
     await loadMessages()
-    bumpConversationList({ lastPreview: normalized.content || forwardPreview(normalized) })
+    bumpConversationList({ lastPreview: previewForMessage(normalized) || forwardPreview(normalized) })
   } catch (e) {
     err.value = e?.response?.data?.message || 'Failed to send'
   } finally {
@@ -1467,10 +1481,41 @@ async function onPickGroupPhoto(e) {
   groupNotice.value = ''
   groupBusy.value = true
   try {
-    await setGroupPhoto(groupId.value, file)
+    const response = await setGroupPhoto(groupId.value, file)
+    const avatarRaw =
+      response?.avatarUrl ||
+      response?.avatar_url ||
+      response?.avatarUri ||
+      response?.avatar_uri ||
+      response?.avatar ||
+      response?.group?.avatarUrl ||
+      response?.group?.avatar_url ||
+      response?.group?.avatarUri ||
+      response?.group?.avatar_uri ||
+      response?.group?.avatar ||
+      ''
+    const newAvatar = avatarRaw
+      ? getAvatarUrl({
+        avatarUri: avatarRaw,
+        updatedAt: response?.updatedAt || response?.updated_at || response?.group?.updatedAt || response?.group?.updated_at,
+      })
+      : getAvatarUrl(response?.group || response || {})
     groupNotice.value = 'Group photo updated.'
+    if (newAvatar) {
+      groupInfo.value = { ...(groupInfo.value || {}), avatar: newAvatar }
+      currentConv.value = { ...(currentConv.value || {}), avatar: newAvatar }
+      const idx = convList.value.findIndex(c => String(c.id) === convId.value)
+      if (idx !== -1) {
+        convList.value[idx] = { ...convList.value[idx], avatar: newAvatar }
+      }
+      updateConversationMeta({ avatar: newAvatar })
+    }
     await loadGroupPanel()
-    updateConversationMeta({ name: groupInfo.value?.name, avatar: groupInfo.value?.avatar })
+    if (newAvatar) {
+      groupInfo.value = { ...(groupInfo.value || {}), avatar: newAvatar }
+      currentConv.value = { ...(currentConv.value || {}), avatar: newAvatar }
+    }
+    updateConversationMeta({ name: groupInfo.value?.name, avatar: newAvatar || groupInfo.value?.avatar })
   } catch (er) {
     groupErr.value = er?.response?.data?.message || er?.message || 'Failed to update group photo'
   } finally {
