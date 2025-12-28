@@ -30,7 +30,7 @@
               />
               <div v-else class="avatar-fallback avatar-circle profile-avatar">{{ initials }}</div>
               <div class="avatar-overlay">
-                <span class="overlay-icon">✏️</span>
+                <span class="overlay-icon" aria-hidden="true">📷</span>
                 <span class="overlay-text">Change photo</span>
               </div>
             </div>
@@ -41,7 +41,7 @@
               accept="image/*"
               @change="onFile"
             />
-            <p class="avatar-hint">Tap the avatar to update your photo.</p>
+            <p class="avatar-hint">Profile photo is visible in chats and groups.</p>
             <div v-if="avatarDirty" class="inline-actions">
               <button
                 class="btn btn-primary"
@@ -59,7 +59,13 @@
             <p class="eyebrow">Name</p>
             <div v-if="!editingName" class="name-display">
               <h3 class="profile-name">{{ me.name || 'Name not set' }}</h3>
-              <button class="text-btn" @click="startNameEdit">Edit</button>
+              <button class="icon-btn" type="button" aria-label="Edit name" @click="startNameEdit">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    d="M4 17.25V20h2.75L17.81 8.94l-2.75-2.75L4 17.25zm3.92.75H6v-1.92l7.06-7.06 1.92 1.92L7.92 18zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.76 3.76 1.83-1.83z"
+                  />
+                </svg>
+              </button>
             </div>
             <div v-else class="name-edit">
               <input v-model.trim="newName" class="input" placeholder="Your name" />
@@ -244,7 +250,7 @@ function handleError(e, fallback) {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
+  background: #ffffff;
 }
 .wrap {
   flex: 1 1 auto;
@@ -283,16 +289,20 @@ function handleError(e, fallback) {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.08);
+  padding: 18px;
 }
 .profile-header {
   display: grid;
   grid-template-columns: 180px 1fr;
   gap: 16px;
   align-items: center;
-  padding: 18px 20px;
-  border-radius: 14px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  padding: 12px 10px;
+  border-radius: 12px;
+  background: transparent;
 }
 @media (max-width: 640px) {
   .profile-header {
@@ -314,22 +324,23 @@ function handleError(e, fallback) {
   outline: none;
 }
 .avatar-container:focus-visible {
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4);
   border-radius: 50%;
 }
 .profile-avatar {
   width: 86px !important;
   height: 86px !important;
   font-size: 1.6rem;
-  border: 2px solid #e2e8f0;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid #d9f99d;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .avatar-container:hover .profile-avatar {
   transform: scale(1.01);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.22);
+  border-color: #22c55e;
 }
 .avatar-fallback {
-  background: #e2e8f0;
+  background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
   color: #0f172a;
   font-weight: 700;
 }
@@ -342,8 +353,8 @@ function handleError(e, fallback) {
   justify-content: center;
   gap: 4px;
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.55);
-  color: #e2e8f0;
+  background: rgba(34, 197, 94, 0.8);
+  color: #ecfdf3;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -360,8 +371,8 @@ function handleError(e, fallback) {
 }
 .avatar-hint {
   margin: 0;
-  color: #64748b;
-  font-size: 0.9rem;
+  color: #94a3b8;
+  font-size: 0.88rem;
 }
 .identity-section {
   display: flex;
@@ -378,9 +389,9 @@ function handleError(e, fallback) {
 }
 .profile-name {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   color: #0f172a;
-  font-weight: 700;
+  font-weight: 800;
 }
 .name-display {
   display: flex;
@@ -404,17 +415,34 @@ function handleError(e, fallback) {
   gap: 8px;
   flex-wrap: wrap;
 }
-.text-btn {
-  border: 0;
-  background: transparent;
-  color: #6b7280;
-  font-weight: 600;
+.icon-btn {
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+  border-radius: 10px;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 0;
-  font-size: 0.95rem;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  outline: none;
 }
-.text-btn:hover {
-  color: #111827;
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+.icon-btn:hover {
+  background: rgba(34, 197, 94, 0.2);
+  box-shadow: 0 8px 16px rgba(34, 197, 94, 0.25);
+  transform: translateY(-1px);
+}
+.icon-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+}
+.icon-btn:active {
+  transform: translateY(0);
 }
 .input {
   border: 1px solid #cbd5e1;
@@ -425,8 +453,8 @@ function handleError(e, fallback) {
   min-width: 240px;
 }
 .input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 0.18rem rgba(37, 99, 235, 0.15);
+  border-color: #22c55e;
+  box-shadow: 0 0 0 0.18rem rgba(34, 197, 94, 0.2);
 }
 .btn {
   border: 0;
@@ -438,13 +466,26 @@ function handleError(e, fallback) {
 }
 .btn-primary {
   color: #fff;
-  background: #2563eb;
-  box-shadow: none;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 60%, #0f766e 120%);
+  box-shadow: 0 10px 20px rgba(34, 197, 94, 0.3);
+}
+.btn-primary:not(:disabled):hover {
+  box-shadow: 0 12px 24px rgba(34, 197, 94, 0.35);
+  transform: translateY(-1px);
 }
 .btn-secondary {
   background: #fff;
   color: #0f172a;
   border: 1px solid #cbd5e1;
+}
+.btn-secondary:not(:disabled):hover {
+  border-color: #22c55e;
+  color: #166534;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
+}
+.btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.28);
+  outline: none;
 }
 .btn:disabled {
   opacity: 0.65;
@@ -470,10 +511,11 @@ function handleError(e, fallback) {
   display: none;
 }
 .info-stack {
-  background: #fff;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 12px;
+  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.06);
 }
 .system-details {
   color: #475569;
@@ -510,9 +552,9 @@ function handleError(e, fallback) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #0f172a;
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  color: #166534;
   border-radius: 10px;
   padding: 8px 10px;
   font-weight: 600;
