@@ -99,10 +99,9 @@
             <div class="conversation-pane">
               <div class="preview-empty">
                 <h2 class="preview-title">Choose a chat to view messages</h2>
-                <div class="preview-actions">
-                  <RouterLink class="btn" to="/contacts">Find contacts</RouterLink>
-                  <RouterLink class="btn btn-secondary" to="/new-group">New group</RouterLink>
-                </div>
+                <p class="preview-description">
+                  Your chats will appear here once you start a conversation.
+                </p>
               </div>
             </div>
           </div>
@@ -571,11 +570,10 @@ onUnmounted(() => {
   color: #1f2937;
 }
 
-.preview-actions {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
+.preview-description {
+  margin: 0;
+  color: #4b5563;
+  font-size: var(--font-secondary);
 }
 
 .loading {
