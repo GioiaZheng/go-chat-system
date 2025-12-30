@@ -340,8 +340,8 @@ function handleError(e, fallback) {
   border-color: #22c55e;
 }
 .avatar-fallback {
-  background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
-  color: #0f172a;
+  background: #e0f7ee;
+  color: #0f766e;
   font-weight: 700;
 }
 .avatar-overlay {
