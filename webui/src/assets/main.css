@@ -69,8 +69,8 @@ body{
 
 .avatar img,
 .avatar-circle img {
-  width: 40px;
-  height: 40px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -79,8 +79,8 @@ body{
 
 .group-panel .avatar,
 .group-panel .avatar img {
-  width: 56px;
-  height: 56px;
+  width: var(--avatar-size, 56px);
+  height: var(--avatar-size, 56px);
   object-fit: cover;
 }
 

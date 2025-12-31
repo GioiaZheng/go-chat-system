@@ -1710,22 +1710,7 @@ watch(convId, async () => {
 }
 
 .header-avatar {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
-
-  border-radius: 999px;
-  overflow: hidden;
-
-  background: var(--avatar-bg);
-  color: var(--avatar-text);
-  border: 1px solid var(--avatar-border);
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  object-fit: cover;
+  --avatar-size: 32px;
 }
 
 .muted {
@@ -1755,7 +1740,7 @@ watch(convId, async () => {
 
 .chat-layout {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(420px, 1fr);
   gap: 16px;
   align-items: stretch;
   flex: 1 1 auto;
@@ -1764,7 +1749,7 @@ watch(convId, async () => {
 }
 
 .chat-layout.has-group {
-  grid-template-columns: 320px minmax(0, 1fr) 300px;
+  grid-template-columns: 300px minmax(420px, 1fr) 280px;
 }
 
 .conv-rail {
@@ -1901,6 +1886,7 @@ watch(convId, async () => {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  width: 100%;
   min-height: 0;
   height: 100%;
   flex: 1 1 auto;
@@ -2057,22 +2043,7 @@ watch(convId, async () => {
 }
 
 .member-avatar {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
-
-  border-radius: 999px;
-  overflow: hidden;
-
-  background: var(--avatar-bg);
-  border: 1px solid var(--avatar-border);
-  color: var(--avatar-text);
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  object-fit: cover;
+  --avatar-size: 32px;
 }
 
 .member-info {
@@ -2155,22 +2126,28 @@ watch(convId, async () => {
 }
 
 .avatar {
-  display: block;
-  line-height: 0;
-
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-
+  --avatar-size: 40px;
   align-self: flex-start;
+}
 
-  border-radius: 999px;
+.avatar,
+.header-avatar,
+.conv-pill__avatar,
+.group-avatar,
+.member-avatar {
+  width: var(--avatar-size, 40px);
+  height: var(--avatar-size, 40px);
+  flex: 0 0 var(--avatar-size, 40px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   overflow: hidden;
-
-  background: var(--avatar-bg);
-  border: 1px solid var(--avatar-border);
-
   object-fit: cover;
+  aspect-ratio: 1 / 1;
+  background: var(--avatar-bg);
+  color: var(--avatar-text);
+  border: 1px solid var(--avatar-border);
 }
 
 .avatar.mine {
@@ -2182,7 +2159,7 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  max-width: 70%;
+  max-width: 80%;
 }
 
 .bubble-wrap.mine {
@@ -2277,6 +2254,7 @@ watch(convId, async () => {
 
 .text-block {
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .meta {
