@@ -1710,9 +1710,22 @@ watch(convId, async () => {
 }
 
 .header-avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+
+  border-radius: 999px;
+  overflow: hidden;
+
   background: var(--avatar-bg);
   color: var(--avatar-text);
-  border-color: var(--avatar-border);
+  border: 1px solid var(--avatar-border);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  object-fit: cover;
 }
 
 .muted {
@@ -1826,9 +1839,22 @@ watch(convId, async () => {
 }
 
 .conv-pill__avatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+
+  border-radius: 999px;
+  overflow: hidden;
+
   background: var(--avatar-bg);
   color: var(--avatar-text);
-  border-color: var(--avatar-border);
+  border: 1px solid var(--avatar-border);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  object-fit: cover;
 }
 
 .conv-pill__meta {
@@ -1906,10 +1932,23 @@ watch(convId, async () => {
 }
 
 .group-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+
+  border-radius: 999px;
+  overflow: hidden;
+
   background: var(--avatar-bg);
-  border-color: var(--avatar-border);
+  border: 1px solid var(--avatar-border);
   color: var(--avatar-text);
   font-weight: 700;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  object-fit: cover;
 }
 
 .group-meta {
@@ -2018,10 +2057,22 @@ watch(convId, async () => {
 }
 
 .member-avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+
+  border-radius: 999px;
+  overflow: hidden;
+
   background: var(--avatar-bg);
-  border-color: var(--avatar-border);
-  font-weight: 700;
+  border: 1px solid var(--avatar-border);
   color: var(--avatar-text);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  object-fit: cover;
 }
 
 .member-info {
@@ -2095,8 +2146,7 @@ watch(convId, async () => {
 .row {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-2);
-  margin: var(--space-3) 0;
+  overflow: visible;
 }
 
 .row.mine {
@@ -2105,13 +2155,27 @@ watch(convId, async () => {
 }
 
 .avatar {
-  flex-shrink: 0;
+  display: block;
+  line-height: 0;
+
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+
+  align-self: flex-start;
+
+  border-radius: 999px;
+  overflow: hidden;
+
   background: var(--avatar-bg);
-  border-color: var(--avatar-border);
+  border: 1px solid var(--avatar-border);
+
+  object-fit: cover;
 }
 
 .avatar.mine {
-  margin-left: 4px;    /* Keep a small gap between my avatar and bubble */
+  margin-left: 4px;
+  align-self: flex-start;
 }
 
 .bubble-wrap {
