@@ -42,69 +42,100 @@
         <div class="chat-layout" :class="{ 'has-group': isGroup }">
 
           <!-- ===== LEFT: CONVERSATION LIST ===== -->
-          <aside class="conv-rail">
-            <div class="conv-rail__header">
-              <div class="conv-rail__title text-title">Conversations</div>
-              <span class="conv-rail__badge">
-                {{ filteredConversations.length }}
-              </span>
+          <aside class="list-pane">
+            <div class="list-header">
+              <div class="list-title">Conversations</div>
+              <span class="badge">{{ filteredConversations.length }}</span>
             </div>
 
-            <div class="conv-rail__search">
+            <div class="list-search">
               <input
                 v-model.trim="convSearch"
-                type="text"
-                placeholder="Search by name or group"
+                type="search"
+                class="search"
+                placeholder="search conversations"
                 aria-label="Search conversations"
               />
             </div>
 
-            <div class="conv-rail__list" role="list">
-              <p v-if="convLoading" class="muted">Loading conversations…</p>
-              <ErrorMsg v-else-if="convErr" :text="convErr" />
+            <div class="section">
+              <div class="section-head">
+                <h3 class="section-title text-secondary">Direct</h3>
+                <span class="badge">{{ privateConvs.length }}</span>
+              </div>
 
-              <template v-else>
-                <button
-                  v-for="c in filteredConversations"
+              <ul class="list" role="list">
+                <li
+                  v-for="c in privateConvs"
                   :key="c.id"
-                  type="button"
-                  class="conv-pill"
+                  class="item"
                   :class="{ active: String(c.id) === convId }"
                   @click="switchConversation(c)"
                 >
-                  <span
-                    v-if="!avatarForConversation(c, meId)"
-                    class="conv-pill__avatar avatar-fallback avatar-circle"
-                  >
-                    {{ conversationInitial(c) }}
-                  </span>
-                  <img
-                    v-else
-                    class="conv-pill__avatar avatar avatar-circle"
-                    :src="avatarForConversation(c, meId)"
-                    alt="avatar"
-                  />
+                  <div class="left">
+                    <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle">{{ conversationInitial(c) }}</span>
+                    <img
+                      v-else
+                      class="avatar avatar-circle"
+                      :src="avatarForConversation(c, meId)"
+                      alt="avatar"
+                    />
+                  </div>
 
-                  <div class="conv-pill__meta">
-                    <div class="conv-pill__top">
-                      <span class="conv-pill__name text-primary">
-                        {{ titleForConversation(c, meId) }}
-                      </span>
-                      <span class="conv-pill__time text-secondary">
-                        {{ convTime(c.last_time) }}
-                      </span>
+                  <div class="info">
+                    <div class="top">
+                      <div class="name">{{ titleForConversation(c, meId) }}</div>
+                      <div class="time">{{ convTime(c.last_time) }}</div>
                     </div>
-                    <div class="conv-pill__bottom text-secondary">
-                      {{ c.last_preview || 'No messages yet' }}
+                    <div class="bottom">
+                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
                     </div>
                   </div>
-                </button>
+                </li>
 
-                <p v-if="!filteredConversations.length" class="muted">
-                  No conversations found.
-                </p>
-              </template>
+                <li v-if="!privateConvs.length && !convLoading && !convErr" class="empty">No direct chats yet.</li>
+              </ul>
             </div>
+
+            <div class="section">
+              <div class="section-head second">
+                <h3 class="section-title text-secondary">Groups</h3>
+                <span class="badge badge--secondary">{{ groupConvs.length }}</span>
+              </div>
+
+              <ul class="list" role="list">
+                <li
+                  v-for="c in groupConvs"
+                  :key="c.id"
+                  class="item"
+                  :class="{ active: String(c.id) === convId }"
+                  @click="switchConversation(c)"
+                >
+                  <div class="left">
+                    <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle">{{ conversationInitial(c) }}</span>
+                    <img
+                      v-else
+                      class="avatar avatar-circle"
+                      :src="avatarForConversation(c, meId)"
+                      alt="avatar"
+                    />
+                  </div>
+                  <div class="info">
+                    <div class="top">
+                      <div class="name">{{ titleForConversation(c, meId) }}</div>
+                      <div class="time">{{ convTime(c.last_time) }}</div>
+                    </div>
+                    <div class="bottom">
+                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                    </div>
+                  </div>
+                </li>
+                <li v-if="!groupConvs.length && !convLoading && !convErr" class="empty">No group chats yet.</li>
+              </ul>
+            </div>
+
+            <p v-if="convLoading" class="muted">Loading conversations…</p>
+            <ErrorMsg v-else-if="convErr" :text="convErr" />
           </aside>
 
           <!-- ===== CENTER: CHAT ===== -->
@@ -571,7 +602,9 @@ function convTime(t) {
   if (!t) return ''
   const d = new Date(t)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric' })
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${m}/${day}`
 }
 
 function previewForMessage(raw = {}) {
@@ -730,6 +763,9 @@ const filteredConversations = computed(() => {
     return title.includes(q) || preview.includes(q)
   })
 })
+
+const privateConvs = computed(() => filteredConversations.value.filter(c => c.type !== 'group'))
+const groupConvs = computed(() => filteredConversations.value.filter(c => c.type === 'group'))
 
 function switchConversation(c) {
   if (!c || String(c.id) === convId.value) return
@@ -1678,7 +1714,7 @@ watch(convId, async () => {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 3px;
   height: 56px;
   padding: 0 16px;
   border-bottom: 1px solid #e2e8f0;
@@ -1705,7 +1741,7 @@ watch(convId, async () => {
 .title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 3px;
   justify-content: flex-start;
 }
 
@@ -1731,7 +1767,7 @@ watch(convId, async () => {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 3px;
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
@@ -1741,7 +1777,7 @@ watch(convId, async () => {
 .chat-layout {
   display: grid;
   grid-template-columns: 300px minmax(420px, 1fr);
-  gap: 16px;
+  gap: 3px;
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
@@ -1752,129 +1788,185 @@ watch(convId, async () => {
   grid-template-columns: 300px minmax(420px, 1fr) 280px;
 }
 
-.conv-rail {
+.list-pane {
   background: var(--panel);
   border: 1px solid var(--border);
   padding: var(--panel-pad);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 3px;
   height: 100%;
   min-height: 0;
+  overflow: auto;
 }
 
-.conv-rail__header {
+.list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 3px;
+  padding: 4px 0 2px;
 }
 
-.conv-rail__title {
+.list-title {
   font-weight: 800;
   color: #0f172a;
 }
 
-.conv-rail__badge {
-  background: #ecfeff;
-  color: #0f172a;
-  border-radius: 12px;
-  padding: 4px 10px;
-  font-weight: 700;
+.list-search {
+  padding: 0 0 8px;
 }
 
-.conv-rail__search input {
+.search {
   width: 100%;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e7eb;
   border-radius: var(--radius-control);
   padding: 10px 12px;
+  background: #ffffff;
   font-size: var(--font-primary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.conv-rail__list {
+.search:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow: auto;
-  padding-right: 2px;
+  gap: 3px;
 }
 
-.conv-pill {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+.section-head {
+  display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 3px;
+  padding: 4px 4px 2px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  padding: 4px 4px 2px;
+}
+
+.section-head.second {
+  margin-top: 4px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+
+.section-title {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: var(--font-secondary);
+}
+
+.badge {
+  display: inline-flex;
+  min-width: 28px;
+  height: 22px;
+  border-radius: 0;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: var(--font-secondary);
+  color: #475569;
+  font-weight: 600;
+}
+
+.badge--secondary {
+  background: #f1f5f9;
+  border-color: #d8e0e8;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.item {
+  background: #ffffff;
   border: 1px solid var(--border);
   border-radius: 0;
-  padding: 12px;
-  background: var(--panel);
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 3px;
+  transition: background 0.15s ease, border-color 0.15s ease;
   cursor: pointer;
-  transition: border 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
-.conv-pill:hover {
-  border-color: #d5dde7;
-  background: #f3f4f6;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+.item:hover {
+  background: #f9fafb;
+  border-color: #dfe3e8;
 }
 
-.conv-pill.active {
+.item.active {
   border-color: #9ae6b4;
   background: #eefbf3;
 }
 
-.conv-pill__avatar {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-
-  border-radius: 999px;
-  overflow: hidden;
-
-  background: var(--avatar-bg);
-  color: var(--avatar-text);
-  border: 1px solid var(--avatar-border);
-
-  display: inline-flex;
+.left {
+  display: flex;
   align-items: center;
   justify-content: center;
-
-  object-fit: cover;
 }
 
-.conv-pill__meta {
+.info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
 }
 
-.conv-pill__top {
+.top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 6px;
 }
 
-.conv-pill__name {
-  font-weight: 700;
-  color: #0f172a;
+.name {
+  font-weight: 600;
+  color: #111827;
+  font-size: var(--font-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.conv-pill__time {
-  color: #9aa1ad;
+.time {
   font-size: var(--font-secondary);
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
-.conv-pill__bottom {
-  color: #738396;
+.preview {
+  color: #7b8794;
   font-size: var(--font-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.empty {
+  text-align: center;
+  color: #6b7280;
+  padding: 16px 0;
 }
 
 .chat-main {
@@ -1884,7 +1976,7 @@ watch(convId, async () => {
   padding: var(--panel-pad);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 3px;
   min-width: 0;
   width: 100%;
   min-height: 0;

@@ -22,6 +22,7 @@
             <aside class="list-pane">
               <div class="list-header">
                 <input
+                  v-model.trim="search"
                   type="search"
                   class="search"
                   placeholder="search conversations"
@@ -124,6 +125,7 @@ const router = useRouter()
 const convs = ref([])
 const loading = ref(false)
 const err = ref('')
+const search = ref('')
 
 function previewForMessage(raw = {}) {
   const isForwarded = Boolean(raw?.forwardedFrom || raw?.forwarded_from)
@@ -147,9 +149,20 @@ function previewForMessage(raw = {}) {
 const me = computed(() => currentUser.value)
 const myId = () => String(me.value?.id ?? '')
 
-// Derived conversation lists by type.
-const privateConvs = computed(() => convs.value.filter(c => c.type !== 'group'))
-const groupConvs = computed(() => convs.value.filter(c => c.type === 'group'))
+// Derived conversation lists by type with inline search support.
+const filteredConversations = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return convs.value
+
+  return convs.value.filter((c) => {
+    const name = (displayName(c) || '').toLowerCase()
+    const preview = (c.last_preview || '').toLowerCase()
+    return name.includes(q) || preview.includes(q)
+  })
+})
+
+const privateConvs = computed(() => filteredConversations.value.filter(c => c.type !== 'group'))
+const groupConvs = computed(() => filteredConversations.value.filter(c => c.type === 'group'))
 
 // Format conversation timestamps for list display.
 function fmtTime(t) {
