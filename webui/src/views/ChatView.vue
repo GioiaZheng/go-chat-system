@@ -2195,7 +2195,7 @@ watch(convId, async () => {
   overflow-y: auto;
   background: transparent;
   border-radius: 0;
-  padding: 4px 6px 12px;
+  padding: 10px 12px 14px;
 }
 
 .empty-thread {
@@ -2209,6 +2209,7 @@ watch(convId, async () => {
 .row {
   display: flex;
   align-items: flex-start;
+  gap: 8px;
   overflow: visible;
 }
 
@@ -2230,16 +2231,34 @@ watch(convId, async () => {
   width: var(--avatar-size, 40px);
   height: var(--avatar-size, 40px);
   flex: 0 0 var(--avatar-size, 40px);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 50%;
   overflow: hidden;
-  object-fit: cover;
   aspect-ratio: 1 / 1;
   background: var(--avatar-bg);
   color: var(--avatar-text);
   border: 1px solid var(--avatar-border);
+}
+
+img.avatar,
+img.header-avatar,
+img.conv-pill__avatar,
+img.group-avatar,
+img.member-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-fallback,
+.header-avatar.avatar-fallback,
+.conv-pill__avatar.avatar-fallback,
+.group-avatar.avatar-fallback,
+.member-avatar.avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
 }
 
 .avatar.mine {
@@ -2251,7 +2270,7 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  max-width: 80%;
+  max-width: calc(100% - 60px);
 }
 
 .bubble-wrap.mine {
