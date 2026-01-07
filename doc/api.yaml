@@ -209,8 +209,7 @@ components:
                     $ref: '#/components/schemas/User'
                 pagination:
                   type: object
-                  nullable: true
-                  description: Pagination metadata.
+                  description: Optional pagination metadata.
                   properties:
                     total:
                       type: integer
@@ -326,9 +325,8 @@ components:
                   items:
                     $ref: '#/components/schemas/Conversation'
                 pagination:
-                  description: Pagination metadata. May be null if pagination is not applicable.
+                  description: Optional pagination metadata.
                   type: object
-                  nullable: true
                   properties:
                     total:
                       type: integer
@@ -484,9 +482,8 @@ components:
           description: Opaque cursor to fetch newer messages (for pull-to-refresh).
         pagination:
           type: object
-          nullable: true
           deprecated: true
-          description: Pagination metadata (deprecated, use cursor-based instead).
+          description: Optional pagination metadata (deprecated, use cursor-based instead).
           properties:
             total:
               type: integer
@@ -691,8 +688,7 @@ components:
                     $ref: '#/components/schemas/Group'
                 pagination:
                   type: object
-                  nullable: true
-                  description: Pagination metadata.
+                  description: Optional pagination metadata.
                   properties:
                     total:
                       type: integer
@@ -1474,7 +1470,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /upload/messages:
+  /message-attachments:
     post:
       tags: [messages]
       operationId: uploadMessageFile
