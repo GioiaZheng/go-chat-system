@@ -21,16 +21,16 @@ import (
 // Section: DTOs (match OpenAPI JSON shapes; keep models.* as internal)
 
 type MessageDTO struct {
-	ID             string  `json:"id"`
-	Content        string  `json:"content"`
-	FileUrl        string  `json:"fileUrl,omitempty"`
-	SenderID       string  `json:"senderId"`
-	ConversationID string  `json:"conversationId,omitempty"`
-	CreatedAt      string  `json:"createdAt"`
-	Type           string  `json:"type,omitempty"`
-	Status         string  `json:"status,omitempty"`
-	Read           bool    `json:"read,omitempty"`
-	ReplyToID      *string `json:"replyToId,omitempty"`
+	ID             string       `json:"id"`
+	Content        string       `json:"content"`
+	FileUrl        string       `json:"fileUrl,omitempty"`
+	SenderID       string       `json:"senderId"`
+	ConversationID string       `json:"conversationId,omitempty"`
+	CreatedAt      string       `json:"createdAt"`
+	Type           string       `json:"type,omitempty"`
+	Status         string       `json:"status,omitempty"`
+	Read           bool         `json:"read,omitempty"`
+	ReplyToID      *string      `json:"replyToId,omitempty"`
 	Comments       []CommentDTO `json:"comments,omitempty"`
 }
 
@@ -346,7 +346,7 @@ func (rt *_router) getMessageByID(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-// Endpoint: POST /messages/{id}/forward -> forwardMessage (OpenAPI)
+// Endpoint: POST /messages/{id}/forwards -> forwardMessage (OpenAPI)
 
 // forwardRequest matches OpenAPI: target conversationId only.
 type forwardRequest struct {
@@ -398,7 +398,7 @@ func (rt *_router) forwardMessage(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-// Section: Comments (GET, POST, POST /uncomment)
+// Section: Comments (GET, POST, DELETE)
 
 // commentAddRequest matches OpenAPI CommentMessageRequest.
 type commentAddRequest struct {
@@ -551,7 +551,7 @@ func (rt *_router) deleteMessage(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-// POST /messages/upload
+// POST /message-attachments
 func (rt *_router) uploadMessageFile(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -596,7 +596,8 @@ func (rt *_router) uploadMessageFile(
 	url := "/uploads/" + fname
 
 	resp := map[string]interface{}{
-		"code": http.StatusCreated,
+		"code":    http.StatusCreated,
+		"message": "File uploaded successfully",
 		"data": map[string]string{
 			"fileUrl":  url,
 			"filename": header.Filename,

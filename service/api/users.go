@@ -53,7 +53,7 @@ func (rt *_router) getUserInfo(
 	})
 }
 
-// getUserProfile handles GET /users/profile/{userId} and returns public profile
+// getUserProfile handles GET /users/{userId}/profile and returns public profile
 // data. A minimal query-key fallback is kept for older clients.
 func (rt *_router) getUserProfile(
 	w http.ResponseWriter,
@@ -91,7 +91,7 @@ func (rt *_router) getUserProfile(
 	})
 }
 
-// setUserUsername handles PUT /users/set_username to update the display name
+// setUserUsername handles PUT /users/me/name to update the display name
 // (OpenAPI request field: name) while still accepting the legacy username key.
 func (rt *_router) setUserUsername(
 	w http.ResponseWriter,
@@ -133,8 +133,7 @@ func (rt *_router) setUserUsername(
 	})
 }
 
-// setMyUserName is the registered route handler that delegates to
-// setUserUsername for backwards compatibility.
+// setMyUserName is the registered route handler that delegates to setUserUsername.
 func (rt *_router) setMyUserName(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -144,7 +143,7 @@ func (rt *_router) setMyUserName(
 	rt.setUserUsername(w, r, ps, ctx)
 }
 
-// setUserPhoto handles PUT /users/set_photo for avatar updates.
+// setUserPhoto handles PUT /users/me/photo for avatar updates.
 // It supports preset query parameters or multipart uploads and returns a
 // FileUploadEnvelope: data.file { filename, uri, size? }.
 
@@ -265,8 +264,7 @@ func (rt *_router) setUserPhoto(
 	})
 }
 
-// setMyPhoto is the router alias that forwards to setUserPhoto to preserve
-// existing route names.
+// setMyPhoto is the router alias that forwards to setUserPhoto.
 func (rt *_router) setMyPhoto(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -309,4 +307,54 @@ func (rt *_router) searchUsers(
 			"items": users, // Matches the structure expected by api.js unwrap + searchUsers()
 		},
 	})
+}
+
+func (rt *_router) routeUsersGet(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
+	path := strings.TrimPrefix(ps.ByName("rest"), "/")
+	switch {
+	case path == "me":
+		rt.getUserInfo(w, r, ps, ctx)
+		return
+	case path == "search":
+		rt.searchUsers(w, r, ps, ctx)
+		return
+	case strings.HasSuffix(path, "/profile"):
+		userID := strings.TrimSuffix(path, "/profile")
+		userID = strings.Trim(userID, "/")
+		if userID == "" {
+			rt.sendError(w, http.StatusBadRequest, "Missing user id")
+			return
+		}
+		params := httprouter.Params{{Key: "userId", Value: userID}}
+		rt.getUserProfile(w, r, params, ctx)
+		return
+	default:
+		rt.sendError(w, http.StatusNotFound, "Not found")
+		return
+	}
+}
+
+func (rt *_router) routeUsersPut(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
+	path := strings.TrimPrefix(ps.ByName("rest"), "/")
+	switch path {
+	case "me/name":
+		rt.setMyUserName(w, r, ps, ctx)
+		return
+	case "me/photo":
+		rt.setMyPhoto(w, r, ps, ctx)
+		return
+	default:
+		rt.sendError(w, http.StatusNotFound, "Not found")
+		return
+	}
 }

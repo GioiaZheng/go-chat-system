@@ -1,5 +1,5 @@
 // file: service/database/user_database_methods.go
-//comment
+// comment
 package database
 
 import (

@@ -26,9 +26,6 @@ func (rt *_router) RegisterRoutes() {
 	// GET /liveness -> simple service liveness check
 	rt.router.GET("/liveness", rt.liveness)
 
-	// GET /healthz -> simple health check
-	rt.router.GET("/healthz", rt.healthz)
-
 	// Section: authenticated routes; every handler is wrapped to inject auth/context.
 
 	// Conversations
@@ -40,18 +37,10 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.DELETE("/conversations/:id", rt.wrap(rt.deleteConversation))
 
 	// Users
-	// PUT /users/set_username -> setMyUserName
-	// NOTE: despite path name, this updates the user's display name ("name") per spec.
-	rt.router.PUT("/users/set_username", rt.wrap(rt.setMyUserName))
-	// PUT /users/set_photo -> setMyPhoto (multipart/form-data)
-	rt.router.PUT("/users/set_photo", rt.wrap(rt.setMyPhoto))
-	// GET /users/me -> getUserInfo
-	rt.router.GET("/users/me", rt.wrap(rt.getUserInfo))
-	// GET /users/search?q=... -> searchUsers
-	rt.router.GET("/users/search", rt.wrap(rt.searchUsers))
-	// GET /users/profile/{userId} -> getUserProfile
-	// NOTE: path param name must be "userId" to match the spec.
-	rt.router.GET("/users/profile/:userId", rt.wrap(rt.getUserProfile))
+	// GET /users/* (me, search, {userId}/profile) -> dispatch to user handlers
+	rt.router.GET("/users/*rest", rt.wrap(rt.routeUsersGet))
+	// PUT /users/* (me/name, me/photo) -> dispatch to user handlers
+	rt.router.PUT("/users/*rest", rt.wrap(rt.routeUsersPut))
 
 	// Groups
 	// POST /groups -> createGroup
@@ -75,21 +64,20 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.GET("/messages", rt.wrap(rt.getMessages))
 	// POST /messages -> sendMessage
 	rt.router.POST("/messages", rt.wrap(rt.sendMessage))
-	// POST /upload/messages -> uploadMessageFile
-	// NOTE: put upload under /upload to avoid httprouter wildcard conflicts with /messages/:id routes.
-	rt.router.POST("/upload/messages", rt.wrap(rt.uploadMessageFile))
+	// POST /message-attachments -> uploadMessageFile
+	rt.router.POST("/message-attachments", rt.wrap(rt.uploadMessageFile))
 	// GET /messages/{id} -> getMessageByID
 	rt.router.GET("/messages/:id", rt.wrap(rt.getMessageByID))
 	// DELETE /messages/{id} -> deleteMessage
 	rt.router.DELETE("/messages/:id", rt.wrap(rt.deleteMessage))
-	// POST /messages/{id}/forward -> forwardMessage
-	rt.router.POST("/messages/:id/forward", rt.wrap(rt.forwardMessage))
+	// POST /messages/{id}/forwards -> forwardMessage
+	rt.router.POST("/messages/:id/forwards", rt.wrap(rt.forwardMessage))
 	// GET /messages/{id}/comment -> getMessageComments
 	rt.router.GET("/messages/:id/comment", rt.wrap(rt.getMessageComments))
 	// POST /messages/{id}/comment -> commentMessage
 	rt.router.POST("/messages/:id/comment", rt.wrap(rt.commentMessage))
-	// POST /messages/{id}/uncomment -> uncommentMessage
-	rt.router.POST("/messages/:id/uncomment", rt.wrap(rt.uncommentMessage))
+	// DELETE /messages/{id}/comment -> uncommentMessage
+	rt.router.DELETE("/messages/:id/comment", rt.wrap(rt.uncommentMessage))
 
 	// Section: static files served from the local uploads directory.
 	// The handler matches publicURL(...) outputs (e.g. /uploads/users/...).
