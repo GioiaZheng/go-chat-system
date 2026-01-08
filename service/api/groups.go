@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"log"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
@@ -101,11 +102,39 @@ func (rt *_router) createGroup(
 
 	// Ensure the creator is also a member.
 	push(userID)
-	sort.Strings(members)
+	resolvedMembers := make([]string, 0, len(members))
+	resolvedSeen := make(map[string]struct{}, len(members))
+	for _, member := range members {
+		if member == userID {
+			if _, ok := resolvedSeen[userID]; ok {
+				continue
+			}
+			resolvedSeen[userID] = struct{}{}
+			resolvedMembers = append(resolvedMembers, userID)
+			continue
+		}
+		resolvedID, err := rt.db.GetUserIDFromIdentifier(member)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				rt.sendError(w, http.StatusBadRequest, "Unknown member")
+				return
+			}
+			ctx.Logger.WithError(err).Error("failed to resolve group member id")
+			rt.sendError(w, http.StatusInternalServerError, "Failed to resolve group member")
+			return
+		}
+		if _, ok := resolvedSeen[resolvedID]; ok {
+			continue
+		}
+		resolvedSeen[resolvedID] = struct{}{}
+		resolvedMembers = append(resolvedMembers, resolvedID)
+	}
+	sort.Strings(resolvedMembers)
 
-	conv, err := rt.db.StartConversation(r.Context(), userID, members, groupName)
+	conv, err := rt.db.StartConversation(r.Context(), userID, resolvedMembers, groupName)
 	if err != nil {
 		ctx.Logger.WithError(err).Error("failed to create conversation for group")
+		log.Printf("ERROR creating conversation: %v", err)
 		rt.sendError(w, http.StatusInternalServerError, "Failed to create conversation")
 		return
 	}
@@ -125,7 +154,7 @@ func (rt *_router) createGroup(
 		rt.sendError(w, http.StatusInternalServerError, "Failed to create group")
 		return
 	}
-	if err := rt.db.AddGroupMembers(group.ID, members); err != nil {
+	if err := rt.db.AddGroupMembers(group.ID, resolvedMembers); err != nil {
 		ctx.Logger.WithError(err).Error("failed to add group members")
 		rt.sendError(w, http.StatusInternalServerError, "Failed to add group members")
 		return

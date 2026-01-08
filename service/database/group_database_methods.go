@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"log"
 	"time"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
@@ -55,7 +56,7 @@ func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 	}
 	defer rows.Close()
 
-	var result []models.Group
+	result := make([]models.Group, 0)
 	for rows.Next() {
 		var g models.Group
 		var createdAt sql.NullString
@@ -98,6 +99,7 @@ func (db *appdbimpl) getGroupMembersWithRole(groupID string) ([]models.GroupMemb
 		if err := rows.Scan(&gm.UserID, &gm.Name, &role, &avatar); err != nil {
 			return nil, err
 		}
+		gm.ID = gm.UserID
 		gm.Role = strings.TrimSpace(role)
 		if gm.Role == "" {
 			gm.Role = "member"
@@ -183,6 +185,9 @@ func (db *appdbimpl) CreateGroup(group models.Group) error {
 		INSERT INTO groups (id, name, avatar_url, conversation_id)
 		VALUES (?, ?, COALESCE(?, NULL), ?)
 	`, group.ID, group.Name, group.AvatarUrl, group.ConversationID)
+	if err != nil {
+		log.Printf("insert group error: %v", err)
+	}
 	return err
 }
 
@@ -201,6 +206,7 @@ func (db *appdbimpl) AddGroupMembers(groupID string, memberIDs []string) error {
 
 	for _, mid := range memberIDs {
 		if _, err := stmt.Exec(groupID, mid); err != nil {
+			log.Printf("insert group_members error: %v", err)
 			return err
 		}
 	}

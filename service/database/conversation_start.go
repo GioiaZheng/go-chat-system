@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -85,6 +86,7 @@ func (db *appdbimpl) StartConversation(
 		`INSERT INTO conversations (id, name) VALUES (?, ?)`,
 		convID, strings.TrimSpace(name),
 	); err != nil {
+		log.Printf("ERROR creating conversation: %v", err)
 		return models.Conversation{}, err
 	}
 
@@ -98,6 +100,7 @@ func (db *appdbimpl) StartConversation(
 
 	for _, uid := range all {
 		if _, err := stmt.ExecContext(ctx, convID, uid); err != nil {
+			log.Printf("insert conversation_members error: %v", err)
 			return models.Conversation{}, err
 		}
 	}
@@ -238,7 +241,6 @@ func (db *appdbimpl) GetConversationMembers(conversationID string) ([]string, er
 
 	return members, nil
 }
-
 
 // DeleteConversation removes a conversation after verifying it exists.
 func (db *appdbimpl) DeleteConversation(conversationID string) error {

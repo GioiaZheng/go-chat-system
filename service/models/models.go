@@ -21,6 +21,7 @@ type Group struct {
 
 // GroupMember describes a user's role within a group that is returned to clients.
 type GroupMember struct {
+	ID        string `json:"id,omitempty"`
 	UserID    string `json:"userId"`
 	Name      string `json:"name,omitempty"`
 	Role      string `json:"role,omitempty"`      // "admin" | "member"
