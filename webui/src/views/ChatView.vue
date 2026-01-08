@@ -528,6 +528,7 @@ const replyTarget = ref(null)
 const composerInput = ref(null)
 const replyHighlightId = ref('')
 const deletingMessageId = ref('')
+let autoRefreshTimer = null
 
 // Conversation rail data and filtering.
 const convList = ref([])
@@ -1652,12 +1653,73 @@ function updateConversationMeta(extra = {}) {
   )
 }
 
+function resetChatState() {
+  convList.value = []
+  convErr.value = ''
+  convSearch.value = ''
+  currentConv.value = null
+  isGroup.value = false
+  groupInfo.value = null
+  groupErr.value = ''
+  groupNotice.value = ''
+  groupNameDraft.value = ''
+  messages.value = []
+  draft.value = ''
+  replyTarget.value = null
+  forwardPanelOpen.value = false
+  forwardTargetMessage.value = null
+  forwardSearch.value = ''
+  forwardError.value = ''
+  notice.value = ''
+  err.value = ''
+}
+
+async function handleAuthChanged() {
+  await ensureAuthReady()
+  if (!isAuthenticated.value) {
+    resetChatState()
+    return router.replace('/login')
+  }
+
+  const currentId = String(currentUser.value?.id || '')
+  if (lastAuthUserId.value && lastAuthUserId.value !== currentId) {
+    resetChatState()
+  }
+  lastAuthUserId.value = currentId
+
+  await loadConversationList()
+  await loadConversationMeta()
+  await loadMessages()
+}
+
+function startAutoRefresh() {
+  if (autoRefreshTimer) return
+  autoRefreshTimer = setInterval(async () => {
+    if (!isAuthenticated.value) return
+    try {
+      await refreshConversations()
+      if (convId.value) {
+        await loadMessages()
+      }
+    } catch {}
+  }, 15000)
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+}
+
 // Initialize the view once authentication is confirmed.
 async function bootstrap() {
   await ensureAuthReady()
   if (!isAuthenticated.value) {
     return router.replace('/login')
   }
+
+  lastAuthUserId.value = String(currentUser.value?.id || '')
 
   await loadConversationList()
   await loadConversationMeta()
@@ -1666,11 +1728,15 @@ async function bootstrap() {
 
 onMounted(() => {
   window.addEventListener('conversations:refresh', handleConversationRefresh)
+  window.addEventListener('auth:changed', handleAuthChanged)
+  startAutoRefresh()
   bootstrap()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('conversations:refresh', handleConversationRefresh)
+  window.removeEventListener('auth:changed', handleAuthChanged)
+  stopAutoRefresh()
 })
 
 watch(

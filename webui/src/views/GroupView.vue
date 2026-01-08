@@ -49,7 +49,7 @@
               alt="group avatar"
             />
             <div class="info">
-              <div class="name">{{ groupName(g) }}</div>
+              <div class="name">{{ groupDisplayName(g) }}</div>
             </div>
           </div>
 
@@ -90,6 +90,29 @@
               <button class="btn sm" :disabled="busy || !addIds" @click="onAddMembers(g.id)">Add</button>
             </div>
 
+            <div class="row members">
+              <label class="lbl">Members</label>
+              <div class="member-list">
+                <div v-if="!manageMembers.length" class="muted">No members loaded.</div>
+                <div v-for="member in manageMembers" :key="member.id" class="member">
+                  <span v-if="!member.avatar" class="avatar-fallback sm">{{ initials(member) }}</span>
+                  <img v-else class="avatar sm" :src="member.avatar" alt="member avatar" />
+                  <div class="member-info">
+                    <div class="member-name">{{ member.name }}</div>
+                    <div v-if="member.username" class="sub">@{{ member.username }}</div>
+                  </div>
+                  <button
+                    v-if="member.id && member.id !== meId"
+                    class="btn sm ghost"
+                    :disabled="busy"
+                    @click="onRemoveMember(g.id, member.id)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="row leave">
               <button class="btn danger" :disabled="busy" @click="onLeave(g.id)">Leave Group</button>
             </div>
@@ -116,16 +139,18 @@ import {
   setGroupName,
   setGroupPhoto,
   addToGroup,
+  removeFromGroup,
   leaveGroup,
   getAvatarUrl,
   preferredDisplayName,
+  normalizeUser,
 } from '@/services/api'
 
 import { ensureAuthReady, isAuthenticated, currentUser, refreshProfile } from '@/services/auth'
 
 const router = useRouter()
 
-const groupName = (g) => preferredDisplayName(g) || 'Group'
+const groupDisplayName = (g) => preferredDisplayName(g) || 'Group'
 
 const meId = ref('')
 async function loadMe () {
@@ -150,6 +175,7 @@ const memberIdsRaw = ref('')
 const manageId = ref('')
 const editName = ref('')
 const addIds = ref('')
+const manageMembers = ref([])
 const busy = ref(false)
 const panelErr = ref('')
 const filePick = ref(null)
@@ -159,11 +185,20 @@ function normalizeGroups(list) {
   const arr = Array.isArray(list) ? list : (list?.items ?? list?.groups ?? [])
   return (arr || [])
     .map(g => {
-      const avatar = g.avatarUri || g.avatar_uri || g.avatar_url || g.avatar || ''
+      const raw = g?.group || g || {}
+      const avatar = raw.avatarUri || raw.avatar_uri || raw.avatar_url || raw.avatar || ''
       return {
-        id: g.id ?? g.group_id ?? g._id,
-        name: g.name ?? g.title ?? '',
-        conversation_id: g.conversation_id ?? g.conversationId ?? g.cid ?? null,
+        id: raw.id ?? raw.group_id ?? raw._id ?? g.id ?? g.group_id ?? g._id,
+        name: preferredDisplayName(raw),
+        conversation_id:
+          raw.conversation_id ??
+          raw.conversationId ??
+          raw.cid ??
+          raw.conversation?.id ??
+          g.conversation_id ??
+          g.conversationId ??
+          g.cid ??
+          null,
         avatar: avatar ? getAvatarUrl({ avatarUri: avatar, updatedAt: g.updatedAt || g.updated_at }) : '',
       }
     })
@@ -217,6 +252,18 @@ function initials(g) {
   const src = g?.name || g?.title || 'G'
   const match = String(src).match(/\b\w/g) || ['G']
   return match.slice(0, 2).join('').toUpperCase()
+}
+
+function normalizeMembers(list) {
+  return (Array.isArray(list) ? list : [])
+    .map(normalizeUser)
+    .map(u => ({
+      id: String(u.id || ''),
+      name: preferredDisplayName(u),
+      username: u.username || '',
+      avatar: getAvatarUrl(u),
+    }))
+    .filter(u => u.id)
 }
 
 async function loadList() {
@@ -281,6 +328,7 @@ function toggleManage(id) {
     manageId.value = ''
     editName.value = ''
     addIds.value = ''
+    manageMembers.value = []
     return
   }
   manageId.value = id
@@ -291,7 +339,16 @@ function toggleManage(id) {
 async function hydrateManage(id) {
   try {
     const g = await getGroupDetail(id)
-    editName.value = g?.name || ''
+    const detail = g?.group || g || {}
+    editName.value = preferredDisplayName(detail) || ''
+    const membersRaw =
+      detail?.members ||
+      detail?.participants ||
+      detail?.data?.members ||
+      detail?.data?.items ||
+      detail?.group?.members ||
+      []
+    manageMembers.value = normalizeMembers(membersRaw)
   } catch {}
 }
 
@@ -370,9 +427,26 @@ async function onAddMembers(id) {
     await addToGroup(id, list)
     addIds.value = ''
     // Reloading the list here keeps the on-screen data in sync.
+    await hydrateManage(id)
     await loadList()
   } catch (e) {
     panelErr.value = e?.response?.data?.message || e?.message || 'Failed to add members'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function onRemoveMember(id, memberId) {
+  panelErr.value = ''
+  if (!memberId) return
+  if (!confirm('Remove this member from the group?')) return
+  busy.value = true
+  try {
+    await removeFromGroup(id, memberId)
+    await hydrateManage(id)
+    await loadList()
+  } catch (e) {
+    panelErr.value = e?.response?.data?.message || e?.message || 'Failed to remove member'
   } finally {
     busy.value = false
   }
@@ -459,17 +533,44 @@ onMounted(async () => {
 .empty{ text-align:center; color:#64748b }
 
 .avatar{ object-fit:cover; }
+.avatar.sm{ width:28px; height:28px; border-radius:999px; }
 
 .avatar-fallback{
   display:inline-flex;
   align-items:center; justify-content:center;
+}
+.avatar-fallback.sm{
+  width:28px;
+  height:28px;
+  border-radius:999px;
+  background:#e2e8f0;
+  color:#475569;
+  font-size:.75rem;
 }
 
 .manage{
   border-top:1px dashed #e2e8f0; padding-top:10px; display:grid; gap:10px;
 }
 .row{ display:grid; grid-template-columns: 90px 1fr auto; gap:8px; align-items:center }
+.row.members{ align-items:start; }
 .lbl{ color:#475569; font-size:.92rem }
 .leave{ margin-top:4px; grid-template-columns: 1fr auto; }
 .panel-err{ color:#dc2626; font-size:.9rem }
+.member-list{
+  display:grid;
+  gap:8px;
+}
+.member{
+  display:grid;
+  grid-template-columns: auto 1fr auto;
+  gap:8px;
+  align-items:center;
+}
+.member-info{ min-width:0 }
+.member-name{ font-weight:600; color:#0f172a }
+.btn.ghost{
+  background:#f8fafc;
+  color:#0f172a;
+  box-shadow:none;
+}
 </style>

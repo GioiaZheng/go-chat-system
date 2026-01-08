@@ -283,19 +283,23 @@ export async function getMyProfile() {
 export async function getUserProfile(userId) {
   const id = String(userId || '').trim()
   if (!id) throw new Error('userId required')
-  return unwrap(await get(`/users/profile/${encodeURIComponent(id)}`))
+  return unwrap(await get(`/users/${encodeURIComponent(id)}/profile`))
 }
 
 export async function setMyUserName(name) {
   if (!name) throw new Error('empty name')
   try {
-    return unwrap(await put('/users/set_username', { name }))
+    return unwrap(await put('/users/me/name', { name }))
   } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || ''
     if (e?.response?.status === 409) {
       throw new Error('Username already taken. Please choose another.')
     }
-    const msg = e?.response?.data?.message || e?.message || 'Failed to set username'
-    throw new Error(msg)
+    if (e?.response?.status === 400 && /update user name/i.test(msg)) {
+      throw new Error('Name is already in use. Please choose another.')
+    }
+    const fallback = msg || 'Failed to set username'
+    throw new Error(fallback)
   }
 }
 
@@ -305,7 +309,7 @@ export async function setMyPhotoFile(file) {
   const form = new FormData()
   form.append('upload', file, file.name)
   try {
-    return unwrap(await put('/users/set_photo', form, {
+    return unwrap(await put('/users/me/photo', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }))
   } catch (e) {
@@ -548,10 +552,7 @@ export async function sendImageMessage({ conversationId, file, caption = '', rep
   if (!file) throw new Error('No file selected')
   
   // 1) Upload the binary first
-  const form = new FormData()
-  form.append('upload', file, file.name)
-
-  const r = unwrap(await post('/upload/messages', form))
+  const r = await uploadMessageAttachment(file)
 
   const fileUrl  = r?.fileUrl  || r?.file_url  || ''
   const filename = r?.filename || file.name
@@ -571,6 +572,13 @@ export async function sendImageMessage({ conversationId, file, caption = '', rep
   })
 }
 
+export async function uploadMessageAttachment(file) {
+  if (!file) throw new Error('No file selected')
+  const form = new FormData()
+  form.append('upload', file, file.name)
+  return unwrap(await post('/message-attachments', form))
+}
+
 export async function getMessageById(id) {
   return unwrap(await get(`/messages/${encodeURIComponent(String(id))}`))
 }
@@ -581,7 +589,7 @@ export async function deleteMessage(id) {
 
 export async function forwardMessage(messageId, conversationId) {
   return unwrap(await post(
-    `/messages/${encodeURIComponent(String(messageId))}/forward`,
+    `/messages/${encodeURIComponent(String(messageId))}/forwards`,
     { conversationId: String(conversationId) }
   ))
 }
@@ -616,10 +624,10 @@ export async function commentMessage(msgId, payload) {
 
 
 
-// Remove comments: backend ignores the body and only expects a POST.
+// Remove comments: OpenAPI uses DELETE /messages/{id}/comment.
 export async function uncommentMessage(id) {
   const mid = encodeURIComponent(String(id))
-  return unwrap(await post(`/messages/${mid}/uncomment`))
+  return unwrap(await del(`/messages/${mid}/comment`))
 }
 
 // Semantic aliases for convenience.
