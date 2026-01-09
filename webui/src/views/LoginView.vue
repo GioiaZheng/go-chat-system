@@ -57,7 +57,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
-import { ensureAuthReady, isAuthenticated, login as performLogin } from '@/services/auth'
+import { currentUser, ensureAuthReady, isAuthenticated, login as performLogin } from '@/services/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -76,7 +76,9 @@ onMounted(async () => {
 
   // Skip the form when a valid token is already stored.
   await ensureAuthReady()
-  if (isAuthenticated.value) router.replace('/conversations')
+  if (isAuthenticated.value) {
+    router.replace('/conversations')
+  }
 })
 
 onUnmounted(() => {
@@ -103,9 +105,11 @@ async function login () {
   try {
     await performLogin(name.value)
 
-    // Honor a redirect query parameter when present.
-    const next = (route.query.redirect && String(route.query.redirect)) || '/conversations'
-    router.replace(next)
+    const displayName = currentUser.value?.name || name.value
+    if (displayName) {
+      sessionStorage.setItem('toast:welcome', displayName)
+    }
+    router.replace('/conversations')
   } catch (e) {
     const status = e?.response?.status
     if (status === 409) {
