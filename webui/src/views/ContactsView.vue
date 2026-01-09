@@ -5,21 +5,21 @@
       <div class="title">Contacts</div>
     </header>
 
-    <section class="content">
+    <section class="workspace">
       <div class="content-inner">
-        <div class="search">
-          <input
-            v-model.trim="q"
-            class="input"
-            type="text"
-            placeholder="Search by name/username"
-            @keyup.enter="onSearch"
-          />
-          <button class="btn btn-secondary" @click="onSearch">Search</button>
-        </div>
+        <div class="panel">
+          <div class="list-pane">
+            <div class="list-search">
+              <input
+                v-model.trim="q"
+                class="input"
+                type="text"
+                placeholder="Search by name/username"
+                @keyup.enter="onSearch"
+              />
+              <button class="btn btn-search" @click="onSearch">Search</button>
+            </div>
 
-        <div class="contacts-layout">
-          <div>
             <div v-if="loading" class="loading">
               <span class="spinner" aria-hidden="true"></span>
               Loading contacts…
@@ -28,39 +28,58 @@
             <ErrorMsg v-else-if="err" :text="err" class="mb-2" />
             <button v-if="err" class="btn btn-outline mb-3" @click="load">Retry</button>
 
-            <ul v-else class="list">
-              <li v-for="u in users" :key="asId(u)" class="item">
-                <button
-                  class="item-button"
-                  type="button"
-                  :disabled="creatingId === asId(u)"
-                  @click="openChat(u)"
-                >
-                  <div class="left">
-                    <span v-if="!avatar(u)" class="avatar-fallback avatar-circle">{{ initials(u) }}</span>
-                    <img v-else :src="avatar(u)" class="avatar avatar-circle" alt="avatar" />
-                    <div class="meta">
-                      <div class="name">{{ displayName(u) }}</div>
-                      <div class="preview">
-                        {{ lastPreviewFor(u) }}
-                      </div>
+            <ul v-else class="list" role="list">
+              <li
+                v-for="u in sortedUsers"
+                :key="asId(u)"
+                class="item"
+                :class="{ active: activeId === asId(u), disabled: creatingId === asId(u) }"
+                role="button"
+                tabindex="0"
+                @click="handleSelect(u)"
+                @keydown.enter.prevent="handleSelect(u)"
+                @keydown.space.prevent="handleSelect(u)"
+              >
+                <div class="left">
+                  <span v-if="!avatar(u)" class="avatar-fallback avatar-circle">{{ initials(u) }}</span>
+                  <img v-else :src="avatar(u)" class="avatar avatar-circle" alt="avatar" />
+                </div>
+                <div class="info">
+                  <div class="top">
+                    <div class="name">{{ displayName(u) }}</div>
+                    <div class="time">{{ lastTimeFor(u) }}</div>
+                  </div>
+                  <div class="bottom">
+                    <div class="preview">
+                      {{ lastPreviewFor(u) }}
                     </div>
                   </div>
-                  <div class="meta-right">
-                    <span class="time">{{ lastTimeFor(u) }}</span>
-                  </div>
-                </button>
+                </div>
               </li>
-              <li v-if="!users.length" class="empty">No users.</li>
+              <li v-if="!sortedUsers.length" class="empty">No users.</li>
             </ul>
           </div>
 
-          <aside class="empty-state" aria-live="polite">
-            <div class="empty-title">Select a contact to start chatting</div>
-            <div class="empty-subtitle">
-              Choose someone from the list to open a conversation.
+          <div class="conversation-pane">
+            <div class="preview-empty">
+              <div class="preview-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" role="img" focusable="false">
+                  <path
+                    d="M15 18h18M15 24h12M6 22c0-7.732 6.268-14 14-14h8c7.732 0 14 6.268 14 14s-6.268 14-14 14h-8l-8 6v-8c-3.314-2.564-6-7.106-6-12z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </div>
+              <h2 class="preview-title">Select a contact to start chatting</h2>
+              <p class="preview-description">
+                Your chats will appear here once you open a conversation.
+              </p>
             </div>
-          </aside>
+          </div>
         </div>
       </div>
     </section>
@@ -90,9 +109,10 @@ const loading = ref(false)
 const err = ref('')
 const users = ref([])
 const creatingId = ref('') // Prevent duplicate conversation creation on rapid clicks
+const activeId = ref('')
 const conversationIndex = ref({})
 
-const PREVIEW_LIMIT = 40
+const PREVIEW_LIMIT = 20
 
 const asId          = (u) => String(u.id ?? u.user_id ?? u._id ?? '')
 const displayName   = (u) => preferredDisplayName(u)
@@ -100,9 +120,25 @@ const avatar        = (u) => getAvatarUrl({ avatarUri: u.avatarUri ?? u.avatar_u
 const initials      = (u) => initialsFor({ name: displayName(u) }, 'U')
 const me = computed(() => currentUser.value)
 const myId = () => String(me.value?.id ?? '')
+const sortedUsers = computed(() => {
+  const items = Array.isArray(users.value) ? [...users.value] : []
+  return items.sort((a, b) => {
+    const metaA = conversationMetaFor(a)
+    const metaB = conversationMetaFor(b)
+    const timeA = metaA?.lastTime ? new Date(metaA.lastTime).getTime() : 0
+    const timeB = metaB?.lastTime ? new Date(metaB.lastTime).getTime() : 0
+
+    if (timeA && !timeB) return -1
+    if (!timeA && timeB) return 1
+    if (timeA && timeB) return timeB - timeA
+    return displayName(a).localeCompare(displayName(b))
+  })
+})
 
 function cleanPreviewText(value = '') {
-  return String(value || '').trim()
+  return String(value || '')
+    .replace(/\[forwarded message\]|\[forwarded\]|forwarded message:?/gi, '')
+    .trim()
 }
 
 function formatPreviewText(value = '') {
@@ -112,17 +148,19 @@ function formatPreviewText(value = '') {
 }
 
 function previewForMessage(raw = {}) {
-  if (!raw) return ''
+  if (raw?.deleted || raw?.isDeleted) return '[Deleted]'
+
   const type = String(raw?.type || raw?.Type || '').toLowerCase()
   const fileUrl = raw?.fileUrl ?? raw?.file_url ?? raw?.FileUrl
   const content = raw?.content ?? raw?.Content ?? ''
   const text = formatPreviewText(content)
+  const isFile = type === 'file'
   const isImage = type === 'image'
-  const isFile = type === 'file' || (!isImage && !!fileUrl)
-  const mediaLabel = isImage ? '[image]' : (isFile ? '[file]' : '')
+  const mediaLabel = isFile ? '[file]' : (isImage || fileUrl ? '[img]' : '')
 
   if (mediaLabel && text) return `${mediaLabel} ${text}`
   if (mediaLabel) return mediaLabel
+
   return text
 }
 
@@ -281,10 +319,16 @@ function lastTimeFor(u) {
   return formatTimestamp(meta?.lastTime)
 }
 
+function handleSelect(u) {
+  if (creatingId.value === asId(u)) return
+  openChat(u)
+}
+
 async function openChat (u) {
   err.value = ''
   const id = asId(u)
   if (!id) return
+  activeId.value = id
   const existing = conversationMetaFor(u)
   if (existing?.conversationId) {
     router.push({ name: 'chat', params: { type: 'conv', id: existing.conversationId } })
@@ -354,47 +398,71 @@ onMounted(() => {
   font-weight:800; color:#0f172a;
 }
 
-.content{
+.workspace{
   flex:1 1 auto;
   margin:0;
-  padding:16px 20px;
+  padding:16px;
   width:100%;
   display:flex;
-  justify-content:flex-start;
+  flex-direction:column;
+  min-height:0;
 }
 
 .content-inner{
-  width:min(100%, 1080px);
+  width:100%;
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:12px;
+  flex:1 1 auto;
+  min-height:0;
 }
 
-.search{ display:flex; gap:8px; width:100%; }
-.input{
-  flex:1; border:1px solid #cbd5e1; border-radius:10px; padding:.5rem .75rem; outline:none;
+.list-search{
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
-.input:focus{ border-color:#22c55e; box-shadow:0 0 0 .2rem rgba(34,197,94,.15); }
+.input{
+  flex:1;
+  border:1px solid #e5e7eb;
+  border-radius:var(--radius-control);
+  padding:10px 12px;
+  outline:none;
+  background:#fff;
+  font-size:var(--font-primary);
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.input:focus{ border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.15); }
 .btn{
-  border:0; border-radius:10px; color:#fff; padding:.5rem .9rem; white-space:nowrap;
+  border:0;
+  border-radius:var(--radius-control);
+  color:#fff;
+  padding:0.45rem 0.75rem;
+  white-space:nowrap;
   background:#34d399;
-  box-shadow:0 .5rem 1rem rgba(16,185,129,.2);
+  box-shadow:0 .35rem .8rem rgba(16,185,129,.2);
   transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  font-weight:700;
 }
 .btn:hover{
   background:#10b981;
-  box-shadow:0 .7rem 1.2rem rgba(16,185,129,.32);
+  box-shadow:0 .5rem 1rem rgba(16,185,129,.32);
   transform:translateY(-1px);
 }
 .btn:disabled { opacity:.6; cursor:not-allowed; }
-.btn:disabled:hover { background:#34d399; box-shadow:0 .5rem 1rem rgba(16,185,129,.2); transform:none; }
-.btn-secondary{
-  background:#475569;
+.btn:disabled:hover { background:#34d399; box-shadow:0 .35rem .8rem rgba(16,185,129,.2); transform:none; }
+.btn-search{
+  background:#fff;
+  color:#16a34a;
+  border:1px solid #bbf7d0;
   box-shadow:none;
+  padding:8px 12px;
 }
-.btn-secondary:hover{
-  background:#334155;
-  box-shadow:none;
+.btn-search:hover{
+  background:#ecfdf3;
+  border-color:#22c55e;
+  color:#166534;
+  box-shadow:0 8px 16px rgba(15,23,42,0.06);
 }
 .btn-outline{
   background:#fff; color:#334155; border:1px solid #cbd5e1; box-shadow:none;
@@ -412,47 +480,71 @@ onMounted(() => {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.contacts-layout{
-  display:grid;
-  grid-template-columns:minmax(280px, 1fr) minmax(260px, 360px);
-  gap:20px;
-  align-items:start;
-}
-.list{ list-style:none; padding:0; margin:0; display:grid; gap:12px }
-.item{
-  background:#fff;
-  border:1px solid #e2e8f0;
-  border-radius:var(--radius-control);
-  box-shadow:0 4px 12px rgba(15,23,42,.06);
+.panel{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:row;
+  background:var(--panel);
+  border:1px solid var(--border);
   overflow:hidden;
 }
-.item-button{
-  width:100%;
-  border:0;
-  background:transparent;
+.list-pane{
+  flex:0 0 320px;
+  background:var(--panel);
+  border-right:1px solid var(--border);
   display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:14px;
+  flex-direction:column;
+  padding:16px;
+  gap:10px;
+  min-height:0;
+  overflow:auto;
+}
+.list{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px; min-height:0; }
+.item{
+  background:#ffffff;
+  border:1px solid var(--border);
+  border-radius:var(--radius-control);
   padding:14px 16px;
-  text-align:left;
-  cursor:pointer;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:14px;
+  box-shadow:0 4px 12px rgba(15,23,42,.04);
+  overflow:hidden;
   transition:background .15s ease, box-shadow .15s ease, border-color .15s ease;
+  position:relative;
+  cursor:pointer;
 }
-.item-button:hover{
-  background:#f8fafc;
+.item:hover{
+  background:rgba(34, 197, 94, 0.1);
+  border-color:rgba(34, 197, 94, 0.35);
+  box-shadow:0 6px 16px rgba(15,23,42,0.08);
 }
-.item-button:disabled{
+.item.active{
+  background:#dcfce7;
+  border-color:#22c55e;
+}
+.item.active::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:10px;
+  bottom:10px;
+  width:3px;
+  background:#22c55e;
+}
+.item.disabled{
   cursor:not-allowed;
   opacity:.7;
 }
-.left{ display:flex; align-items:center; gap:12px; min-width:0; flex:1; }
+.left{ display:flex; align-items:center; justify-content:center; }
 .avatar,
 .avatar-fallback{
-  width:40px;
-  height:40px;
+  width:44px;
+  height:44px;
   border-radius:50%;
-  flex:0 0 40px;
+  flex:0 0 44px;
 }
 .avatar{
   object-fit:cover;
@@ -466,38 +558,78 @@ onMounted(() => {
   color:#0f766e;
   font-weight:700;
 }
-.meta{ flex:1; min-width:0; }
-.name{ font-weight:600; color:#0f172a }
-.preview{ color:#64748b; font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.meta-right{
+.info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.top{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:12px;
+}
+.name{ font-weight:600; color:#0f172a; font-size:var(--font-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.time{
   color:#94a3b8;
   font-size:.85rem;
   white-space:nowrap;
-  flex:0 0 auto;
 }
+.preview{ color:#64748b; font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .empty{ text-align:center; color:#64748b }
-.empty-state{
-  border:1px dashed #d8e1ee;
-  border-radius:16px;
-  padding:20px;
-  background:#f8fafc;
+.conversation-pane{
+  flex:1 1 auto;
+  min-width:0;
+  background:var(--panel);
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:24px;
+  border-left:1px solid var(--border);
+}
+.preview-empty{
+  max-width:520px;
+  margin-top:12px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  color:#1f2937;
+}
+.preview-icon{
+  width:64px;
+  height:64px;
+  border-radius:22px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#16a34a;
+  background:linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(22, 163, 74, 0.1));
+  box-shadow:0 10px 24px rgba(22, 163, 74, 0.12);
+}
+.preview-icon svg{
+  width:32px;
+  height:32px;
+}
+.preview-title{
+  font-size:1.4rem;
+  font-weight:800;
+  margin:0;
+  color:#1f2937;
+}
+.preview-description{
+  margin:0;
   color:#475569;
-}
-.empty-title{
-  font-weight:600;
-  margin-bottom:6px;
-  color:#0f172a;
-}
-.empty-subtitle{
-  font-size:.92rem;
-  color:#64748b;
+  font-size:var(--font-primary);
 }
 @media (max-width: 900px){
-  .contacts-layout{
-    grid-template-columns:1fr;
+  .panel{
+    flex-direction:column;
   }
-  .empty-state{
-    order:-1;
+  .list-pane{
+    flex:0 0 auto;
+    border-right:0;
+    border-bottom:1px solid var(--border);
+  }
+  .conversation-pane{
+    border-left:0;
   }
 }
 </style>
