@@ -1,10 +1,6 @@
 <!-- src/views/NewGroupView.vue: Guided flow for creating a new group chat. -->
 <template>
   <div class="page">
-    <header class="topbar">
-      <div class="title">Create Group</div>
-    </header>
-
     <section class="content">
       <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
@@ -234,19 +230,6 @@ async function create() {
     radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
     linear-gradient(180deg, #ffffff, #f7fafe);
 }
-.topbar {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #fff;
-}
-.title {
-  font-weight: 800; color: #0f172a;
-}
-
 .content {
   flex: 1 1 auto;
   padding: 24px;

@@ -48,7 +48,10 @@
           <button v-if="showDelete" class="del" @click.stop="emitDelete(c)">Delete</button>
         </li>
 
-        <li v-if="!privateConvs.length" class="empty">{{ emptyDirectText }}</li>
+        <li v-if="!privateConvs.length" class="empty">
+          <span class="empty-icon" aria-hidden="true">💬</span>
+          <span>{{ emptyDirectText }}</span>
+        </li>
       </ul>
     </div>
 
@@ -81,7 +84,10 @@
           </div>
           <button v-if="showDelete" class="del" @click.stop="emitDelete(c)">Delete</button>
         </li>
-        <li v-if="!groupConvs.length" class="empty">{{ emptyGroupText }}</li>
+        <li v-if="!groupConvs.length" class="empty">
+          <span class="empty-icon" aria-hidden="true">👥</span>
+          <span>{{ emptyGroupText }}</span>
+        </li>
       </ul>
     </div>
 
@@ -210,9 +216,9 @@ function emitDelete(c) {
 }
 
 .section-head.second {
-  margin-top: 4px;
+  margin-top: 12px;
   border-top: 1px solid #e5e7eb;
-  padding-top: 10px;
+  padding-top: 14px;
 }
 
 .section-title {
@@ -314,8 +320,7 @@ function emitDelete(c) {
 }
 
 .top {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
   align-items: center;
   gap: 12px;
 }
@@ -327,9 +332,11 @@ function emitDelete(c) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .time {
+  margin-left: auto;
   font-size: 0.92rem;
   color: #64748b;
   white-space: nowrap;
@@ -369,5 +376,14 @@ function emitDelete(c) {
   text-align: center;
   color: #6b7280;
   padding: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.empty-icon {
+  font-size: 1rem;
 }
 </style>

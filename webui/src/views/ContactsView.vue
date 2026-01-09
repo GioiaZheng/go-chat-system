@@ -1,10 +1,6 @@
 <!-- src/views/ContactsView.vue: Contact directory for launching private chats. -->
 <template>
   <div class="page">
-    <header class="topbar">
-      <div class="title">Contacts</div>
-    </header>
-
     <section class="workspace">
       <div class="content-inner">
         <div class="panel">
@@ -56,29 +52,11 @@
                   </div>
                 </div>
               </li>
-              <li v-if="!sortedUsers.length" class="empty">No users.</li>
+              <li v-if="!sortedUsers.length" class="empty">
+                <span class="empty-icon" aria-hidden="true">👥</span>
+                <span>No users.</span>
+              </li>
             </ul>
-          </div>
-
-          <div class="conversation-pane">
-            <div class="preview-empty">
-              <div class="preview-icon" aria-hidden="true">
-                <svg viewBox="0 0 48 48" role="img" focusable="false">
-                  <path
-                    d="M15 18h18M15 24h12M6 22c0-7.732 6.268-14 14-14h8c7.732 0 14 6.268 14 14s-6.268 14-14 14h-8l-8 6v-8c-3.314-2.564-6-7.106-6-12z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </div>
-              <h2 class="preview-title">Choose a chat to view messages</h2>
-              <p class="preview-description">
-                Your chats will appear here once you start a conversation.
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -156,7 +134,7 @@ function previewForMessage(raw = {}) {
   const text = formatPreviewText(content)
   const isFile = type === 'file'
   const isImage = type === 'image'
-  const mediaLabel = isFile ? '[file]' : (isImage || fileUrl ? '[img]' : '')
+  const mediaLabel = isFile ? '[file]' : (isImage || fileUrl ? '[image]' : '')
 
   if (mediaLabel && text) return `${mediaLabel} ${text}`
   if (mediaLabel) return mediaLabel
@@ -388,21 +366,6 @@ onMounted(() => {
   background: #e5e7eb;
   color: #1f2937;
 }
-.topbar{
-  height: 56px;
-  display: grid;
-  place-items: center;
-  padding: 0 18px;
-  border-bottom: 1px solid rgba(20, 100, 60, 0.06);
-  background: #f8fafc;
-}
-.title{
-  font-weight: 700;
-  font-size: var(--font-title);
-  color: #0f172a;
-  text-align: center;
-}
-
 .workspace{
   flex:1 1 auto;
   margin:0;
@@ -461,9 +424,9 @@ onMounted(() => {
 .btn:disabled { opacity:.6; cursor:not-allowed; }
 .btn:disabled:hover { background:#32d583; color:#fff; box-shadow:0 .35rem .8rem rgba(50, 213, 131, 0.22); transform:none; }
 .btn-search{
-  background:#e5e7eb;
-  color:#1f2937;
-  border:1px solid #e5e7eb;
+  background:#f1f5f9;
+  color:#0f172a;
+  border:1px solid #e2e8f0;
   box-shadow:none;
   padding:8px 12px;
 }
@@ -499,9 +462,9 @@ onMounted(() => {
   overflow:hidden;
 }
 .list-pane{
-  flex:0 0 360px;
+  flex:1 1 auto;
   background:var(--panel);
-  border-right:1px solid var(--border);
+  border-right:0;
   display:flex;
   flex-direction:column;
   padding:16px;
@@ -586,64 +549,29 @@ onMounted(() => {
 }
 .info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .top{
-  display:grid;
-  grid-template-columns:1fr auto;
+  display:flex;
   align-items:center;
   gap:12px;
 }
-.name{ font-weight:600; color:#0f172a; font-size:var(--font-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.name{ font-weight:600; color:#0f172a; font-size:var(--font-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .time{
   color:#64748b;
   font-size:.85rem;
   white-space:nowrap;
+  margin-left:auto;
 }
 .preview{ color:#64748b; font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.empty{ text-align:center; color:#64748b }
-.conversation-pane{
-  flex:1 1 auto;
-  min-width:0;
-  background:var(--panel);
-  display:flex;
-  align-items:flex-start;
-  justify-content:center;
-  padding:24px;
-  border-left:1px solid var(--border);
-}
-.preview-empty{
-  max-width:520px;
-  margin-top:12px;
+.empty{
   text-align:center;
+  color:#64748b;
   display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:12px;
-  color:#1f2937;
-}
-.preview-icon{
-  width:64px;
-  height:64px;
-  border-radius:22px;
-  display:inline-flex;
   align-items:center;
   justify-content:center;
-  color:#16a34a;
-  background:linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(22, 163, 74, 0.1));
-  box-shadow:0 10px 24px rgba(22, 163, 74, 0.12);
+  gap:8px;
+  font-weight:600;
 }
-.preview-icon svg{
-  width:32px;
-  height:32px;
-}
-.preview-title{
-  font-size:1.4rem;
-  font-weight:800;
-  margin:0;
-  color:#1f2937;
-}
-.preview-description{
-  margin:0;
-  color:#475569;
-  font-size:var(--font-primary);
+.empty-icon{
+  font-size:1rem;
 }
 @media (max-width: 900px){
   .panel{
@@ -652,10 +580,7 @@ onMounted(() => {
   .list-pane{
     flex:0 0 auto;
     border-right:0;
-    border-bottom:1px solid var(--border);
-  }
-  .conversation-pane{
-    border-left:0;
+    border-bottom:0;
   }
 }
 </style>

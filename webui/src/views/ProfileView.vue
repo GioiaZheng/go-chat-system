@@ -2,12 +2,6 @@
 <template>
   <div class="page">
     <main class="wrap">
-      <div class="page-title">
-        <div>
-          <h2 class="title">My Profile</h2>
-          <p class="subtitle">Manage how you appear across chats and groups.</p>
-        </div>
-      </div>
 
       <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
@@ -337,28 +331,11 @@ function handleError(e, fallback) {
 }
 .wrap {
   flex: 1 1 auto;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 16px 24px 24px;
-  width: 100%;
-}
-.page-title {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 4px;
-}
-.subtitle {
+  max-width: 760px;
   margin: 0;
-  color: #64748b;
-  font-size: 0.95rem;
+  padding: 24px 32px;
+  width: 100%;
+  align-self: flex-start;
 }
 
 .card {

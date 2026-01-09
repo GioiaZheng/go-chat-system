@@ -1,10 +1,6 @@
 <!-- src/views/GroupView.vue: Group directory with creation and management panels. -->
 <template>
   <div class="page">
-    <header class="topbar">
-      <div class="title">Groups</div>
-    </header>
-
     <section class="content">
       <ErrorMsg v-if="err" :text="err" class="mb-2" />
       <p v-else-if="notice" class="notice">{{ notice }}</p>
@@ -497,8 +493,14 @@ async function onLeave(id) {
   busy.value = true
   try {
     await leaveGroup(id)
-    if (manageId.value === id) manageId.value = ''
     const target = groups.value.find(g => String(g.id) === String(id))
+    groups.value = groups.value.filter(g => String(g.id) !== String(id))
+    if (manageId.value === id) {
+      manageId.value = ''
+      editName.value = ''
+      addIds.value = ''
+      manageMembers.value = []
+    }
     await refreshGroupMeta(id, {
       conversationId: target?.conversation_id,
       name: target?.name,
@@ -543,11 +545,6 @@ onMounted(async () => {
     linear-gradient(180deg,#ffffff,#f7fafe);
   color:#0f172a;
 }
-.topbar{
-  height:56px; display:flex; align-items:center; justify-content:space-between;
-  padding:0 18px; border-bottom:1px solid rgba(20,100,60,.08); background:#fff8; backdrop-filter: blur(6px);
-}
-.title{ font-weight:800; color:#0f172a; }
 .content{ max-width:1100px; margin:0 auto; padding:16px; }
 
 .card{
@@ -624,6 +621,9 @@ onMounted(async () => {
 .member-list{
   display:grid;
   gap:8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .member{
   display:grid;
@@ -635,7 +635,14 @@ onMounted(async () => {
 .member-name{ font-weight:600; color:#0f172a }
 .btn.ghost{
   background:#f8fafc;
-  color:#0f172a;
+  color:#64748b;
   box-shadow:none;
+  border:1px solid #e2e8f0;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.btn.ghost:hover{
+  color:#dc2626;
+  background:#fee2e2;
+  border-color:#fecaca;
 }
 </style>
