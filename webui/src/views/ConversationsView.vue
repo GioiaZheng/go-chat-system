@@ -133,13 +133,23 @@ const search = ref('')
 const selectedId = ref('')
 let refreshTimer = null
 
-function previewForMessage(raw = {}) {
-  const isForwarded = Boolean(raw?.forwardedFrom || raw?.forwarded_from)
-  if (isForwarded) return '[Forwarded message]'
-  if (raw?.type === 'image') return '[Image]'
-  if (raw?.type === 'file') return '[File]'
+const PREVIEW_LIMIT = 30
 
-  return (
+function truncatePreview(value = '') {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  if (text.length <= PREVIEW_LIMIT) return text
+  return `${text.slice(0, PREVIEW_LIMIT)}...`
+}
+
+function previewForMessage(raw = {}) {
+  if (raw?.deleted) return '(deleted)'
+
+  const type = String(raw?.type || '').toLowerCase()
+  if (type === 'image' || raw?.imageUrl || raw?.image_url) return '[Image]'
+  if (type === 'file' || raw?.fileUrl || raw?.file_url) return '[File]'
+
+  const content =
     raw?.content ||
     raw?.text ||
     raw?.body ||
@@ -147,8 +157,9 @@ function previewForMessage(raw = {}) {
     raw?.Content ||
     raw?.Text ||
     raw?.Body ||
-    (raw?.fileAbsUrl ? '[image]' : '')
-  )
+    ''
+
+  return truncatePreview(content)
 }
 
 // Helper to read the current user identifier as a string.

@@ -161,13 +161,13 @@
                       <!-- Incoming avatar -->
                       <span
                         v-if="!isMine(m) && !avatarUrlForMessage(m)"
-                        class="avatar avatar-fallback avatar-circle"
+                        class="avatar avatar-fallback avatar-circle message-avatar"
                       >
                         {{ avatarInitial(m) }}
                       </span>
                       <img
                         v-else-if="!isMine(m)"
-                        class="avatar avatar-circle"
+                        class="avatar avatar-circle message-avatar"
                         :src="avatarUrlForMessage(m)"
                         alt="avatar"
                         @error="onAvatarError(avatarUrlForMessage(m))"
@@ -283,13 +283,13 @@
                       <!-- My avatar -->
                       <span
                         v-if="isMine(m) && !myAvatarUrl"
-                        class="avatar avatar-fallback avatar-circle mine"
+                        class="avatar avatar-fallback avatar-circle mine message-avatar"
                       >
                         {{ avatarInitial(m) }}
                       </span>
                       <img
                         v-else-if="isMine(m)"
-                        class="avatar avatar-circle mine"
+                        class="avatar avatar-circle mine message-avatar"
                         :src="myAvatarUrl"
                         alt="avatar"
                       />
@@ -676,13 +676,23 @@ function convTime(t) {
   return `${m}/${day}`
 }
 
-function previewForMessage(raw = {}) {
-  const isForwarded = Boolean(raw?.forwardedFrom || raw?.forwarded_from)
-  if (isForwarded) return '[Forwarded message]'
-  if (raw?.type === 'image') return '[Image]'
-  if (raw?.type === 'file') return '[File]'
+const PREVIEW_LIMIT = 30
 
-  return (
+function truncatePreview(value = '') {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  if (text.length <= PREVIEW_LIMIT) return text
+  return `${text.slice(0, PREVIEW_LIMIT)}...`
+}
+
+function previewForMessage(raw = {}) {
+  if (raw?.deleted) return '(deleted)'
+
+  const type = String(raw?.type || '').toLowerCase()
+  if (type === 'image' || raw?.imageUrl || raw?.image_url) return '[Image]'
+  if (type === 'file' || raw?.fileUrl || raw?.file_url) return '[File]'
+
+  const content =
     raw?.content ||
     raw?.text ||
     raw?.body ||
@@ -690,8 +700,9 @@ function previewForMessage(raw = {}) {
     raw?.Content ||
     raw?.Text ||
     raw?.Body ||
-    (raw?.fileAbsUrl ? '[image]' : '')
-  )
+    ''
+
+  return truncatePreview(content)
 }
 
 function normalizeConversationList(items = []) {
@@ -1478,7 +1489,7 @@ async function onSend() {
     replyTarget.value = null
     clearImageSelection()
     await loadMessages()
-    bumpConversationList({ lastPreview: previewForMessage(normalized) || forwardPreview(normalized) })
+    bumpConversationList({ lastPreview: previewForMessage(normalized) })
   } catch (e) {
     err.value = e?.response?.data?.message || 'Failed to send'
   } finally {
@@ -1583,7 +1594,7 @@ async function forwardToConversation(targetConvId) {
   try {
     await forwardMessage(forwardTargetMessage.value.id, targetConvId)
     notice.value = 'Message forwarded successfully.'
-    const preview = forwardPreview(forwardTargetMessage.value)
+    const preview = previewForMessage(forwardTargetMessage.value)
     window.dispatchEvent(
       new CustomEvent('conversations:refresh', {
         detail: {
@@ -1640,17 +1651,6 @@ function setReplyTarget(m) {
 function clearReplyTarget() {
   replyTarget.value = null
   replyHighlightId.value = ''
-}
-
-function forwardPreview(m) {
-  if (!m) return ''
-  if (m.type === 'image') return '[Image]'
-  if (m.type === 'file') return '[File]'
-  if (typeof m.content === 'string' && m.content.trim()) return m.content
-  if (typeof m.body === 'string' && m.body.trim()) return m.body
-  if (typeof m.message === 'string' && m.message.trim()) return m.message
-  if (typeof m.text === 'string' && m.text.trim()) return m.text
-  return '[Forwarded message]'
 }
 
 function jumpToMessage(targetId) {
@@ -2541,6 +2541,16 @@ watch(convId, async () => {
   background: var(--avatar-bg);
   color: var(--avatar-text);
   border: 1px solid var(--avatar-border);
+}
+
+.msg-avatar,
+.chat-avatar,
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 img.avatar,
