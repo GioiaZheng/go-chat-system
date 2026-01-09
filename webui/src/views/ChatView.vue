@@ -1,8 +1,11 @@
 <!-- src/views/ChatView.vue: Chat experience with in-place conversation switching. -->
 <template>
   <div class="page">
-    <!-- ================= CONTENT ================= -->
-    <section class="content">
+    <header class="topbar">
+      <div class="title">Chats</div>
+    </header>
+
+    <section class="workspace">
       <div class="content-inner">
         <ErrorMsg v-if="err" :text="err" class="mb-2" />
         <p v-else-if="notice" class="notice" role="status" aria-live="polite">
@@ -10,9 +13,7 @@
         </p>
 
         <!-- ================= GRID LAYOUT ================= -->
-        <div class="chat-layout" :class="{ 'has-group': isGroup }">
-
-          <!-- ===== LEFT: CONVERSATION LIST ===== -->
+        <div class="panel chat-layout" :class="{ 'has-group': isGroup }">
           <ConversationList
             v-model:search="convSearch"
             :private-convs="privateConvs"
@@ -24,10 +25,10 @@
             :fmt-time="convTime"
             :loading="convLoading"
             :error="convErr"
+            variant="split"
             @select="selectConversation"
           />
 
-          <!-- ===== CENTER: CHAT ===== -->
           <section class="chat-pane">
             <div class="chat-pane__body">
               <header v-if="convId && !notFound" class="chat-header">
@@ -524,6 +525,7 @@ import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
 import {
   getConversationMeta,
   hydrateConversationList,
+  removeConversation,
   upsertConversationMeta,
 } from '@/services/conversationStore'
 
@@ -896,6 +898,19 @@ function handleConversationRefresh(e) {
       ...(bumpedName ? { name: bumpedName } : {}),
       ...(bumpedAvatar ? { avatar: bumpedAvatar } : {}),
     })
+  }
+}
+
+function handleConversationRemove(e) {
+  const detail = e?.detail || {}
+  const targetId = detail.conversationId ? String(detail.conversationId) : ''
+  if (!targetId) return
+  convList.value = convList.value.filter(c => String(c.id) !== targetId)
+  removeConversation(targetId)
+
+  if (String(convId.value || '') === targetId) {
+    resetChatState()
+    router.replace('/conversations')
   }
 }
 
@@ -1901,6 +1916,15 @@ async function onLeaveGroup() {
   groupNotice.value = ''
   try {
     await leaveGroup(groupId.value)
+    if (convId.value) {
+      convList.value = convList.value.filter(c => String(c.id) !== convId.value)
+      removeConversation(convId.value)
+      window.dispatchEvent(
+        new CustomEvent('conversations:remove', {
+          detail: { conversationId: convId.value },
+        })
+      )
+    }
     emitConversationReload()
     router.replace('/conversations')
   } catch (e) {
@@ -2031,6 +2055,7 @@ async function bootstrap() {
 onMounted(() => {
   window.addEventListener('conversations:refresh', handleConversationRefresh)
   window.addEventListener('conversations:hydrate', handleConversationHydrate)
+  window.addEventListener('conversations:remove', handleConversationRemove)
   window.addEventListener('conversations:reload', handleConversationReload)
   window.addEventListener('auth:changed', handleAuthChanged)
   startAutoRefresh()
@@ -2040,6 +2065,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('conversations:refresh', handleConversationRefresh)
   window.removeEventListener('conversations:hydrate', handleConversationHydrate)
+  window.removeEventListener('conversations:remove', handleConversationRemove)
   window.removeEventListener('conversations:reload', handleConversationReload)
   window.removeEventListener('auth:changed', handleAuthChanged)
   stopAutoRefresh()
@@ -2068,23 +2094,34 @@ watch(convId, async () => {
   --avatar-border: #a7f3d0;
   --avatar-text: #0f766e;
   --panel-pad: 16px;
-  min-height: 100dvh;
-  height: 100dvh;
+  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   background: #e5e7eb;
+  color: #1f2937;
+}
+
+.topbar {
+  height: 56px;
+  display: grid;
+  place-items: center;
+  padding: 0 18px;
+  border-bottom: 1px solid rgba(20, 100, 60, 0.06);
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .title {
   font-weight: 700;
-  color: #1e293b;
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-width: 0;
+  font-size: var(--font-title);
+  color: #0f172a;
+  text-align: center;
 }
 
 .chat-header {
@@ -2146,13 +2183,12 @@ watch(convId, async () => {
   color: #64748b;
 }
 
-.content {
-  width: 100%;
-  padding: var(--panel-pad);
+.workspace {
   flex: 1 1 auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  padding: 16px;
   overflow: hidden;
 }
 
@@ -2160,16 +2196,23 @@ watch(convId, async () => {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
+}
+
+.panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  background: var(--panel);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 
 .chat-layout {
   display: flex;
-  gap: 3px;
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
@@ -2182,9 +2225,9 @@ watch(convId, async () => {
 
 .chat-pane {
   background: var(--panel);
-  border: 1px solid var(--border);
+  border-left: 1px solid var(--border);
   border-radius: 0;
-  padding: var(--panel-pad);
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -2212,6 +2255,7 @@ watch(convId, async () => {
   flex-direction: column;
   flex: 0 0 320px;
   max-width: 320px;
+  border-left: 1px solid var(--border);
 }
 
 .group-panel.disabled {

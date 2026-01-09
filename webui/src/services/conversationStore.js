@@ -24,6 +24,12 @@ export function hydrateConversationList(list = []) {
   list.forEach(item => upsertConversationMeta(item))
 }
 
+export function removeConversation(id) {
+  const key = String(id || '')
+  if (!key) return
+  delete state.byId[key]
+}
+
 export function getConversationMeta(id) {
   return state.byId[String(id || '')] || null
 }

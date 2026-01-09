@@ -145,7 +145,7 @@ import {
   preferredDisplayName,
   normalizeUser,
 } from '@/services/api'
-import { upsertConversationMeta } from '@/services/conversationStore'
+import { removeConversation, upsertConversationMeta } from '@/services/conversationStore'
 
 import { ensureAuthReady, isAuthenticated, currentUser, refreshProfile } from '@/services/auth'
 
@@ -503,6 +503,14 @@ async function onLeave(id) {
       name: target?.name,
       avatar: target?.avatar,
     })
+    if (target?.conversation_id) {
+      removeConversation(target.conversation_id)
+      window.dispatchEvent(
+        new CustomEvent('conversations:remove', {
+          detail: { conversationId: String(target.conversation_id) },
+        })
+      )
+    }
     await loadList()
     emitConversationsReload()
   } catch (e) {

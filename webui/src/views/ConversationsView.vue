@@ -74,7 +74,7 @@ import ErrorMsg from '@/components/ErrorMsg.vue'
 import ConversationList from '@/components/ConversationList.vue'
 
 import { getMyConversations, getAvatarUrl, deleteConversation, preferredDisplayName, initialsFor, normalizeUser } from '@/services/api'
-import { hydrateConversationList, upsertConversationMeta } from '@/services/conversationStore'
+import { hydrateConversationList, removeConversation, upsertConversationMeta } from '@/services/conversationStore'
 import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
 
 const router = useRouter()
@@ -348,6 +348,14 @@ const handleRefreshEvent = e => {
   load()
 }
 
+const handleRemoveEvent = e => {
+  const detail = e?.detail || {}
+  const targetId = detail.conversationId ? String(detail.conversationId) : ''
+  if (!targetId) return
+  convs.value = convs.value.filter(c => String(c.id) !== targetId)
+  removeConversation(targetId)
+}
+
 onMounted(async () => {
   const welcomeName = sessionStorage.getItem('toast:welcome')
   if (welcomeName) {
@@ -361,6 +369,7 @@ onMounted(async () => {
   await load()
   window.addEventListener('auth:changed', load)
   window.addEventListener('conversations:refresh', handleRefreshEvent)
+  window.addEventListener('conversations:remove', handleRemoveEvent)
   window.addEventListener('conversations:reload', load)
   refreshTimer = setInterval(() => {
     if (!isAuthenticated.value) return
@@ -371,6 +380,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('auth:changed', load)
   window.removeEventListener('conversations:refresh', handleRefreshEvent)
+  window.removeEventListener('conversations:remove', handleRemoveEvent)
   window.removeEventListener('conversations:reload', load)
   if (refreshTimer) {
     clearInterval(refreshTimer)
