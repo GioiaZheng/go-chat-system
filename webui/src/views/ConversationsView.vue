@@ -24,85 +24,21 @@
           </button>
 
           <div v-else class="panel">
-            <aside class="list-pane">
-              <div class="list-header">
-                <input
-                  v-model.trim="search"
-                  type="search"
-                  class="search"
-                  placeholder="search conversations"
-                  aria-label="Search conversations"
-                />
-              </div>
-
-              <div class="section">
-                <div class="section-head">
-                  <h3 class="section-title text-secondary">Direct</h3>
-                  <span class="badge">{{ privateConvs.length }}</span>
-                </div>
-
-                <ul class="list">
-                  <li
-                    v-for="c in privateConvs"
-                    :key="c.id"
-                    class="item"
-                    :class="{ active: selectedId === String(c.id) }"
-                    @click="open(c)"
-                  >
-                    <div class="left">
-                      <span v-if="!avatarFor(c)" class="avatar-fallback avatar-circle">{{ initials(c) }}</span>
-                      <img v-else class="avatar avatar-circle" :src="avatarFor(c)" alt="avatar" />
-                    </div>
-
-                    <div class="info">
-                      <div class="top">
-                        <div class="name">{{ displayName(c) }}</div>
-                        <div class="time">{{ fmtTime(c.last_time) }}</div>
-                      </div>
-                      <div class="bottom">
-                        <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-                      </div>
-                    </div>
-
-                    <button class="del" @click.stop="warnDelete(c)">Delete</button>
-                  </li>
-
-                  <li v-if="!privateConvs.length" class="empty">No direct chats yet.</li>
-                </ul>
-              </div>
-              <div class="section">
-                <div class="section-head second">
-                  <h3 class="section-title text-secondary">Groups</h3>
-                  <span class="badge badge--secondary">{{ groupConvs.length }}</span>
-                </div>
-
-                <ul class="list">
-                  <li
-                    v-for="c in groupConvs"
-                    :key="c.id"
-                    class="item"
-                    :class="{ active: selectedId === String(c.id) }"
-                    @click="open(c)"
-                  >
-                    <div class="left">
-                      <span v-if="!avatarFor(c)" class="avatar-fallback avatar-circle">{{ initials(c) }}</span>
-                      <img v-else class="avatar avatar-circle" :src="avatarFor(c)" alt="avatar" />
-                    </div>
-                    <div class="info">
-                      <div class="top">
-                        <div class="name">{{ displayName(c) }}</div>
-                        <div class="time">{{ fmtTime(c.last_time) }}</div>
-                      </div>
-                      <div class="bottom">
-                        <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-                      </div>
-                    </div>
-                    <button class="del" @click.stop="warnDelete(c)">Delete</button>
-                  </li>
-                  <li v-if="!groupConvs.length" class="empty">▸ You have no group chats. Create one ➕</li>
-                </ul>
-              </div>
-            </aside>
+            <ConversationList
+              v-model:search="search"
+              :private-convs="privateConvs"
+              :group-convs="groupConvs"
+              :selected-id="selectedId"
+              :display-name="displayName"
+              :avatar-for="avatarFor"
+              :initials="initials"
+              :fmt-time="fmtTime"
+              :show-delete="true"
+              variant="split"
+              empty-group-text="▸ You have no group chats. Create one ➕"
+              @select="open"
+              @delete="warnDelete"
+            />
 
             <div class="conversation-pane">
               <div class="preview-empty">
@@ -135,6 +71,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
+import ConversationList from '@/components/ConversationList.vue'
 
 import { getMyConversations, getAvatarUrl, deleteConversation, preferredDisplayName, initialsFor, normalizeUser } from '@/services/api'
 import { hydrateConversationList, upsertConversationMeta } from '@/services/conversationStore'
@@ -169,7 +106,11 @@ function previewForMessage(raw = {}) {
   if (raw?.deleted || raw?.isDeleted) return '[Deleted]'
 
   const type = String(raw?.type || raw?.Type || '').toLowerCase()
-  if (type === 'image') return '📷 Photo'
+  if (type === 'image') return '[image]'
+  if (type === 'file') return '[file]'
+
+  const fileUrl = raw?.fileUrl ?? raw?.file_url ?? raw?.FileUrl
+  if (fileUrl) return '[file]'
 
   const content = raw?.content ?? raw?.Content ?? ''
 
@@ -180,6 +121,60 @@ function conversationPreviewForMessage(raw = {}, conv = null) {
   const base = previewForMessage(raw)
   if (!base) return ''
   return base
+}
+
+function messageTime(raw = {}) {
+  return (
+    raw?.createdAt ||
+    raw?.created_at ||
+    raw?.CreatedAt ||
+    raw?.timestamp ||
+    raw?.Timestamp ||
+    null
+  )
+}
+
+function messageTimeValue(raw = {}) {
+  const value = messageTime(raw)
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.getTime()
+}
+
+function pickLastMessage(c) {
+  if (!c) return null
+
+  const fromKnownFields = c.lastMessage || c.last_message
+  if (fromKnownFields) return fromKnownFields
+
+  const list =
+    c.messages ||
+    c.Messages ||
+    c.messageList ||
+    c.message_list ||
+    c.items ||
+    c.list
+
+  if (!Array.isArray(list) || !list.length) return null
+
+  let best = null
+  let bestTime = null
+  list.forEach((msg) => {
+    const ts = messageTimeValue(msg)
+    if (ts !== null) {
+      if (bestTime === null || ts > bestTime) {
+        bestTime = ts
+        best = msg
+      }
+      return
+    }
+    if (!best) {
+      best = msg
+    }
+  })
+
+  return best || list[list.length - 1]
 }
 
 // Helper to read the current user identifier as a string.
@@ -257,16 +252,6 @@ async function load() {
     const root = res?.data?.items || res?.data || res
     const items = Array.isArray(root) ? root : (root?.items ?? root?.list ?? [])
 
-    const pickLastMessage = c => {
-      if (!c) return null
-
-      const fromKnownFields =
-        c.lastMessage ||
-        c.last_message
-
-      return fromKnownFields || null
-    }
-
     convs.value = (items || [])
       .map(c => {
         const isGroupType = c?.type === 'group' || !!(c?.groupId || c?.group_id || c?.group?.id)
@@ -276,14 +261,7 @@ async function load() {
           type: isGroupType ? 'group' : c?.type,
         })
 
-        const time =
-          last.createdAt ||
-          last.created_at ||
-          last.CreatedAt ||
-          last.timestamp ||
-          last.Timestamp ||
-          c.updatedAt || c.updated_at || c.UpdatedAt ||
-          c.createdAt || c.created_at || c.CreatedAt || null
+        const time = messageTime(last)
 
         return {
           ...c,
@@ -481,208 +459,6 @@ onUnmounted(() => {
   border: 1px solid var(--border);
   overflow: hidden;
 }
-.list-pane {
-  flex: 0 0 320px;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  gap: 10px;
-  min-height: 0;
-}
-
-.list-header {
-  padding: 4px 0 8px;
-}
-
-.search {
-  width: 100%;
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-control);
-  padding: 10px 12px;
-  background: #ffffff;
-  font-size: var(--font-primary);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.search:focus {
-  outline: none;
-  border-color: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
-}
-
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 4px 4px 2px;
-}
-
-.section-head.second {
-  margin-top: 4px;
-  border-top: 1px solid #e5e7eb;
-  padding-top: 10px;
-}
-
-.section-title {
-  margin: 0;
-  font-weight: 700;
-  color: #0f172a;
-  font-size: var(--font-secondary);
-}
-
-.badge {
-  display: inline-flex;
-  min-width: 28px;
-  height: 22px;
-  border-radius: 0;
-  padding: 0 8px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  font-size: var(--font-secondary);
-  color: #475569;
-  font-weight: 600;
-}
-
-.badge--secondary {
-  background: #f1f5f9;
-  border-color: #d8e0e8;
-}
-
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1 1 auto;
-  overflow-y: auto;
-  max-height: 100%;
-  min-height: 0;
-}
-
-.item {
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  padding: 14px 16px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 14px;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  position: relative;
-}
-
-.item:hover {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.35);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-}
-
-.item.active {
-  background: #dcfce7;
-  border-color: #22c55e;
-}
-
-.item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  background: #22c55e;
-}
-
-.left {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.top {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 12px;
-}
-
-.name {
-  font-weight: 600;
-  color: #0f172a;
-  font-size: var(--font-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.handle {
-  color: #64748b;
-  font-size: var(--font-secondary);
-}
-
-.time {
-  font-size: 0.92rem;
-  color: #64748b;
-  white-space: nowrap;
-}
-
-.preview {
-  color: #64748b;
-  font-size: 0.92rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.del {
-  border: 0;
-  border-radius: var(--radius-control);
-  padding: 0.35rem 0.7rem;
-  font-size: var(--font-secondary);
-  color: #fff;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  transition: 0.2s;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.item:hover .del,
-.item:focus-within .del {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.del:hover {
-  opacity: 0.9;
-}
-.empty {
-  text-align: center;
-  color: #6b7280;
-  padding: 16px 0;
-}
-
 .conversation-pane {
   flex: 1 1 auto;
   min-width: 0;

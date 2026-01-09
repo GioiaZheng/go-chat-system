@@ -13,101 +13,19 @@
         <div class="chat-layout" :class="{ 'has-group': isGroup }">
 
           <!-- ===== LEFT: CONVERSATION LIST ===== -->
-          <aside class="list-pane">
-            <div class="list-header">
-              <div class="list-title">Conversations</div>
-              <span class="badge">{{ filteredConversations.length }}</span>
-            </div>
-
-            <div class="list-search">
-              <input
-                v-model.trim="convSearch"
-                type="search"
-                class="search"
-                placeholder="search conversations"
-                aria-label="Search conversations"
-              />
-            </div>
-
-            <div class="section">
-              <div class="section-head">
-                <h3 class="section-title text-secondary">Direct</h3>
-                <span class="badge">{{ privateConvs.length }}</span>
-              </div>
-
-              <ul class="list" role="list">
-                <li
-                  v-for="c in privateConvs"
-                  :key="c.id"
-                  class="item"
-                  :class="{ active: String(c.id) === convId }"
-                  @click="selectConversation(c)"
-                >
-                  <div class="left">
-                    <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle">{{ conversationInitial(c) }}</span>
-                    <img
-                      v-else
-                      class="avatar avatar-circle"
-                      :src="avatarForConversation(c, meId)"
-                      alt="avatar"
-                    />
-                  </div>
-
-                  <div class="info">
-                    <div class="top">
-                      <div class="name">{{ titleForConversation(c, meId) }}</div>
-                      <div class="time">{{ convTime(c.last_time) }}</div>
-                    </div>
-                    <div class="bottom">
-                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-                    </div>
-                  </div>
-                </li>
-
-                <li v-if="!privateConvs.length && !convLoading && !convErr" class="empty">No direct chats yet.</li>
-              </ul>
-            </div>
-
-            <div class="section">
-              <div class="section-head second">
-                <h3 class="section-title text-secondary">Groups</h3>
-                <span class="badge badge--secondary">{{ groupConvs.length }}</span>
-              </div>
-
-              <ul class="list" role="list">
-                <li
-                  v-for="c in groupConvs"
-                  :key="c.id"
-                  class="item"
-                  :class="{ active: String(c.id) === convId }"
-                  @click="selectConversation(c)"
-                >
-                  <div class="left">
-                    <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle">{{ conversationInitial(c) }}</span>
-                    <img
-                      v-else
-                      class="avatar avatar-circle"
-                      :src="avatarForConversation(c, meId)"
-                      alt="avatar"
-                    />
-                  </div>
-                  <div class="info">
-                    <div class="top">
-                      <div class="name">{{ titleForConversation(c, meId) }}</div>
-                      <div class="time">{{ convTime(c.last_time) }}</div>
-                    </div>
-                    <div class="bottom">
-                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-                    </div>
-                  </div>
-                </li>
-                <li v-if="!groupConvs.length && !convLoading && !convErr" class="empty">No group chats yet.</li>
-              </ul>
-            </div>
-
-            <p v-if="convLoading" class="muted">Loading conversations…</p>
-            <ErrorMsg v-else-if="convErr" :text="convErr" />
-          </aside>
+          <ConversationList
+            v-model:search="convSearch"
+            :private-convs="privateConvs"
+            :group-convs="groupConvs"
+            :selected-id="convId"
+            :display-name="c => titleForConversation(c, meId)"
+            :avatar-for="c => avatarForConversation(c, meId)"
+            :initials="conversationInitial"
+            :fmt-time="convTime"
+            :loading="convLoading"
+            :error="convErr"
+            @select="selectConversation"
+          />
 
           <!-- ===== CENTER: CHAT ===== -->
           <section class="chat-pane">
@@ -570,6 +488,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
+import ConversationList from '@/components/ConversationList.vue'
 import UserSearch from '@/components/UserSearch.vue'
 import {
   getMyConversations,
@@ -751,7 +670,11 @@ function previewForMessage(raw = {}) {
   if (raw?.deleted || raw?.isDeleted) return '[Deleted]'
 
   const type = String(raw?.type || raw?.Type || '').toLowerCase()
-  if (type === 'image') return '📷 Photo'
+  if (type === 'image') return '[image]'
+  if (type === 'file') return '[file]'
+
+  const fileUrl = raw?.fileUrl ?? raw?.file_url ?? raw?.FileUrl
+  if (fileUrl) return '[file]'
 
   const content = raw?.content ?? raw?.Content ?? ''
 
@@ -764,15 +687,66 @@ function conversationPreviewForMessage(raw = {}, conv = null) {
   return base
 }
 
+function previewForNormalizedMessage(message) {
+  if (!message) return ''
+  if (message.type === 'image') return '[image]'
+  if (message.type === 'file') return '[file]'
+  return formatPreviewText(message.content)
+}
+
+function messageTime(raw = {}) {
+  return (
+    raw?.createdAt ||
+    raw?.created_at ||
+    raw?.CreatedAt ||
+    raw?.timestamp ||
+    raw?.Timestamp ||
+    null
+  )
+}
+
+function messageTimeValue(raw = {}) {
+  const value = messageTime(raw)
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.getTime()
+}
+
 function normalizeConversationList(items = []) {
   const pickLastMessage = (c) => {
     if (!c) return null
 
-    const fromKnownFields =
-      c.lastMessage ||
-      c.last_message
+    const fromKnownFields = c.lastMessage || c.last_message
+    if (fromKnownFields) return fromKnownFields
 
-    return fromKnownFields || null
+    const list =
+      c.messages ||
+      c.Messages ||
+      c.messageList ||
+      c.message_list ||
+      c.items ||
+      c.list
+
+    if (!Array.isArray(list) || !list.length) return null
+
+    let best = null
+    let bestTime = null
+    list.forEach((msg) => {
+      const ts = messageTimeValue(msg)
+      if (ts !== null) {
+        if (bestTime === null || ts > bestTime) {
+          bestTime = ts
+          best = msg
+        }
+        return
+      }
+      if (!best) {
+        best = msg
+      }
+    })
+
+    return best || list[list.length - 1]
   }
 
   return (items || [])
@@ -787,19 +761,7 @@ function normalizeConversationList(items = []) {
         type: isGroupType ? 'group' : c?.type,
       })
 
-      const time =
-        last.createdAt ||
-        last.created_at ||
-        last.CreatedAt ||
-        last.timestamp ||
-        last.Timestamp ||
-        c.updatedAt ||
-        c.updated_at ||
-        c.UpdatedAt ||
-        c.createdAt ||
-        c.created_at ||
-        c.CreatedAt ||
-        null
+      const time = messageTime(last)
 
       return {
         ...c,
@@ -1300,12 +1262,21 @@ function normalizeMessage(raw) {
 
   const replySenderProfile = senderProfileFromRaw({ sender: raw.replyTo?.sender || raw.reply_to?.sender || {} })
 
+  const rawType = String(raw.type || raw.Type || '').toLowerCase()
   const contentText =
-    raw.type === 'image'
+    rawType === 'image'
       ? raw.caption || raw.text || (contentIsUrl ? '' : raw.content || '')
       : raw.content || raw.text || ''
 
   const sanitizedContent = cleanPreviewText(contentText)
+  let messageType = 'text'
+  if (rawType === 'image') {
+    messageType = 'image'
+  } else if (rawType === 'file') {
+    messageType = 'file'
+  } else if (possibleFileRel && !sanitizedContent) {
+    messageType = 'file'
+  }
 
   const rawId =
     raw.id ??
@@ -1319,7 +1290,7 @@ function normalizeMessage(raw) {
     id: rawId,
     read,
     content: sanitizedContent,
-    type: raw.type === 'image' ? 'image' : 'text',
+    type: messageType,
     fileAbsUrl: fileRel ? absUrl(fileRel) : null,
     senderId: String(senderId || ''),
     _sender: senderProfile.id
@@ -1396,6 +1367,14 @@ async function loadMessages() {
     })
 
     messages.value = mapped
+
+    if (mapped.length) {
+      const last = mapped[mapped.length - 1]
+      updateConversationMeta({
+        lastPreview: previewForNormalizedMessage(last),
+        lastTime: last._ts,
+      })
+    }
 
     await scrollToBottom(true)
   } catch (e) {
@@ -2189,188 +2168,6 @@ watch(convId, async () => {
 
 .chat-layout.has-group {
   flex-direction: row;
-}
-
-.list-pane {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  padding: var(--panel-pad);
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  height: 100%;
-  flex: 0 0 300px;
-  min-height: 0;
-  overflow: auto;
-}
-
-.list-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 3px;
-  padding: 4px 0 2px;
-}
-
-.list-title {
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.list-search {
-  padding: 0 0 8px;
-}
-
-.search {
-  width: 100%;
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-control);
-  padding: 10px 12px;
-  background: #ffffff;
-  font-size: var(--font-primary);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.search:focus {
-  outline: none;
-  border-color: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 3px;
-  padding: 4px 4px 2px;
-}
-
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 3px;
-  padding: 4px 4px 2px;
-}
-
-.section-head.second {
-  margin-top: 4px;
-  border-top: 1px solid #e5e7eb;
-  padding-top: 10px;
-}
-
-.section-title {
-  margin: 0;
-  font-weight: 700;
-  color: #0f172a;
-  font-size: var(--font-secondary);
-}
-
-.badge {
-  display: inline-flex;
-  min-width: 28px;
-  height: 22px;
-  border-radius: 0;
-  padding: 0 8px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  font-size: var(--font-secondary);
-  color: #475569;
-  font-weight: 600;
-}
-
-.badge--secondary {
-  background: #f1f5f9;
-  border-color: #d8e0e8;
-}
-
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.item {
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  padding: 10px 12px;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 3px;
-  transition: background 0.15s ease, border-color 0.15s ease;
-  cursor: pointer;
-}
-
-.item:hover {
-  background: #f9fafb;
-  border-color: #dfe3e8;
-}
-
-.item.active {
-  border-color: #9ae6b4;
-  background: #eefbf3;
-}
-
-.left {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.name {
-  font-weight: 600;
-  color: #111827;
-  font-size: var(--font-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.time {
-  font-size: var(--font-secondary);
-  color: #9ca3af;
-  white-space: nowrap;
-}
-
-.preview {
-  color: #7b8794;
-  font-size: var(--font-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.empty {
-  text-align: center;
-  color: #6b7280;
-  padding: 16px 0;
 }
 
 .chat-pane {
