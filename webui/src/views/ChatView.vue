@@ -3140,21 +3140,46 @@ img.member-avatar {
   margin-bottom: 6px;
 }
 
+.forward-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .forward-item {
   display: flex;
   gap: 10px;
   align-items: center;
   padding: 10px;
   border: 1px solid var(--border);
-  border-radius: 0;
+  border-radius: 12px;
   background: var(--panel);
   cursor: pointer;
   transition: 0.2s;
 }
 
 .forward-item:hover {
-  background: #eef2ff;
-  border-color: #c7d2fe;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.forward-item.disabled {
+  cursor: not-allowed;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+.forward-item.disabled .forward-name {
+  color: #94a3b8;
+}
+
+.forward-item.disabled:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
 }
 
 .forward-avatar {
