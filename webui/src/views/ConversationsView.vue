@@ -7,6 +7,11 @@
       </div>
     </header>
 
+    <div v-if="toastMessage" class="toast" role="status" aria-live="polite">
+      <span class="checkmark">✓</span>
+      <span>{{ toastMessage }}</span>
+    </div>
+
     <section class="workspace">
       <div class="content-inner">
         <div v-if="loading" class="loading">
@@ -142,7 +147,9 @@ const loading = ref(false)
 const err = ref('')
 const search = ref('')
 const selectedId = ref('')
+const toastMessage = ref('')
 let refreshTimer = null
+let toastTimer = null
 
 const PREVIEW_LIMIT = 30
 
@@ -431,6 +438,15 @@ const handleRefreshEvent = e => {
 }
 
 onMounted(async () => {
+  const welcomeName = sessionStorage.getItem('toast:welcome')
+  if (welcomeName) {
+    toastMessage.value = `Welcome back, ${welcomeName}!`
+    sessionStorage.removeItem('toast:welcome')
+    toastTimer = setTimeout(() => {
+      toastMessage.value = ''
+      toastTimer = null
+    }, 3000)
+  }
   await load()
   window.addEventListener('auth:changed', load)
   window.addEventListener('conversations:refresh', handleRefreshEvent)
@@ -448,6 +464,10 @@ onUnmounted(() => {
   if (refreshTimer) {
     clearInterval(refreshTimer)
     refreshTimer = null
+  }
+  if (toastTimer) {
+    clearTimeout(toastTimer)
+    toastTimer = null
   }
 })
 </script>
@@ -490,6 +510,26 @@ onUnmounted(() => {
   min-height: 0;
   padding: 16px;
   overflow: hidden;
+}
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  box-shadow: 0 12px 26px rgba(34, 197, 94, 0.18);
+  z-index: 10;
+}
+.checkmark {
+  font-size: 1.1rem;
 }
 
 .content-inner {

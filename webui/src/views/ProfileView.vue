@@ -11,6 +11,13 @@
 
       <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
+      <div v-if="showWelcomeBanner" class="welcome-banner">
+        <div>
+          <strong>Welcome!</strong> You can customize your profile here.
+        </div>
+        <button class="banner-dismiss" type="button" @click="dismissWelcome">Got it</button>
+      </div>
+
       <section v-if="me" class="profile-card">
         <header class="profile-header">
           <div class="avatar-section">
@@ -57,19 +64,19 @@
 
           <div class="identity-section">
             <p class="eyebrow">Name</p>
-            <div v-if="!editingName" class="name-display">
+            <button v-if="!editingName" class="name-display" type="button" @click="startNameEdit">
               <h3 class="profile-name">{{ me.name || 'Name not set' }}</h3>
-              <button class="icon-btn" type="button" aria-label="Edit name" @click="startNameEdit">
+              <span class="icon-btn" aria-hidden="true">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path
                     d="M4 17.25V20h2.75L17.81 8.94l-2.75-2.75L4 17.25zm3.92.75H6v-1.92l7.06-7.06 1.92 1.92L7.92 18zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.76 3.76 1.83-1.83z"
                   />
                 </svg>
-              </button>
-            </div>
+              </span>
+            </button>
             <div v-else class="name-edit">
               <input v-model.trim="newName" class="input" placeholder="Your name" />
-              <div class="inline-actions">
+              <div class="inline-actions inline-actions-right">
                 <button
                   class="btn btn-primary"
                   :disabled="loading || !newName"
@@ -91,20 +98,32 @@
         </div>
 
         <section class="info-stack">
-          <div class="accordion-card">
-            <button
-              class="accordion-toggle"
-              type="button"
-              :aria-expanded="accountOpen"
-              @click="accountOpen = !accountOpen"
-            >
-              <span>Account</span>
-              <span class="accordion-icon" :class="{ open: accountOpen }">▸</span>
-            </button>
-            <div v-if="accountOpen" class="accordion-body">
+          <div class="account-card">
+            <div class="account-header">Account</div>
+            <div class="account-body">
               <div class="system-row">
                 <div class="muted">User ID</div>
-                <div class="system-value">{{ me.id || me.userId || me.user_id || '—' }}</div>
+                <div class="system-value">
+                  <span class="system-value-text" :title="userIdFull || ''">{{ userIdShort }}</span>
+                  <button
+                    v-if="canCopyUserId"
+                    class="copy-btn"
+                    type="button"
+                    aria-label="Copy User ID"
+                    @click="copyUserId"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path
+                        d="M9 9h10v10H9zM5 5h10v2H7v8H5z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -134,18 +153,33 @@ const imgBroken = ref(false)
 const editingName = ref(false)
 const toastMessage = ref('')
 const pendingAction = ref('')
-const accountOpen = ref(true)
+const showWelcomeBanner = ref(false)
 let toastTimer = null
 
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
 const avatarPreview = computed(() => previewUrl.value || (avatarUrl.value && !imgBroken.value ? avatarUrl.value : ''))
 const initials = computed(() => ((me.value?.name || 'U')[0] || 'U').toUpperCase())
+const userIdFull = computed(() => String(me.value?.id || me.value?.userId || me.value?.user_id || ''))
+const userIdShort = computed(() => {
+  const value = userIdFull.value
+  if (!value) return '—'
+  if (value.length <= 16) return value
+  return `${value.slice(0, 6)}…${value.slice(-4)}`
+})
+const canCopyUserId = computed(() => !!userIdFull.value)
 
 onMounted(async () => {
   await ensureAuthReady()
   if (!isAuthenticated.value) {
     router.replace('/login')
     return
+  }
+  if (typeof window !== 'undefined') {
+    const seen = localStorage.getItem('profile-welcome-seen')
+    if (!seen) {
+      showWelcomeBanner.value = true
+      localStorage.setItem('profile-welcome-seen', 'true')
+    }
   }
   loadProfile()
 })
@@ -186,7 +220,7 @@ async function saveName() {
     await setMyUserName(newName.value)
     await loadProfile()
     editingName.value = false
-    showToast('Name updated')
+    showToast('Profile updated')
     window.dispatchEvent(new CustomEvent('conversations:reload'))
   } catch (e) {
     handleError(e, 'Failed to set name')
@@ -228,7 +262,7 @@ async function uploadPhoto() {
     await setMyPhotoFile(file.value)
     await loadProfile()
     resetPhotoSelection()
-    showToast('Avatar updated')
+    showToast('Profile updated')
     me.value = { ...(me.value || {}), updatedAt: Date.now() }
     if (me.value) {
       localStorage.setItem('me', JSON.stringify(me.value))
@@ -250,6 +284,32 @@ function showToast(message) {
     toastMessage.value = ''
     toastTimer = null
   }, 3000)
+}
+
+function dismissWelcome() {
+  showWelcomeBanner.value = false
+}
+
+async function copyUserId() {
+  const value = userIdFull.value
+  if (!value) return
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = value
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    showToast('User ID copied')
+  } catch (e) {
+    handleError(e, 'Failed to copy User ID')
+  }
 }
 
 function handleError(e, fallback) {
@@ -279,7 +339,7 @@ function handleError(e, fallback) {
   flex: 1 1 auto;
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 16px 24px 24px;
   width: 100%;
 }
 .page-title {
@@ -287,7 +347,7 @@ function handleError(e, fallback) {
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .title {
   font-size: 1.5rem;
@@ -316,14 +376,14 @@ function handleError(e, fallback) {
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   box-shadow: 0 10px 24px rgba(2, 6, 23, 0.08);
-  padding: 18px;
+  padding: 16px;
 }
 .profile-header {
   display: grid;
   grid-template-columns: 180px 1fr;
   gap: 16px;
   align-items: center;
-  padding: 12px 10px;
+  padding: 8px 10px;
   border-radius: 12px;
   background: transparent;
 }
@@ -418,10 +478,23 @@ function handleError(e, fallback) {
   font-weight: 800;
 }
 .name-display {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  border: 0;
+  background: transparent;
+  padding: 6px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.name-display:hover {
+  background: rgba(34, 197, 94, 0.08);
+}
+.name-display:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
 }
 .name-edit {
   display: flex;
@@ -439,6 +512,9 @@ function handleError(e, fallback) {
   gap: 8px;
   flex-wrap: wrap;
 }
+.inline-actions-right {
+  align-self: flex-end;
+}
 .icon-btn {
   border: 1px solid rgba(34, 197, 94, 0.25);
   background: rgba(34, 197, 94, 0.12);
@@ -450,7 +526,6 @@ function handleError(e, fallback) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   outline: none;
 }
@@ -543,30 +618,17 @@ function handleError(e, fallback) {
   padding: 12px;
   box-shadow: 0 6px 16px rgba(2, 6, 23, 0.06);
 }
-.accordion-card {
+.account-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
-.accordion-toggle {
-  border: 0;
-  background: transparent;
+.account-header {
   color: #475569;
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  cursor: pointer;
   padding: 6px 0;
 }
-.accordion-icon {
-  transition: transform 0.2s ease;
-}
-.accordion-icon.open {
-  transform: rotate(90deg);
-}
-.accordion-body {
+.account-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -578,10 +640,65 @@ function handleError(e, fallback) {
   gap: 4px;
 }
 .system-value {
-  word-break: break-all;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: #0f172a;
   font-weight: 600;
   font-size: 0.95rem;
+}
+.system-value-text {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.copy-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+.copy-btn:hover {
+  border-color: #22c55e;
+  color: #166534;
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.2);
+}
+.copy-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.welcome-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.banner-dismiss {
+  border: 1px solid #86efac;
+  background: #ffffff;
+  color: #166534;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.banner-dismiss:hover {
+  border-color: #22c55e;
 }
 .toast {
   position: fixed;
