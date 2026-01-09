@@ -144,7 +144,7 @@ function emitDelete(c) {
 
 <style scoped>
 .list-pane {
-  flex: 0 0 320px;
+  flex: 0 0 360px;
   background: var(--panel);
   border: 1px solid var(--border);
   display: flex;
@@ -190,8 +190,8 @@ function emitDelete(c) {
 
 .search:focus {
   outline: none;
-  border-color: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  border-color: #32d583;
+  box-shadow: 0 0 0 3px rgba(50, 213, 131, 0.2);
 }
 
 .section {
@@ -270,14 +270,14 @@ function emitDelete(c) {
 }
 
 .item:hover {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.35);
+  background: #c6f6d5;
+  border-color: rgba(50, 213, 131, 0.6);
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
 .item.active {
-  background: #dcfce7;
-  border-color: #22c55e;
+  background: #32d583;
+  border-color: #32d583;
 }
 
 .item.active::before {
@@ -287,7 +287,16 @@ function emitDelete(c) {
   top: 10px;
   bottom: 10px;
   width: 3px;
-  background: #22c55e;
+  background: #16a34a;
+}
+
+.item.active .name {
+  color: #0f172a;
+}
+
+.item.active .time,
+.item.active .preview {
+  color: #065f46;
 }
 
 .left {

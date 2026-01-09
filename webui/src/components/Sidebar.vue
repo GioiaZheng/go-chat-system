@@ -51,15 +51,17 @@ async function logout() {
 
 <style scoped>
 .sidebar {
-  width: 230px;
-  flex: 0 0 230px;
+  width: 240px;
+  flex: 0 0 240px;
   min-height: 100vh;
+  height: 100vh;
   position: static;
   background: linear-gradient(180deg, #ffffff, #f8fafc);
   border-right: 1px solid #e2e8f0;
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
 }
 
 .brand {
@@ -125,7 +127,7 @@ async function logout() {
 .footer {
   border-top: 1px solid #e2e8f0;
   padding-top: 16px;
-  margin-top: auto;
+  margin-top: 0;
 }
 .logout {
   width: 100%;
@@ -148,6 +150,7 @@ async function logout() {
     z-index: 3;
     width: 100%;
     min-height: auto;
+    height: auto;
     flex: 0 0 auto;
     flex-direction: row;
     align-items: center;
