@@ -1,35 +1,6 @@
 <!-- src/views/ChatView.vue: Chat experience with in-place conversation switching. -->
 <template>
   <div class="page">
-    <!-- ================= TOP BAR ================= -->
-    <header class="topbar">
-      <button
-        class="back"
-        type="button"
-        aria-label="Go back"
-        title="Back"
-        @click="router.back()"
-      >
-        ←
-      </button>
-
-      <div class="title-row">
-        <span
-          v-if="!headerAvatar"
-          class="header-avatar avatar-fallback avatar-circle"
-        >
-          {{ headerInitial }}
-        </span>
-        <img
-          v-else
-          class="header-avatar avatar avatar-circle"
-          :src="headerAvatar"
-          alt="avatar"
-        />
-        <div class="title text-title">{{ headerTitle }}</div>
-      </div>
-    </header>
-
     <!-- ================= CONTENT ================= -->
     <section class="content">
       <div class="content-inner">
@@ -70,7 +41,7 @@
                   :key="c.id"
                   class="item"
                   :class="{ active: String(c.id) === convId }"
-                  @click="switchConversation(c)"
+                  @click="selectConversation(c)"
                 >
                   <div class="left">
                     <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle">{{ conversationInitial(c) }}</span>
@@ -109,7 +80,7 @@
                   :key="c.id"
                   class="item"
                   :class="{ active: String(c.id) === convId }"
-                  @click="switchConversation(c)"
+                  @click="selectConversation(c)"
                 >
                   <div class="left">
                     <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle">{{ conversationInitial(c) }}</span>
@@ -140,6 +111,27 @@
 
           <!-- ===== CENTER: CHAT ===== -->
           <div class="chat-main">
+            <header class="chat-header">
+              <div class="chat-header__left">
+                <span
+                  v-if="!headerAvatar"
+                  class="header-avatar avatar-fallback avatar-circle"
+                >
+                  {{ headerInitial }}
+                </span>
+                <img
+                  v-else
+                  class="header-avatar avatar avatar-circle"
+                  :src="headerAvatar"
+                  alt="avatar"
+                />
+                <div class="chat-header__meta">
+                  <div class="chat-header__title text-title">{{ headerTitle }}</div>
+                  <div v-if="headerSubtext" class="chat-header__subtext">{{ headerSubtext }}</div>
+                </div>
+              </div>
+              <div class="chat-header__actions" aria-label="Chat actions"></div>
+            </header>
             <div
               v-if="chatHydrating"
               class="empty-thread loading"
@@ -311,7 +303,7 @@
             </div>
 
             <!-- ===== COMPOSER ===== -->
-            <div class="composer">
+            <div v-if="convId" class="composer">
               <div v-if="replyTarget" class="reply-banner">
                 Replying to
                 {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}
@@ -890,10 +882,10 @@ const filteredConversations = computed(() => {
 const privateConvs = computed(() => filteredConversations.value.filter(c => c.type !== 'group'))
 const groupConvs = computed(() => filteredConversations.value.filter(c => c.type === 'group'))
 
-function switchConversation(c) {
+function selectConversation(c) {
   if (!c || String(c.id) === convId.value) return
   emitConversationHydrate(c)
-  router.push({ name: 'chat', params: { type: c.type === 'group' ? 'group' : 'conv', id: c.id } })
+  router.replace({ name: 'chat', params: { type: c.type === 'group' ? 'group' : 'conv', id: c.id } })
 }
 
 // Sender resolution helpers to keep author data accurate per userId.
@@ -1009,6 +1001,18 @@ const headerTitle = computed(() => {
 })
 
 const headerInitial = computed(() => initialsFor({ name: headerTitle.value }, 'C'))
+
+const headerSubtext = computed(() => {
+  if (!currentConv.value) return ''
+  if (isGroup.value) {
+    const count = groupMembers.value.length
+    if (!count) return ''
+    return `${count} member${count === 1 ? '' : 's'}`
+  }
+
+  if (peer.value?.online === true || peer.value?.isOnline === true) return 'Online'
+  return ''
+})
 
 function conversationInitial(c) {
   return initialsFor({ name: titleForConversation(c, meId.value) }, 'C')
@@ -1966,25 +1970,6 @@ watch(convId, async () => {
   background: #e5e7eb;
 }
 
-.topbar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 56px;
-  padding: 0 16px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #fff;
-  justify-content: flex-start;
-}
-
-.back {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 1.3rem;
-}
-
 .title {
   font-weight: 700;
   color: #1e293b;
@@ -1994,11 +1979,54 @@ watch(convId, async () => {
   min-width: 0;
 }
 
-.title-row {
+.chat-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 3px;
-  justify-content: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  height: 64px;
+  padding: 0 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.chat-header__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-header__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chat-header__title {
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-header__subtext {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .header-avatar {
