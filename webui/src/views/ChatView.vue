@@ -652,7 +652,7 @@ function convTime(t) {
   return `${m}/${day}`
 }
 
-const PREVIEW_LIMIT = 30
+const PREVIEW_LIMIT = 20
 
 function cleanPreviewText(value = '') {
   return String(value || '')
@@ -670,15 +670,17 @@ function previewForMessage(raw = {}) {
   if (raw?.deleted || raw?.isDeleted) return '[Deleted]'
 
   const type = String(raw?.type || raw?.Type || '').toLowerCase()
-  if (type === 'image') return '[image]'
-  if (type === 'file') return '[file]'
-
   const fileUrl = raw?.fileUrl ?? raw?.file_url ?? raw?.FileUrl
-  if (fileUrl) return '[file]'
-
   const content = raw?.content ?? raw?.Content ?? ''
+  const text = formatPreviewText(content)
+  const isFile = type === 'file'
+  const isImage = type === 'image'
+  const mediaLabel = isFile ? '[file]' : (isImage || fileUrl ? '[img]' : '')
 
-  return formatPreviewText(content)
+  if (mediaLabel && text) return `${mediaLabel} ${text}`
+  if (mediaLabel) return mediaLabel
+
+  return text
 }
 
 function conversationPreviewForMessage(raw = {}, conv = null) {
@@ -689,9 +691,17 @@ function conversationPreviewForMessage(raw = {}, conv = null) {
 
 function previewForNormalizedMessage(message) {
   if (!message) return ''
-  if (message.type === 'image') return '[image]'
-  if (message.type === 'file') return '[file]'
-  return formatPreviewText(message.content)
+  if (message.deleted || message.isDeleted) return '[Deleted]'
+
+  const text = formatPreviewText(message.content)
+  const isFile = message.type === 'file'
+  const isImage = message.type === 'image'
+  const mediaLabel = isFile ? '[file]' : (isImage || message.fileAbsUrl ? '[img]' : '')
+
+  if (mediaLabel && text) return `${mediaLabel} ${text}`
+  if (mediaLabel) return mediaLabel
+
+  return text
 }
 
 function messageTime(raw = {}) {
