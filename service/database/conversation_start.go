@@ -181,12 +181,12 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 	var msgCreatedStr string
 
 	err = db.c.QueryRow(`
-		SELECT id, content, sender_id, conversation_id, created_at
+		SELECT id, content, sender_id, conversation_id, created_at, type
 		FROM messages
 		WHERE conversation_id = ?
 		ORDER BY created_at DESC
 		LIMIT 1
-	`, cid).Scan(&msg.ID, &msg.Content, &msg.SenderID, &msg.ConversationID, &msgCreatedStr)
+	`, cid).Scan(&msg.ID, &msg.Content, &msg.SenderID, &msg.ConversationID, &msgCreatedStr, &msg.Type)
 
 	var lastMessage *models.Message
 	var updatedAt time.Time

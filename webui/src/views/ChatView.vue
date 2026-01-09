@@ -311,7 +311,7 @@
 
                   <div v-else class="empty-thread" role="status">
                     <p class="muted">
-                      {{ isGroup ? 'Say hello 👋 (only group members can see your messages)' : 'Say hello 👋 to start the chat.' }}
+                      {{ isGroup ? 'Start the conversation (only group members can see your messages).' : 'Start the conversation to send a message.' }}
                     </p>
                   </div>
                 </div>
@@ -750,28 +750,10 @@ function formatPreviewText(value = '') {
 function previewForMessage(raw = {}) {
   if (raw?.deleted || raw?.isDeleted) return '[Deleted]'
 
-  const type = String(raw?.type || '').toLowerCase()
-  if (type === 'image' || raw?.imageUrl || raw?.image_url) return '📷 Photo'
-  if (
-    type === 'reaction' ||
-    type === 'emoji' ||
-    raw?.reaction ||
-    raw?.reactionType ||
-    raw?.reaction_type ||
-    raw?.emoji
-  ) {
-    return '😃 Emoji'
-  }
+  const type = String(raw?.type || raw?.Type || '').toLowerCase()
+  if (type === 'image') return '📷 Photo'
 
-  const content =
-    raw?.content ||
-    raw?.text ||
-    raw?.body ||
-    raw?.message ||
-    raw?.Content ||
-    raw?.Text ||
-    raw?.Body ||
-    ''
+  const content = raw?.content ?? raw?.Content ?? ''
 
   return formatPreviewText(content)
 }
@@ -779,13 +761,7 @@ function previewForMessage(raw = {}) {
 function conversationPreviewForMessage(raw = {}, conv = null) {
   const base = previewForMessage(raw)
   if (!base) return ''
-  const isGroupType =
-    conv?.type === 'group' ||
-    !!(conv?.groupId || conv?.group_id || conv?.group?.id)
-  if (!isGroupType) return base
-  const sender = senderProfileFromRaw(raw)
-  const senderName = preferredDisplayName(sender || {}) || sender?.name || sender?.username || ''
-  return `${senderName || 'Someone'}: ${base}`
+  return base
 }
 
 function normalizeConversationList(items = []) {
@@ -794,19 +770,9 @@ function normalizeConversationList(items = []) {
 
     const fromKnownFields =
       c.lastMessage ||
-      c.last_message ||
-      c.last ||
-      c.lastmessage ||
-      c.lastMsg ||
-      c.last_msg ||
-      (Array.isArray(c.messages) ? c.messages[c.messages.length - 1] : null)
+      c.last_message
 
-    if (fromKnownFields) return fromKnownFields
-
-    if (typeof c.lastMessageContent === 'string') return { content: c.lastMessageContent }
-    if (typeof c.last_message_content === 'string') return { content: c.last_message_content }
-
-    return null
+    return fromKnownFields || null
   }
 
   return (items || [])
@@ -839,7 +805,7 @@ function normalizeConversationList(items = []) {
         ...c,
         type: isGroupType ? 'group' : c?.type,
         participants: normalizeParticipantList(c.participants || c.members || []),
-        last_preview: previewContent || (isGroupType ? 'Say hello 👋' : 'No messages yet'),
+        last_preview: previewContent || 'No messages yet',
         last_time: time,
       }
     })
