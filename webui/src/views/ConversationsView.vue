@@ -94,14 +94,25 @@
                     </div>
                     <button class="del" @click.stop="warnDelete(c)">Delete</button>
                   </li>
-                  <li v-if="!groupConvs.length" class="empty">No group chats yet.</li>
+                  <li v-if="!groupConvs.length" class="empty">▸ You have no group chats. Create one ➕</li>
                 </ul>
               </div>
             </aside>
 
             <div class="conversation-pane">
               <div class="preview-empty">
-                <div class="preview-icon" aria-hidden="true">💬</div>
+                <div class="preview-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" role="img" focusable="false">
+                    <path
+                      d="M15 18h18M15 24h12M6 22c0-7.732 6.268-14 14-14h8c7.732 0 14 6.268 14 14s-6.268 14-14 14h-8l-8 6v-8c-3.314-2.564-6-7.106-6-12z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </div>
                 <h2 class="preview-title">Choose a chat to view messages</h2>
                 <p class="preview-description">
                   Your chats will appear here once you start a conversation.
@@ -148,10 +159,20 @@ function formatPreviewText(value = '') {
 }
 
 function previewForMessage(raw = {}) {
-  if (raw?.deleted) return '(deleted)'
+  if (raw?.deleted || raw?.isDeleted) return '[Deleted]'
 
   const type = String(raw?.type || '').toLowerCase()
-  if (type === 'image' || raw?.imageUrl || raw?.image_url) return '[Image]'
+  if (type === 'image' || raw?.imageUrl || raw?.image_url) return '📷 Photo'
+  if (
+    type === 'reaction' ||
+    type === 'emoji' ||
+    raw?.reaction ||
+    raw?.reactionType ||
+    raw?.reaction_type ||
+    raw?.emoji
+  ) {
+    return '😃 Emoji'
+  }
 
   const content =
     raw?.content ||
@@ -164,6 +185,53 @@ function previewForMessage(raw = {}) {
     ''
 
   return formatPreviewText(content)
+}
+
+function senderProfileFromRaw(raw = {}) {
+  const senderRaw =
+    raw.sender || raw.user || raw.author || raw.from || raw.owner || raw.created_by || raw.createdBy || {}
+
+  const senderIdValue =
+    raw.senderId || raw.sender_id || raw.userId || senderRaw.id || senderRaw.userId || senderRaw.user_id
+
+  const senderName =
+    senderRaw.name ||
+    senderRaw.username ||
+    senderRaw.displayName ||
+    senderRaw.display_name ||
+    senderRaw.fullName ||
+    senderRaw.full_name ||
+    raw.senderName ||
+    raw.sender_name ||
+    ''
+
+  const normalized = normalizeUser({
+    ...senderRaw,
+    id: senderIdValue ?? senderRaw.id,
+    name: senderName,
+  })
+
+  const senderId = normalized.id ? String(normalized.id) : ''
+
+  return senderId
+    ? {
+        id: senderId,
+        name: normalized.name || normalized.username || senderName,
+        username: normalized.username,
+      }
+    : { id: '', name: normalized.name || senderName }
+}
+
+function conversationPreviewForMessage(raw = {}, conv = null) {
+  const base = previewForMessage(raw)
+  if (!base) return ''
+  const isGroupType =
+    conv?.type === 'group' ||
+    !!(conv?.groupId || conv?.group_id || conv?.group?.id)
+  if (!isGroupType) return base
+  const sender = senderProfileFromRaw(raw)
+  const senderName = preferredDisplayName(sender || {}) || sender?.name || sender?.username || ''
+  return `${senderName || 'Someone'}: ${base}`
 }
 
 // Helper to read the current user identifier as a string.
@@ -265,7 +333,10 @@ async function load() {
       .map(c => {
         const isGroupType = c?.type === 'group' || !!(c?.groupId || c?.group_id || c?.group?.id)
         const last = pickLastMessage(c) || {}
-        const previewContent = previewForMessage(last)
+        const previewContent = conversationPreviewForMessage(last, {
+          ...c,
+          type: isGroupType ? 'group' : c?.type,
+        })
 
         const time =
           last.createdAt ||
@@ -280,7 +351,7 @@ async function load() {
           ...c,
           type: isGroupType ? 'group' : c?.type,
           participants: (c.participants || []).map(normalizeUser),
-          last_preview: previewContent || 'No messages yet',
+          last_preview: previewContent || (isGroupType ? 'Say hello 👋' : 'No messages yet'),
           last_time: time,
         }
       })
@@ -524,7 +595,7 @@ onUnmounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   flex: 1 1 auto;
   overflow-y: auto;
   max-height: 100%;
@@ -534,33 +605,34 @@ onUnmounted(() => {
 .item {
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 0;
-  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius-control);
+  padding: 14px 16px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 12px;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  gap: 14px;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   position: relative;
 }
 
 .item:hover {
-  background: #f9fafb;
-  border-color: #dfe3e8;
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.35);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
 .item.active {
-  background: #ecfdf3;
-  border-color: #86efac;
+  background: #dcfce7;
+  border-color: #22c55e;
 }
 
 .item.active::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 4px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
   background: #22c55e;
 }
 
@@ -579,9 +651,10 @@ onUnmounted(() => {
 }
 
 .top {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
+  gap: 12px;
 }
 
 .name {
@@ -599,14 +672,14 @@ onUnmounted(() => {
 }
 
 .time {
-  font-size: var(--font-secondary);
-  color: #94a3b8;
+  font-size: 0.92rem;
+  color: #64748b;
   white-space: nowrap;
 }
 
 .preview {
   color: #64748b;
-  font-size: var(--font-secondary);
+  font-size: 0.92rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -644,35 +717,49 @@ onUnmounted(() => {
   min-width: 0;
   background: var(--panel);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
   border-left: 1px solid var(--border);
 }
 
 .preview-empty {
-  max-width: 420px;
+  max-width: 520px;
+  margin-top: 12px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   color: #1f2937;
 }
 
 .preview-icon {
-  font-size: 2.5rem;
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #16a34a;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(22, 163, 74, 0.1));
+  box-shadow: 0 10px 24px rgba(22, 163, 74, 0.12);
+}
+.preview-icon svg {
+  width: 32px;
+  height: 32px;
 }
 
 .preview-title {
-  font-size: var(--font-title);
+  font-size: 1.4rem;
+  font-weight: 800;
   margin: 0;
   color: #1f2937;
 }
 
 .preview-description {
   margin: 0;
-  color: #64748b;
+  color: #475569;
   font-size: var(--font-primary);
 }
 

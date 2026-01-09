@@ -249,13 +249,18 @@ async function create() {
 
 .content {
   flex: 1 1 auto;
-  max-width: 700px;
-  margin: 0 auto;
   padding: 24px;
   width: 100%;
+  display: flex;
+  justify-content: flex-start;
 }
 
-.form { display: flex; flex-direction: column; gap: 10px; }
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(100%, 720px);
+}
 .label { font-weight: 600; color: #334155; }
 .mt { margin-top: 8px; }
 

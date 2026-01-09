@@ -306,7 +306,7 @@
 
                   <div v-else class="empty-thread" role="status">
                     <p class="muted">
-                      {{ isGroup ? 'Say hello to the group 👋' : 'Say hello 👋 to start the chat.' }}
+                      {{ isGroup ? 'Say hello 👋 (only group members can see your messages)' : 'Say hello 👋 to start the chat.' }}
                     </p>
                   </div>
                 </div>
@@ -412,6 +412,7 @@
               </div>
 
             <div class="field inline group-rename">
+              <span class="field-label">Group name</span>
               <input
                 v-model.trim="groupNameDraft"
                 class="input"
@@ -463,9 +464,12 @@
               </div>
             </div>
             <div class="members-add">
-              <div class="section-label text-secondary">Add members</div>
+              <div class="section-label text-secondary">
+                Add members <span class="section-icon" aria-hidden="true">+</span>
+              </div>
               <UserSearch
-                placeholder="Search users to add"
+                placeholder="Search members by name or username"
+                class="group-search"
                 :class="{ disabled: addingMember }"
                 @select="onSelectNewMember"
                 @error="groupErr = $event || ''"
@@ -500,27 +504,33 @@
           <p v-if="forwardLoading" class="muted">Loading conversations…</p>
           <ErrorMsg v-else-if="forwardError" :text="forwardError" />
           <template v-else>
-            <button
-              v-for="c in filteredForwardList"
-              :key="c.id"
-              class="forward-item"
-              type="button"
-              @click="forwardToConversation(c.id)"
-            >
-              <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle forward-avatar">
-                {{ conversationInitial(c) }}
-              </span>
-              <img
-                v-else
-                class="avatar avatar-circle forward-avatar"
-                :src="avatarForConversation(c, meId)"
-                alt="avatar"
-              />
-              <div class="forward-meta">
-                <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
-                <div class="muted">{{ c.type === 'group' ? 'Group chat' : 'Direct chat' }}</div>
-              </div>
-            </button>
+            <div class="forward-list">
+              <button
+                v-for="c in filteredForwardList"
+                :key="c.id"
+                class="forward-item"
+                :class="{ disabled: isForwardTargetDisabled(c) }"
+                type="button"
+                :disabled="isForwardTargetDisabled(c)"
+                @click="forwardToConversation(c.id)"
+              >
+                <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle forward-avatar">
+                  {{ conversationInitial(c) }}
+                </span>
+                <img
+                  v-else
+                  class="avatar avatar-circle forward-avatar"
+                  :src="avatarForConversation(c, meId)"
+                  alt="avatar"
+                />
+                <div class="forward-meta">
+                  <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
+                  <div class="muted">
+                    {{ isForwardTargetDisabled(c) ? 'Already here' : (c.type === 'group' ? 'Group chat' : 'Direct chat') }}
+                  </div>
+                </div>
+              </button>
+            </div>
             <p v-if="!filteredForwardList.length" class="muted">No conversations found.</p>
           </template>
 
@@ -699,10 +709,20 @@ function formatPreviewText(value = '') {
 }
 
 function previewForMessage(raw = {}) {
-  if (raw?.deleted) return '(deleted)'
+  if (raw?.deleted || raw?.isDeleted) return '[Deleted]'
 
   const type = String(raw?.type || '').toLowerCase()
-  if (type === 'image' || raw?.imageUrl || raw?.image_url) return '[Image]'
+  if (type === 'image' || raw?.imageUrl || raw?.image_url) return '📷 Photo'
+  if (
+    type === 'reaction' ||
+    type === 'emoji' ||
+    raw?.reaction ||
+    raw?.reactionType ||
+    raw?.reaction_type ||
+    raw?.emoji
+  ) {
+    return '😃 Emoji'
+  }
 
   const content =
     raw?.content ||
@@ -715,6 +735,18 @@ function previewForMessage(raw = {}) {
     ''
 
   return formatPreviewText(content)
+}
+
+function conversationPreviewForMessage(raw = {}, conv = null) {
+  const base = previewForMessage(raw)
+  if (!base) return ''
+  const isGroupType =
+    conv?.type === 'group' ||
+    !!(conv?.groupId || conv?.group_id || conv?.group?.id)
+  if (!isGroupType) return base
+  const sender = senderProfileFromRaw(raw)
+  const senderName = preferredDisplayName(sender || {}) || sender?.name || sender?.username || ''
+  return `${senderName || 'Someone'}: ${base}`
 }
 
 function normalizeConversationList(items = []) {
@@ -745,7 +777,10 @@ function normalizeConversationList(items = []) {
         !!(c?.groupId || c?.group_id || c?.group?.id)
 
       const last = pickLastMessage(c) || {}
-      const previewContent = previewForMessage(last)
+      const previewContent = conversationPreviewForMessage(last, {
+        ...c,
+        type: isGroupType ? 'group' : c?.type,
+      })
 
       const time =
         last.createdAt ||
@@ -765,7 +800,7 @@ function normalizeConversationList(items = []) {
         ...c,
         type: isGroupType ? 'group' : c?.type,
         participants: normalizeParticipantList(c.participants || c.members || []),
-        last_preview: previewContent || 'No messages yet',
+        last_preview: previewContent || (isGroupType ? 'Say hello 👋' : 'No messages yet'),
         last_time: time,
       }
     })
@@ -1250,6 +1285,8 @@ function normalizeMessage(raw) {
       ? raw.caption || raw.text || (contentIsUrl ? '' : raw.content || '')
       : raw.content || raw.text || ''
 
+  const sanitizedContent = cleanPreviewText(contentText)
+
   const rawId =
     raw.id ??
     raw.message_id ??
@@ -1261,7 +1298,7 @@ function normalizeMessage(raw) {
   return {
     id: rawId,
     read,
-    content: contentText,
+    content: sanitizedContent,
     type: raw.type === 'image' ? 'image' : 'text',
     fileAbsUrl: fileRel ? absUrl(fileRel) : null,
     senderId: String(senderId || ''),
@@ -1459,6 +1496,7 @@ async function confirmDeleteMessage(m) {
   try {
     await deleteMessage(m.id)
     await loadMessages()
+    emitConversationReload()
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to delete message'
   } finally {
@@ -1501,7 +1539,12 @@ async function onSend() {
     replyTarget.value = null
     clearImageSelection()
     await loadMessages()
-    bumpConversationList({ lastPreview: previewForMessage(normalized) })
+    bumpConversationList({
+      lastPreview: conversationPreviewForMessage(
+        normalized,
+        currentConv.value || { type: isGroup.value ? 'group' : currentConv.value?.type }
+      ),
+    })
   } catch (e) {
     err.value = e?.response?.data?.message || 'Failed to send'
   } finally {
@@ -1556,6 +1599,7 @@ async function toggleReaction(m, emoji) {
       m._myReactions = [emoji]
     }
     await loadMessages()
+    emitConversationReload()
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to react'
   }
@@ -1599,14 +1643,30 @@ const filteredForwardList = computed(() => {
   })
 })
 
+function isForwardTargetDisabled(c) {
+  return String(c?.id || '') === convId.value
+}
+
 async function forwardToConversation(targetConvId) {
-  if (!forwardTargetMessage.value) return
+  if (!targetConvId) {
+    forwardError.value = 'Please select a destination'
+    return
+  }
+  if (!forwardTargetMessage.value) {
+    forwardError.value = 'Please select a destination'
+    return
+  }
+  if (String(targetConvId) === convId.value) {
+    forwardError.value = 'Please select a different conversation'
+    return
+  }
   forwardError.value = ''
   notice.value = ''
   try {
     await forwardMessage(forwardTargetMessage.value.id, targetConvId)
     notice.value = 'Message forwarded successfully.'
-    const preview = previewForMessage(forwardTargetMessage.value)
+    const targetConv = convList.value.find(c => String(c.id) === String(targetConvId))
+    const preview = conversationPreviewForMessage(forwardTargetMessage.value, targetConv || {})
     window.dispatchEvent(
       new CustomEvent('conversations:refresh', {
         detail: {
@@ -1616,17 +1676,30 @@ async function forwardToConversation(targetConvId) {
         },
       })
     )
-    await scrollToBottom(true)
+    emitConversationReload()
     closeForwardPicker()
+    if (String(targetConvId) !== convId.value) {
+      const targetType = targetConv?.type === 'group' ? 'group' : 'conv'
+      await router.replace({ name: 'chat', params: { type: targetType, id: String(targetConvId) } })
+    } else {
+      await loadMessages()
+      await scrollToBottom(true)
+    }
   } catch (e) {
-    forwardError.value =
-      e?.response?.data?.message || e?.message || 'Failed to forward message'
+    forwardError.value = 'Failed to forward message'
   }
 }
 
 async function forwardToUser(user) {
   const userId = String(user?.id || user?.userId || user?.user_id || '')
-  if (!userId || !forwardTargetMessage.value) return
+  if (!userId) {
+    forwardError.value = 'Please select a destination'
+    return
+  }
+  if (!forwardTargetMessage.value) {
+    forwardError.value = 'Please select a destination'
+    return
+  }
 
   forwardError.value = ''
   try {
@@ -1641,7 +1714,7 @@ async function forwardToUser(user) {
     if (!cid) throw new Error('Failed to create conversation')
     await forwardToConversation(String(cid))
   } catch (e) {
-    forwardError.value = e?.response?.data?.message || e?.message || 'Failed to forward message'
+    forwardError.value = 'Failed to forward message'
   }
 }
 
@@ -2298,17 +2371,19 @@ watch(convId, async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  flex: 0 0 280px;
+  flex: 0 0 320px;
+  max-width: 320px;
 }
 
 .group-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  padding: var(--panel-pad);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-height: 0;
   flex: 1 1 auto;
   overflow-y: auto;
@@ -2360,18 +2435,21 @@ watch(convId, async () => {
 
 .group-rename {
   background: #f8fafc;
-  border: 1px solid #edf2f7;
-  padding: 10px 10px 10px 12px;
+  border: 1px solid #e2e8f0;
+  padding: 8px 10px;
+  border-radius: 12px;
 }
 
 .group-rename .btn.sm {
-  background: #e5e7eb;
+  background: #e2e8f0;
   color: #1f2937;
   box-shadow: none;
+  padding: 6px 10px;
+  font-size: 0.85rem;
 }
 
 .group-rename .btn.sm:hover {
-  background: #e8ecf1;
+  background: #dce3ea;
   filter: none;
 }
 
@@ -2379,6 +2457,13 @@ watch(convId, async () => {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
 }
 
 .field .input {
@@ -2397,9 +2482,9 @@ watch(convId, async () => {
 
 .members-block,
 .members-add {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   padding: 12px;
   display: grid;
   gap: 8px;
@@ -2427,17 +2512,17 @@ watch(convId, async () => {
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .member-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  padding: 6px 10px;
-  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 6px 8px;
+  background: transparent;
 }
 
 .member-left {
@@ -2489,17 +2574,46 @@ watch(convId, async () => {
 }
 
 .link.danger {
-  color: #dc2626;
+  color: #b91c1c;
+  font-size: 0.85rem;
 }
 
 .notice {
   background: #ecfeff;
   color: #0f766e;
   border: 1px solid #99f6e4;
-  border-radius: 0;
+  border-radius: 10px;
   padding: 8px 10px;
   margin-bottom: 8px;
 }
+
+.members-add .section-icon {
+  font-size: 0.9rem;
+  color: #16a34a;
+}
+
+.members-add :deep(.bar) {
+  align-items: stretch;
+}
+
+.members-add :deep(.input),
+.members-add :deep(.btn) {
+  height: 38px;
+}
+
+.members-add :deep(.btn) {
+  padding: 0 12px;
+  font-size: 0.9rem;
+}
+
+.leave {
+  width: 100%;
+}
+
+.leave:hover {
+  filter: brightness(0.94);
+}
+
 
 .scroll {
   flex: 1 1 auto;
@@ -2984,10 +3098,10 @@ img.member-avatar {
 
 .forward-modal {
   width: min(460px, 92vw);
-  max-height: 80vh;
+  max-height: 85vh;
   background: #fff;
-  border-radius: 0;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 16px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
@@ -3009,7 +3123,7 @@ img.member-avatar {
 
 .forward-body {
   overflow-y: auto;
-  max-height: 55vh;
+  max-height: 62vh;
   display: flex;
   flex-direction: column;
   gap: 8px;
