@@ -110,266 +110,268 @@
           </aside>
 
           <!-- ===== CENTER: CHAT ===== -->
-          <div class="chat-main">
-            <header class="chat-header">
-              <div class="chat-header__left">
-                <span
-                  v-if="!headerAvatar"
-                  class="header-avatar avatar-fallback avatar-circle"
-                >
-                  {{ headerInitial }}
-                </span>
-                <img
-                  v-else
-                  class="header-avatar avatar avatar-circle"
-                  :src="headerAvatar"
-                  alt="avatar"
-                />
-                <div class="chat-header__meta">
-                  <div class="chat-header__title text-title">{{ headerTitle }}</div>
-                  <div v-if="headerSubtext" class="chat-header__subtext">{{ headerSubtext }}</div>
-                </div>
-              </div>
-              <div class="chat-header__actions" aria-label="Chat actions"></div>
-            </header>
-            <div
-              v-if="chatHydrating"
-              class="empty-thread loading"
-              role="status"
-              aria-live="polite"
-            >
-              <p class="muted">Loading conversation…</p>
-            </div>
-            <div
-              v-else
-              ref="scrollbox"
-              class="scroll"
-              @scroll="handleScroll"
-            >
-              <template v-if="messages.length">
-                <div
-                  v-for="m in messages"
-                  :key="m.id"
-                  class="row"
-                  :id="`msg-${m.id}`"
-                  :class="{
-                    mine: isMine(m),
-                    highlight: replyHighlightId === String(m.id)
-                  }"
-                >
-                  <!-- Incoming avatar -->
+          <section class="chat-pane">
+            <div class="chat-pane__body">
+              <header v-if="convId" class="chat-header">
+                <div class="chat-header__left">
                   <span
-                    v-if="!isMine(m) && !avatarUrlForMessage(m)"
-                    class="avatar avatar-fallback avatar-circle"
+                    v-if="!headerAvatar"
+                    class="header-avatar avatar-fallback avatar-circle"
                   >
-                    {{ avatarInitial(m) }}
+                    {{ headerInitial }}
                   </span>
                   <img
-                    v-else-if="!isMine(m)"
-                    class="avatar avatar-circle"
-                    :src="avatarUrlForMessage(m)"
+                    v-else
+                    class="header-avatar avatar avatar-circle"
+                    :src="headerAvatar"
                     alt="avatar"
-                    @error="onAvatarError(avatarUrlForMessage(m))"
                   />
-
-                  <!-- Bubble -->
-                  <div class="bubble-wrap" :class="{ mine: isMine(m) }">
-                    <div
-                      v-if="showSenderName && !isMine(m)"
-                      class="who"
-                    >
-                      {{ displayNameFor(m) }}
-                    </div>
-
-                    <div class="bubble" :class="{ mine: isMine(m) }">
-                      <button
-                        v-if="m._replyPreview"
-                        class="inline-reply"
-                        type="button"
-                        @click="jumpToMessage(m.replyToId)"
+                  <div class="chat-header__meta">
+                    <div class="chat-header__title text-title">{{ headerTitle }}</div>
+                    <div v-if="headerSubtext" class="chat-header__subtext">{{ headerSubtext }}</div>
+                  </div>
+                </div>
+                <div class="chat-header__actions" aria-label="Chat actions"></div>
+              </header>
+              <div
+                v-if="chatHydrating"
+                class="empty-thread loading"
+                role="status"
+                aria-live="polite"
+              >
+                <p class="muted">Loading conversation…</p>
+              </div>
+              <div
+                v-else
+                ref="scrollbox"
+                class="scroll"
+                @scroll="handleScroll"
+              >
+                <template v-if="messages.length">
+                  <div
+                    v-for="m in messages"
+                    :key="m.id"
+                    class="row"
+                    :id="`msg-${m.id}`"
+                    :class="{
+                      mine: isMine(m),
+                      highlight: replyHighlightId === String(m.id)
+                    }"
+                  >
+                      <!-- Incoming avatar -->
+                      <span
+                        v-if="!isMine(m) && !avatarUrlForMessage(m)"
+                        class="avatar avatar-fallback avatar-circle"
                       >
+                        {{ avatarInitial(m) }}
+                      </span>
+                      <img
+                        v-else-if="!isMine(m)"
+                        class="avatar avatar-circle"
+                        :src="avatarUrlForMessage(m)"
+                        alt="avatar"
+                        @error="onAvatarError(avatarUrlForMessage(m))"
+                      />
+
+                      <!-- Bubble -->
+                      <div class="bubble-wrap" :class="{ mine: isMine(m) }">
                         <div
-                          v-if="m._replyFrom"
-                          class="reply-from"
+                          v-if="showSenderName && !isMine(m)"
+                          class="who"
                         >
-                          {{ m._replyFrom }}
+                          {{ displayNameFor(m) }}
                         </div>
-                        <div class="reply-body">
-                          <img
-                            v-if="m._replyImage"
-                            :src="m._replyImage"
-                            class="reply-thumb"
-                            alt="reply image"
-                          />
-                          <div class="reply-text">
-                            {{ m._replyPreview }}
+
+                        <div class="bubble" :class="{ mine: isMine(m) }">
+                          <button
+                            v-if="m._replyPreview"
+                            class="inline-reply"
+                            type="button"
+                            @click="jumpToMessage(m.replyToId)"
+                          >
+                            <div
+                              v-if="m._replyFrom"
+                              class="reply-from"
+                            >
+                              {{ m._replyFrom }}
+                            </div>
+                            <div class="reply-body">
+                              <img
+                                v-if="m._replyImage"
+                                :src="m._replyImage"
+                                class="reply-thumb"
+                                alt="reply image"
+                              />
+                              <div class="reply-text">
+                                {{ m._replyPreview }}
+                              </div>
+                            </div>
+                          </button>
+
+                          <div v-if="m.fileAbsUrl" class="img-wrap">
+                            <img :src="m.fileAbsUrl" class="img" />
+                          </div>
+
+                          <div
+                            v-if="m.content"
+                            class="text-block text-primary"
+                          >
+                            {{ m.content }}
                           </div>
                         </div>
-                      </button>
 
-                      <div v-if="m.fileAbsUrl" class="img-wrap">
-                        <img :src="m.fileAbsUrl" class="img" />
+                        <div class="meta text-secondary">
+                          {{ fmtTime(m._ts) }}
+                          <span v-if="tickText(m)" class="ticks">
+                            {{ tickText(m) }}
+                          </span>
+                        </div>
+
+                        <div
+                          v-if="m._myLastComment"
+                          class="comment-chip"
+                          :class="{ mine: isMine(m) }"
+                        >
+                          {{ m._myLastComment }}
+                        </div>
+
+                        <div
+                          v-if="m._reactions && m._reactions.length"
+                          class="reactions"
+                        >
+                          <span
+                            v-for="reaction in m._reactions"
+                            :key="reaction.emoji"
+                            class="reaction-pill"
+                            :title="reaction.authors.join(', ')"
+                          >
+                            {{ reaction.emoji }}
+                            <span v-if="reaction.count > 1" class="reaction-count">{{ reaction.count }}</span>
+                          </span>
+                        </div>
+
+                        <div
+                          v-if="m._myReactions && m._myReactions.length"
+                          class="my-reactions"
+                        >
+                          <span class="my-reactions__label">You:</span>
+                          <span
+                            v-for="emoji in m._myReactions"
+                            :key="emoji"
+                            class="my-reactions__pill"
+                          >
+                            {{ emoji }}
+                          </span>
+                        </div>
+
+                        <div class="actions">
+                          <button class="icon-btn" @click="setReplyTarget(m)">↩️</button>
+                          <button class="icon-btn" @click="openForwardPicker(m)">🔗</button>
+                          <button class="icon-btn" @click="toggleReaction(m, '👍')">👍</button>
+                          <button class="icon-btn" @click="toggleReaction(m, '❤️')">❤️</button>
+                          <button class="icon-btn" @click="toggleReaction(m, '😂')">😂</button>
+                          <button
+                            v-if="isMine(m)"
+                            class="icon-btn"
+                            @click="confirmDeleteMessage(m)"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
 
-                      <div
-                        v-if="m.content"
-                        class="text-block text-primary"
-                      >
-                        {{ m.content }}
-                      </div>
-                    </div>
-
-                    <div class="meta text-secondary">
-                      {{ fmtTime(m._ts) }}
-                      <span v-if="tickText(m)" class="ticks">
-                        {{ tickText(m) }}
-                      </span>
-                    </div>
-
-                    <div
-                      v-if="m._myLastComment"
-                      class="comment-chip"
-                      :class="{ mine: isMine(m) }"
-                    >
-                      {{ m._myLastComment }}
-                    </div>
-
-                    <div
-                      v-if="m._reactions && m._reactions.length"
-                      class="reactions"
-                    >
+                      <!-- My avatar -->
                       <span
-                        v-for="reaction in m._reactions"
-                        :key="reaction.emoji"
-                        class="reaction-pill"
-                        :title="reaction.authors.join(', ')"
+                        v-if="isMine(m) && !myAvatarUrl"
+                        class="avatar avatar-fallback avatar-circle mine"
                       >
-                        {{ reaction.emoji }}
-                        <span v-if="reaction.count > 1" class="reaction-count">{{ reaction.count }}</span>
+                        {{ avatarInitial(m) }}
                       </span>
+                      <img
+                        v-else-if="isMine(m)"
+                        class="avatar avatar-circle mine"
+                        :src="myAvatarUrl"
+                        alt="avatar"
+                      />
                     </div>
+                  </template>
 
-                    <div
-                      v-if="m._myReactions && m._myReactions.length"
-                      class="my-reactions"
-                    >
-                      <span class="my-reactions__label">You:</span>
-                      <span
-                        v-for="emoji in m._myReactions"
-                        :key="emoji"
-                        class="my-reactions__pill"
-                      >
-                        {{ emoji }}
-                      </span>
-                    </div>
-
-                    <div class="actions">
-                      <button class="icon-btn" @click="setReplyTarget(m)">↩️</button>
-                      <button class="icon-btn" @click="openForwardPicker(m)">🔗</button>
-                      <button class="icon-btn" @click="toggleReaction(m, '👍')">👍</button>
-                      <button class="icon-btn" @click="toggleReaction(m, '❤️')">❤️</button>
-                      <button class="icon-btn" @click="toggleReaction(m, '😂')">😂</button>
-                      <button
-                        v-if="isMine(m)"
-                        class="icon-btn"
-                        @click="confirmDeleteMessage(m)"
-                      >
-                        🗑️
-                      </button>
-                    </div>
+                  <div v-else class="empty-thread" role="status">
+                    <p class="muted">
+                      {{ isGroup ? 'Say hello to the group 👋' : 'Say hello 👋 to start the chat.' }}
+                    </p>
                   </div>
-
-                  <!-- My avatar -->
-                  <span
-                    v-if="isMine(m) && !myAvatarUrl"
-                    class="avatar avatar-fallback avatar-circle mine"
-                  >
-                    {{ avatarInitial(m) }}
-                  </span>
-                  <img
-                    v-else-if="isMine(m)"
-                    class="avatar avatar-circle mine"
-                    :src="myAvatarUrl"
-                    alt="avatar"
-                  />
                 </div>
-              </template>
-
-              <div v-else class="empty-thread" role="status">
-                <p class="muted">
-                  {{ isGroup ? 'Say hello to the group 👋' : 'Say hello 👋 to start the chat.' }}
-                </p>
-              </div>
-            </div>
-
-            <!-- ===== COMPOSER ===== -->
-            <div v-if="convId" class="composer">
-              <div v-if="replyTarget" class="reply-banner">
-                Replying to
-                {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}
-                <span class="reply-snippet">
-                  {{ replyTarget.content || replyTarget._replyPreview || '[message]' }}
-                </span>
-                <button
-                  class="btn-xs btn-secondary"
-                  type="button"
-                  @click="clearReplyTarget"
-                >
-                  Cancel
-                </button>
               </div>
 
-              <div v-if="imagePreview" class="attach-preview">
-                <img :src="imagePreview" class="attach-thumb" />
-                <div class="attach-meta">
-                  <div class="attach-name">{{ imageFile?.name || 'Image' }}</div>
+              <!-- ===== COMPOSER ===== -->
+              <div v-if="convId" class="composer">
+                <div v-if="replyTarget" class="reply-banner">
+                  Replying to
+                  {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}
+                  <span class="reply-snippet">
+                    {{ replyTarget.content || replyTarget._replyPreview || '[message]' }}
+                  </span>
                   <button
                     class="btn-xs btn-secondary"
                     type="button"
-                    @click="clearImageSelection"
+                    @click="clearReplyTarget"
                   >
-                    Remove
+                    Cancel
+                  </button>
+                </div>
+
+                <div v-if="imagePreview" class="attach-preview">
+                  <img :src="imagePreview" class="attach-thumb" />
+                  <div class="attach-meta">
+                    <div class="attach-name">{{ imageFile?.name || 'Image' }}</div>
+                    <button
+                      class="btn-xs btn-secondary"
+                      type="button"
+                      @click="clearImageSelection"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                <div class="composer-row">
+                  <textarea
+                    v-model="draft"
+                    ref="composerInput"
+                    class="input"
+                    placeholder="Type a message…"
+                    rows="1"
+                    @keyup.enter.exact.prevent="onSend"
+                  ></textarea>
+
+                  <button
+                    type="button"
+                    class="icon-btn attach"
+                    @click="triggerImagePicker"
+                  >
+                    📎
+                  </button>
+
+                  <input
+                    ref="imageInput"
+                    type="file"
+                    class="filepick"
+                    accept="image/*"
+                    @change="onPickImage"
+                  />
+
+                  <button
+                    class="btn"
+                    type="button"
+                    :disabled="!canSend"
+                    @click="onSend"
+                  >
+                    {{ sending ? 'Sending…' : 'Send' }}
                   </button>
                 </div>
               </div>
-
-              <div class="composer-row">
-                <textarea
-                  v-model="draft"
-                  ref="composerInput"
-                  class="input"
-                  placeholder="Type a message…"
-                  rows="1"
-                  @keyup.enter.exact.prevent="onSend"
-                ></textarea>
-
-                <button
-                  type="button"
-                  class="icon-btn attach"
-                  @click="triggerImagePicker"
-                >
-                  📎
-                </button>
-
-                <input
-                  ref="imageInput"
-                  type="file"
-                  class="filepick"
-                  accept="image/*"
-                  @change="onPickImage"
-                />
-
-                <button
-                  class="btn"
-                  type="button"
-                  :disabled="!canSend"
-                  @click="onSend"
-                >
-                  {{ sending ? 'Sending…' : 'Send' }}
-                </button>
-              </div>
-            </div>
-          </div>
+          </section>
 
           <!-- ===== RIGHT: GROUP PANEL ===== -->
           <aside v-if="isGroup" class="group-panel">
@@ -2254,7 +2256,7 @@ watch(convId, async () => {
   padding: 16px 0;
 }
 
-.chat-main {
+.chat-pane {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 0;
@@ -2268,6 +2270,13 @@ watch(convId, async () => {
   height: 100%;
   flex: 1 1 auto;
   overflow: hidden;
+}
+
+.chat-pane__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .group-panel {
