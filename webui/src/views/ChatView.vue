@@ -112,7 +112,7 @@
           <!-- ===== CENTER: CHAT ===== -->
           <section class="chat-pane">
             <div class="chat-pane__body">
-              <header v-if="convId" class="chat-header">
+              <header v-if="convId && !notFound" class="chat-header">
                 <div class="chat-header__left">
                   <span
                     v-if="!headerAvatar"
@@ -133,8 +133,13 @@
                 </div>
                 <div class="chat-header__actions" aria-label="Chat actions"></div>
               </header>
+              <div v-if="notFound" class="empty-thread not-found" role="status">
+                <p class="not-found__title">Chat not found or no longer available</p>
+                <p class="muted">This conversation may have been removed or you no longer have access.</p>
+                <button class="btn" type="button" @click="goToConversations">Back to Chats</button>
+              </div>
               <div
-                v-if="chatHydrating"
+                v-else-if="chatHydrating"
                 class="empty-thread loading"
                 role="status"
                 aria-live="polite"
@@ -313,7 +318,7 @@
               </div>
 
               <!-- ===== COMPOSER ===== -->
-              <div v-if="convId" class="composer">
+              <div v-if="convId && !notFound" class="composer">
                 <div v-if="replyTarget" class="reply-banner">
                   Replying to
                   {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}
@@ -382,7 +387,7 @@
           </section>
 
           <!-- ===== RIGHT: GROUP PANEL ===== -->
-          <aside v-if="isGroup" class="group-panel">
+          <aside v-if="isGroup" class="group-panel" :class="{ disabled: notFound }">
             <div class="group-card">
               <div class="group-header">
                 <span
@@ -401,12 +406,15 @@
                   <div class="group-name">{{ groupInfo?.name || headerTitle }}</div>
                   <div class="group-sub">{{ groupMembers.length === 1 ? '1 member' : `${groupMembers.length} members` }}</div>
                 </div>
-                <button class="link muted" type="button" @click="triggerGroupPhoto">Change photo</button>
+                <button class="link muted" type="button" :disabled="notFound" @click="triggerGroupPhoto">
+                  Change photo
+                </button>
                 <input
                   ref="groupPhotoInput"
                   type="file"
                   class="filepick"
                   accept="image/*"
+                  :disabled="notFound"
                   @change="onPickGroupPhoto"
                 />
               </div>
@@ -417,9 +425,14 @@
                 v-model.trim="groupNameDraft"
                 class="input"
                 placeholder="Group name"
-                :disabled="groupBusy"
+                :disabled="groupBusy || notFound"
               />
-              <button class="btn sm" type="button" :disabled="groupBusy || !groupNameDraft" @click="onRenameGroup">
+              <button
+                class="btn sm"
+                type="button"
+                :disabled="groupBusy || !groupNameDraft || notFound"
+                @click="onRenameGroup"
+              >
                 {{ groupBusy ? 'Saving…' : 'Save' }}
               </button>
             </div>
@@ -449,36 +462,41 @@
                         <div v-if="safeUsername(u)" class="member-sub">{{ safeUsername(u) }}</div>
                       </div>
                     </div>
-                    <button
-                      v-if="String(u.id) !== meId"
-                      class="link danger"
-                      type="button"
-                      :disabled="groupBusy"
-                      @click="onRemoveMember(u.id)"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                  <li v-if="!groupMembers.length" class="muted">No members found.</li>
-                </ul>
-              </div>
-            </div>
-            <div class="members-add">
-              <div class="section-label text-secondary">
-                Add members <span class="section-icon" aria-hidden="true">+</span>
-              </div>
-              <UserSearch
-                placeholder="Search members by name or username"
-                class="group-search"
-                :class="{ disabled: addingMember }"
-                @select="onSelectNewMember"
-                @error="groupErr = $event || ''"
-              />
-            </div>
+              <button
+                v-if="String(u.id) !== meId"
+                class="link danger"
+                type="button"
+                :disabled="groupBusy || notFound"
+                @click="onRemoveMember(u.id)"
+              >
+                Remove
+              </button>
+            </li>
+            <li v-if="!groupMembers.length" class="muted">No members found.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="members-add">
+        <div class="section-label text-secondary">
+          Add members <span class="section-icon" aria-hidden="true">+</span>
+        </div>
+        <UserSearch
+          placeholder="Search members by name or username"
+          class="group-search"
+          :class="{ disabled: notFound || addingMember }"
+          @select="onSelectNewMember"
+          @error="groupErr = $event || ''"
+        />
+      </div>
 
-            <button class="btn danger leave" type="button" :disabled="groupBusy" @click="onLeaveGroup">
-              Leave group
-            </button>
+      <button
+        class="btn danger leave"
+        type="button"
+        :disabled="groupBusy || notFound"
+        @click="onLeaveGroup"
+      >
+        Leave group
+      </button>
             <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
             </div>
           </aside>
@@ -600,6 +618,7 @@ const notice = ref('')
 const loading = ref(false)
 const metaLoading = ref(false)
 const sending = ref(false)
+const notFound = ref(false)
 const draft = ref('')
 const messages = ref([])
 const scrollbox = ref(null)
@@ -663,6 +682,26 @@ const forwardList = ref([])
 const forwardTargetMessage = ref(null)
 
 const chatHydrating = computed(() => metaLoading.value || (loading.value && !messages.value.length))
+
+function goToConversations() {
+  router.replace('/conversations')
+}
+
+function markChatNotFound() {
+  notFound.value = true
+  loading.value = false
+  metaLoading.value = false
+  groupLoading.value = false
+  messages.value = []
+  currentConv.value = null
+  groupInfo.value = null
+  groupNameDraft.value = ''
+  replyTarget.value = null
+  replyHighlightId.value = ''
+  clearImageSelection()
+  err.value = ''
+  notice.value = ''
+}
 
 function scrollToBottom(force = false) {
   return nextTick(() => {
@@ -1115,6 +1154,10 @@ function primeConversationMeta() {
 async function loadConversationMeta() {
   await ensureAuthReady()
   if (!isAuthenticated.value) return
+  if (!convId.value) {
+    markChatNotFound()
+    return
+  }
   metaLoading.value = true
   try {
     if (route.params.type === 'group' && !isGroup.value) {
@@ -1167,6 +1210,12 @@ async function loadConversationMeta() {
       }
     }
 
+    if (!conv) {
+      markChatNotFound()
+      return
+    }
+
+    notFound.value = false
     currentConv.value = conv || null
     isGroup.value =
       conv?.type === 'group' ||
@@ -1179,6 +1228,11 @@ async function loadConversationMeta() {
       groupInfo.value = null
     }
   } catch (e) {
+    const status = e?.response?.status
+    if (status === 401 || status === 403 || status === 404) {
+      markChatNotFound()
+      return
+    }
     if (!isAbortError(e)) {
       // Let message loading continue; surface diagnostics in the console only
       console.error('loadConversationMeta failed', e)
@@ -1333,6 +1387,7 @@ function normalizeMessage(raw) {
 async function loadMessages() {
   await ensureAuthReady()
   if (!isAuthenticated.value || !convId.value) return
+  if (notFound.value) return
 
   loading.value = true
   err.value = ''
@@ -1378,6 +1433,11 @@ async function loadMessages() {
 
     await scrollToBottom(true)
   } catch (e) {
+    const status = e?.response?.status
+    if (status === 401 || status === 403 || status === 404) {
+      markChatNotFound()
+      return
+    }
     err.value = e?.response?.data?.message || e?.message || 'Failed to load messages'
   } finally {
     loading.value = false
@@ -1427,7 +1487,7 @@ async function loadGroupPanel() {
   try {
     const gid = groupId.value || (await resolveGroupId())
     if (!gid) {
-      groupErr.value = 'Group info unavailable.'
+      markChatNotFound()
       return
     }
 
@@ -1475,6 +1535,11 @@ async function loadGroupPanel() {
     groupNameDraft.value = groupInfo.value.name || ''
     upsertConversationMeta(currentConv.value || {})
   } catch (e) {
+    const status = e?.response?.status
+    if (status === 401 || status === 403 || status === 404) {
+      markChatNotFound()
+      return
+    }
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to load group info'
   } finally {
     groupLoading.value = false
@@ -1882,7 +1947,7 @@ async function onLeaveGroup() {
   try {
     await leaveGroup(groupId.value)
     emitConversationReload()
-    router.push('/conversations')
+    router.replace('/conversations')
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to leave group'
   } finally {
@@ -1936,6 +2001,7 @@ function resetChatState({ clearList = false } = {}) {
   groupNotice.value = ''
   groupNameDraft.value = ''
   addingMember.value = false
+  notFound.value = false
   messages.value = []
   draft.value = ''
   replyTarget.value = null
@@ -2375,6 +2441,10 @@ watch(convId, async () => {
   max-width: 320px;
 }
 
+.group-panel.disabled {
+  opacity: 0.65;
+}
+
 .group-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -2629,6 +2699,16 @@ watch(convId, async () => {
   display: grid;
   place-items: center;
   text-align: center;
+  color: #0f172a;
+}
+
+.empty-thread.not-found {
+  gap: 10px;
+}
+
+.not-found__title {
+  font-weight: 700;
+  font-size: 1.05rem;
   color: #0f172a;
 }
 

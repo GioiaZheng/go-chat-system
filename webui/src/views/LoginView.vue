@@ -8,7 +8,7 @@
       <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
       <form @submit.prevent="login" novalidate>
-        <label class="form-label fw-medium">Name</label>
+        <label class="form-label field-label">Name</label>
         <input
           v-model.trim="name"
           type="text"
@@ -22,14 +22,19 @@
           :disabled="busy"
           @input="onUserInput"
         />
+        <p class="field-helper small text-muted mb-0">
+          This name is shown to others when you start chats.
+        </p>
         <p v-if="nameError" class="text-danger small mt-2 mb-0">
           {{ nameError }}
         </p>
 
         <button
           type="submit"
-          class="btn btn-gradient btn-lg w-100 mt-3"
+          class="btn btn-gradient btn-lg w-100 mt-2"
+          :class="{ 'is-loading': busy }"
           :disabled="busy || name.length < 1"
+          :aria-busy="busy"
         >
           <span
             v-if="busy"
@@ -41,7 +46,7 @@
         </button>
       </form>
 
-      <p class="text-center text-muted small mt-3 mb-0">
+      <p class="text-center login-hint mb-0">
         Press <kbd>Enter</kbd> to login
       </p>
     </div>
@@ -134,25 +139,27 @@ body.theme-light-login{
 .auth-wrap{
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 32px 16px;
+  padding: 24px 16px 32px;
 }
 .auth-card{
   width: 100%;
   max-width: 460px;
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #dbe4f0;
   border-radius: 0;
-  box-shadow: 0 20px 60px rgba(2,6,23,.08);
+  box-shadow: 0 24px 70px rgba(2,6,23,.12);
   padding: 28px 24px;
   color: #0f172a;
+  margin-top: 16px;
 }
 .brand{
-  font-weight: 800;
-  font-size: 28px;
-  letter-spacing: .5px;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: .4px;
   text-align: center;
+  color: #1f2937;
 }
 .brand .grad{
   background: linear-gradient(90deg, #22c55e, #3b82f6);
@@ -162,26 +169,62 @@ body.theme-light-login{
 }
 .subtitle{
   text-align: center;
-  color: #475569;
-  font-weight: 700;
-  margin: 6px 0 18px;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 32px;
+  margin: 8px 0 18px;
 }
 .form-label{ color:#334155 }
+.field-label{
+  text-transform: uppercase;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #64748b;
+}
+.field-helper{
+  margin-top: 6px;
+  color: #94a3b8;
+}
 .form-control{
   background:#fff;
   border-color: #cbd5e1;
   color:#0f172a;
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
 .form-control::placeholder{ color:#94a3b8 }
 .form-control:focus{
   border-color:#22c55e;
-  box-shadow: 0 0 0 .25rem rgba(34,197,94,.15);
+  box-shadow: 0 0 0 .25rem rgba(34,197,94,.18);
 }
 .btn-gradient{
   background-image: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #3b82f6 120%);
   color:#fff;
   border:0;
   box-shadow:0 .6rem 1.4rem rgba(34,197,94,.25);
+  transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
 }
-.btn-gradient:disabled{ opacity:.6 }
+.btn-gradient:hover{
+  filter: brightness(1.03);
+  box-shadow: 0 .75rem 1.6rem rgba(34,197,94,.3);
+}
+.btn-gradient:active{
+  transform: translateY(1px);
+  box-shadow: 0 .4rem 1rem rgba(34,197,94,.2);
+}
+.btn-gradient.is-loading{
+  cursor: progress;
+  filter: saturate(.9);
+}
+.btn-gradient:disabled{
+  opacity:.55;
+  box-shadow:none;
+  cursor: not-allowed;
+}
+.login-hint{
+  margin-top: 14px;
+  font-size: .8rem;
+  color: #94a3b8;
+}
 </style>

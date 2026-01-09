@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { ensureAuthReady, isAuthenticated } from '@/services/auth'
+import { getMyConversations } from '@/services/api'
+import { getConversationMeta, hydrateConversationList } from '@/services/conversationStore'
 
 // View components used in the route map.
 import LoginView from '../views/LoginView.vue'
@@ -113,6 +115,31 @@ router.beforeEach(async (to, from, next) => {
   if (to.path === '/login' && authed) {
     next('/conversations')
     return
+  }
+
+  if (to.name === 'chat' && authed) {
+    const id = String(to.params.id || '')
+    const type = String(to.params.type || '')
+    if (!id || (type !== 'conv' && type !== 'group')) {
+      next('/conversations')
+      return
+    }
+
+    const cached = getConversationMeta(id)
+    if (!cached) {
+      try {
+        const raw = await getMyConversations()
+        const items = raw?.data?.items || raw?.items || (Array.isArray(raw) ? raw : []) || []
+        hydrateConversationList(items)
+        const exists = items.some((c) => String(c?.id || '') === id)
+        if (!exists) {
+          next('/conversations')
+          return
+        }
+      } catch (e) {
+        // Allow navigation to proceed; ChatView will surface load errors.
+      }
+    }
   }
 
   next()
