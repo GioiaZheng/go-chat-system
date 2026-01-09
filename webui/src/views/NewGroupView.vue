@@ -77,13 +77,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import UserSearch from '@/components/UserSearch.vue'
-import {
-  isAuthed,
-  getAvatarUrl,
-  createGroup as apiCreateGroup,
-  setGroupPhoto,
-  getMyProfile,
-} from '@/services/api'
+import { getAvatarUrl, createGroup as apiCreateGroup, setGroupPhoto } from '@/services/api'
+import { ensureAuthReady, isAuthenticated, currentUser, refreshProfile } from '@/services/auth'
 
 const router = useRouter()
 
@@ -115,7 +110,10 @@ onMounted(async () => {
   await ensureAuthReady()
   if (!isAuthenticated.value) {
     router.replace('/login')
+    return
   }
+  await refreshProfile().catch(() => {})
+  me.value = currentUser.value
 })
 
 function onChildError(msg) {
@@ -177,10 +175,11 @@ async function create() {
     if (avatarFile.value) {
       await setGroupPhoto(groupId, avatarFile.value)
     }
+    window.dispatchEvent(new CustomEvent('conversations:reload'))
 
     // 3) Navigate to the group chat using conversationId
     if (conversationId) {
-      router.push({ name: 'chat', params: { type: 'conv', id: String(conversationId) } })
+      router.push({ name: 'chat', params: { type: 'group', id: String(conversationId) } })
     } else {
       // Fallback: return to the group list if no conversation id is present
       router.push('/groups')

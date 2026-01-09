@@ -118,6 +118,7 @@ import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 
 import { getMyConversations, getAvatarUrl, deleteConversation, preferredDisplayName, initialsFor, normalizeUser } from '@/services/api'
+import { hydrateConversationList, upsertConversationMeta } from '@/services/conversationStore'
 import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
 
 const router = useRouter()
@@ -126,6 +127,7 @@ const convs = ref([])
 const loading = ref(false)
 const err = ref('')
 const search = ref('')
+let refreshTimer = null
 
 function previewForMessage(raw = {}) {
   const isForwarded = Boolean(raw?.forwardedFrom || raw?.forwarded_from)
@@ -264,6 +266,7 @@ async function load() {
         }
       })
       .sort((a, b) => new Date(b.last_time || 0) - new Date(a.last_time || 0))
+    hydrateConversationList(convs.value)
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to load conversations'
   } finally {
@@ -273,6 +276,17 @@ async function load() {
 
 // Navigation helpers for the chat list.
 function open(c) {
+  if (c) {
+    upsertConversationMeta(c)
+    window.dispatchEvent(
+      new CustomEvent('conversations:hydrate', {
+        detail: {
+          conversationId: String(c.id || ''),
+          meta: c,
+        },
+      })
+    )
+  }
   router.push({
     name: 'chat',
     params: { type: c.type === 'group' ? 'group' : 'conv', id: c.id },
@@ -314,6 +328,11 @@ const handleRefreshEvent = e => {
           : c
       )
       .sort((a, b) => new Date(b.last_time || 0) - new Date(a.last_time || 0))
+    upsertConversationMeta({
+      id: targetId,
+      ...(bumpedName ? { name: bumpedName } : {}),
+      ...(bumpedAvatar ? { avatar: bumpedAvatar } : {}),
+    })
     return
   }
 
@@ -324,11 +343,21 @@ onMounted(async () => {
   await load()
   window.addEventListener('auth:changed', load)
   window.addEventListener('conversations:refresh', handleRefreshEvent)
+  window.addEventListener('conversations:reload', load)
+  refreshTimer = setInterval(() => {
+    if (!isAuthenticated.value) return
+    load()
+  }, 15000)
 })
 
 onUnmounted(() => {
   window.removeEventListener('auth:changed', load)
   window.removeEventListener('conversations:refresh', handleRefreshEvent)
+  window.removeEventListener('conversations:reload', load)
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 

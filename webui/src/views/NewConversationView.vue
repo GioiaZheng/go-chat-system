@@ -71,6 +71,7 @@ async function start () {
       String(res)
 
     if (!cid) throw new Error('No conversation id returned')
+    window.dispatchEvent(new CustomEvent('conversations:reload'))
     router.push({ name: 'chat', params: { type: 'conv', id: cid } })
   } catch (e) {
     if (e?.response?.status === 401) {

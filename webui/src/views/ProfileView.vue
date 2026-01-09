@@ -175,6 +175,7 @@ async function saveName() {
     await loadProfile()
     editingName.value = false
     successMessage.value = 'Name updated'
+    window.dispatchEvent(new CustomEvent('conversations:reload'))
   } catch (e) {
     handleError(e, 'Failed to set name')
   } finally {
@@ -221,6 +222,7 @@ async function uploadPhoto() {
       localStorage.setItem('me', JSON.stringify(me.value))
       window.dispatchEvent(new Event('auth:changed'))
     }
+    window.dispatchEvent(new CustomEvent('conversations:reload'))
   } catch (e) {
     handleError(e, 'Failed to upload photo')
   } finally {

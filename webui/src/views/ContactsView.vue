@@ -116,7 +116,10 @@ async function message (u) {
       data?.id ||
       String(data)
 
-    if (cid) router.push({ name: 'chat', params: { type: 'conv', id: cid } })
+    if (cid) {
+      window.dispatchEvent(new CustomEvent('conversations:reload'))
+      router.push({ name: 'chat', params: { type: 'conv', id: cid } })
+    }
     else throw new Error('Invalid conversation response')
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to start chat'

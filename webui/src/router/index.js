@@ -67,6 +67,7 @@ const routes = [
     component: ChatView,
     props: true,
     meta: { requiresAuth: true },
+    key: route => `${route.params.type}-${route.params.id}`,
   },
 
   // Legacy and redirect helpers

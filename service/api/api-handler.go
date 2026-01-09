@@ -25,6 +25,8 @@ func (rt *_router) RegisterRoutes() {
 
 	// GET /liveness -> simple service liveness check
 	rt.router.GET("/liveness", rt.liveness)
+	// GET /healthz -> nginx /api/healthz proxy
+	rt.router.GET("/healthz", rt.healthz)
 
 	// Section: authenticated routes; every handler is wrapped to inject auth/context.
 

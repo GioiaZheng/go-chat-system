@@ -57,7 +57,7 @@
             <RouterLink
               v-if="g.conversation_id"
               class="open"
-              :to="{ name: 'chat', params: { type: 'conv', id: g.conversation_id } }"
+              :to="{ name: 'chat', params: { type: 'group', id: g.conversation_id } }"
             >
               Open
             </RouterLink>
@@ -145,6 +145,7 @@ import {
   preferredDisplayName,
   normalizeUser,
 } from '@/services/api'
+import { upsertConversationMeta } from '@/services/conversationStore'
 
 import { ensureAuthReady, isAuthenticated, currentUser, refreshProfile } from '@/services/auth'
 
@@ -234,16 +235,36 @@ function emitConversationRefresh({ conversationId, name, avatar }) {
   )
 }
 
+function emitConversationsReload() {
+  window.dispatchEvent(new CustomEvent('conversations:reload'))
+}
+
 async function refreshGroupMeta(id, fallback = {}) {
   try {
     const detail = await getGroupDetail(id)
     const meta = resolveGroupMeta(detail)
+    if (meta.conversationId) {
+      upsertConversationMeta({
+        id: meta.conversationId,
+        name: meta.name || fallback.name,
+        avatar: meta.avatar || fallback.avatar,
+        type: 'group',
+      })
+    }
     emitConversationRefresh({
       conversationId: meta.conversationId,
       name: meta.name || fallback.name,
       avatar: meta.avatar || fallback.avatar,
     })
   } catch {
+    if (fallback.conversationId) {
+      upsertConversationMeta({
+        id: fallback.conversationId,
+        name: fallback.name,
+        avatar: fallback.avatar,
+        type: 'group',
+      })
+    }
     emitConversationRefresh({ conversationId: fallback.conversationId, name: fallback.name, avatar: fallback.avatar })
   }
 }
@@ -309,6 +330,7 @@ async function createGroup() {
     memberIdsRaw.value = ''
     notice.value = 'Group created successfully.'
     await loadList()
+    emitConversationsReload()
   } catch (e) {
     if (e?.response?.status === 401) {
       err.value = 'Unauthorized. Please login again.'
@@ -365,6 +387,7 @@ async function onRename(id) {
       avatar: target?.avatar,
     })
     await loadList()
+    emitConversationsReload()
   } catch (e) {
     panelErr.value = e?.response?.data?.message || e?.message || 'Failed to rename group'
   } finally {
@@ -411,6 +434,7 @@ async function onPickPhoto(id, e) {
       avatar: newAvatar || target?.avatar,
     })
     await loadList()
+    emitConversationsReload()
   } catch (er) {
     panelErr.value = er?.response?.data?.message || er?.message || 'Failed to upload photo'
   } finally {
@@ -428,7 +452,14 @@ async function onAddMembers(id) {
     addIds.value = ''
     // Reloading the list here keeps the on-screen data in sync.
     await hydrateManage(id)
+    const target = groups.value.find(g => String(g.id) === String(id))
+    await refreshGroupMeta(id, {
+      conversationId: target?.conversation_id,
+      name: target?.name,
+      avatar: target?.avatar,
+    })
     await loadList()
+    emitConversationsReload()
   } catch (e) {
     panelErr.value = e?.response?.data?.message || e?.message || 'Failed to add members'
   } finally {
@@ -444,7 +475,14 @@ async function onRemoveMember(id, memberId) {
   try {
     await removeFromGroup(id, memberId)
     await hydrateManage(id)
+    const target = groups.value.find(g => String(g.id) === String(id))
+    await refreshGroupMeta(id, {
+      conversationId: target?.conversation_id,
+      name: target?.name,
+      avatar: target?.avatar,
+    })
     await loadList()
+    emitConversationsReload()
   } catch (e) {
     panelErr.value = e?.response?.data?.message || e?.message || 'Failed to remove member'
   } finally {
@@ -459,7 +497,14 @@ async function onLeave(id) {
   try {
     await leaveGroup(id)
     if (manageId.value === id) manageId.value = ''
+    const target = groups.value.find(g => String(g.id) === String(id))
+    await refreshGroupMeta(id, {
+      conversationId: target?.conversation_id,
+      name: target?.name,
+      avatar: target?.avatar,
+    })
     await loadList()
+    emitConversationsReload()
   } catch (e) {
     panelErr.value = e?.response?.data?.message || e?.message || 'Failed to leave group'
   } finally {

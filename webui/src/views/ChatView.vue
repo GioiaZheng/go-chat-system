@@ -141,6 +141,15 @@
           <!-- ===== CENTER: CHAT ===== -->
           <div class="chat-main">
             <div
+              v-if="chatHydrating"
+              class="empty-thread loading"
+              role="status"
+              aria-live="polite"
+            >
+              <p class="muted">Loading conversation…</p>
+            </div>
+            <div
+              v-else
               ref="scrollbox"
               class="scroll"
               @scroll="handleScroll"
@@ -238,11 +247,13 @@
                       class="reactions"
                     >
                       <span
-                        v-for="emoji in m._reactions"
-                        :key="emoji"
+                        v-for="reaction in m._reactions"
+                        :key="reaction.emoji"
                         class="reaction-pill"
+                        :title="reaction.authors.join(', ')"
                       >
-                        {{ emoji }}
+                        {{ reaction.emoji }}
+                        <span v-if="reaction.count > 1" class="reaction-count">{{ reaction.count }}</span>
                       </span>
                     </div>
 
@@ -468,6 +479,60 @@
         </div>
       </div>
     </section>
+
+    <div v-if="forwardPanelOpen" class="forward-overlay" @click.self="closeForwardPicker">
+      <div class="forward-modal" role="dialog" aria-modal="true" aria-label="Forward message">
+        <div class="forward-header">
+          <div class="section-label">Forward message</div>
+          <button class="close-btn" type="button" @click="closeForwardPicker">✕</button>
+        </div>
+
+        <input
+          v-model.trim="forwardSearch"
+          class="forward-search"
+          type="search"
+          placeholder="Search conversations"
+        />
+
+        <div class="forward-body">
+          <p v-if="forwardLoading" class="muted">Loading conversations…</p>
+          <ErrorMsg v-else-if="forwardError" :text="forwardError" />
+          <template v-else>
+            <button
+              v-for="c in filteredForwardList"
+              :key="c.id"
+              class="forward-item"
+              type="button"
+              @click="forwardToConversation(c.id)"
+            >
+              <span v-if="!avatarForConversation(c, meId)" class="avatar-fallback avatar-circle forward-avatar">
+                {{ conversationInitial(c) }}
+              </span>
+              <img
+                v-else
+                class="avatar avatar-circle forward-avatar"
+                :src="avatarForConversation(c, meId)"
+                alt="avatar"
+              />
+              <div class="forward-meta">
+                <div class="forward-name">{{ titleForConversation(c, meId) }}</div>
+                <div class="muted">{{ c.type === 'group' ? 'Group chat' : 'Direct chat' }}</div>
+              </div>
+            </button>
+            <p v-if="!filteredForwardList.length" class="muted">No conversations found.</p>
+          </template>
+
+          <div class="forward-new">
+            <div class="forward-new__title">Forward to user</div>
+            <UserSearch
+              placeholder="Search users"
+              @select="forwardToUser"
+              @error="forwardError = $event || ''"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -507,6 +572,11 @@ import {
 } from '@/services/api'
 
 import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
+import {
+  getConversationMeta,
+  hydrateConversationList,
+  upsertConversationMeta,
+} from '@/services/conversationStore'
 
 const route = useRoute()
 const router = useRouter()
@@ -516,6 +586,7 @@ const convId = computed(() => String(route.params.id || ''))
 const err = ref('')
 const notice = ref('')
 const loading = ref(false)
+const metaLoading = ref(false)
 const sending = ref(false)
 const draft = ref('')
 const messages = ref([])
@@ -529,6 +600,7 @@ const composerInput = ref(null)
 const replyHighlightId = ref('')
 const deletingMessageId = ref('')
 let autoRefreshTimer = null
+const lastAuthUserId = ref('')
 
 // Conversation rail data and filtering.
 const convList = ref([])
@@ -577,6 +649,8 @@ const forwardError = ref('')
 const forwardSearch = ref('')
 const forwardList = ref([])
 const forwardTargetMessage = ref(null)
+
+const chatHydrating = computed(() => metaLoading.value || (loading.value && !messages.value.length))
 
 function scrollToBottom(force = false) {
   return nextTick(() => {
@@ -702,6 +776,7 @@ async function loadConversationList() {
     const raw = await getMyConversations()
     const items = raw?.data?.items || raw?.items || (Array.isArray(raw) ? raw : []) || []
     convList.value = normalizeConversationList(items)
+    hydrateConversationList(convList.value)
   } catch (e) {
     convErr.value = e?.response?.data?.message || e?.message || 'Failed to load conversations'
   } finally {
@@ -709,11 +784,43 @@ async function loadConversationList() {
   }
 }
 
+function emitConversationHydrate(meta = {}) {
+  const conversationId = String(meta?.id || meta?.conversationId || meta?.conversation_id || '')
+  if (!conversationId) return
+  upsertConversationMeta(meta)
+  window.dispatchEvent(
+    new CustomEvent('conversations:hydrate', {
+      detail: {
+        conversationId,
+        meta,
+      },
+    })
+  )
+}
+
 async function refreshConversations() {
   await loadConversationList()
   const fresh = convList.value.find(c => String(c.id) === convId.value)
   if (fresh) {
     currentConv.value = { ...(currentConv.value || {}), ...fresh }
+    upsertConversationMeta(currentConv.value)
+  }
+}
+
+function handleConversationHydrate(e) {
+  const detail = e?.detail || {}
+  const meta = detail.meta || {}
+  const targetId = String(detail.conversationId || meta?.id || '')
+  if (!targetId) return
+  upsertConversationMeta(meta)
+  if (convId.value && String(convId.value) === targetId) {
+    currentConv.value = { ...(currentConv.value || {}), ...meta }
+    if (meta?.type || route.params.type === 'group') {
+      isGroup.value =
+        meta?.type === 'group' ||
+        route.params.type === 'group' ||
+        !!(meta?.groupId || meta?.group_id || meta?.group?.id)
+    }
   }
 }
 
@@ -753,6 +860,21 @@ function handleConversationRefresh(e) {
       ...(bumpedAvatar ? { avatar: bumpedAvatar } : {}),
     }
   }
+
+  if (targetId) {
+    upsertConversationMeta({
+      id: targetId,
+      ...(bumpedName ? { name: bumpedName } : {}),
+      ...(bumpedAvatar ? { avatar: bumpedAvatar } : {}),
+    })
+  }
+}
+
+async function handleConversationReload() {
+  await loadConversationList()
+  if (!convId.value) return
+  primeConversationMeta()
+  await loadConversationMeta()
 }
 
 const filteredConversations = computed(() => {
@@ -770,9 +892,9 @@ const groupConvs = computed(() => filteredConversations.value.filter(c => c.type
 
 function switchConversation(c) {
   if (!c || String(c.id) === convId.value) return
+  emitConversationHydrate(c)
   router.push({ name: 'chat', params: { type: c.type === 'group' ? 'group' : 'conv', id: c.id } })
 }
-
 
 // Sender resolution helpers to keep author data accurate per userId.
 function senderProfileFromRaw(raw = {}) {
@@ -905,15 +1027,35 @@ watch(convList, () => {
   const fresh = convList.value.find(c => String(c.id) === convId.value)
   if (fresh) {
     currentConv.value = { ...(currentConv.value || {}), ...fresh }
+    upsertConversationMeta(currentConv.value)
   }
 })
+
+function primeConversationMeta() {
+  const stored = getConversationMeta(convId.value)
+  const fallback = convList.value.find(c => String(c.id) === convId.value)
+  const snapshot = stored || fallback
+  if (snapshot) {
+    currentConv.value = { ...(currentConv.value || {}), ...snapshot }
+    isGroup.value =
+      snapshot?.type === 'group' ||
+      route.params.type === 'group' ||
+      !!(snapshot?.groupId || snapshot?.group_id || snapshot?.group?.id)
+  } else {
+    currentConv.value = null
+    isGroup.value = route.params.type === 'group'
+  }
+}
 
 // Load conversation metadata (for title, participants, and type).
 async function loadConversationMeta() {
   await ensureAuthReady()
   if (!isAuthenticated.value) return
-
+  metaLoading.value = true
   try {
+    if (route.params.type === 'group' && !isGroup.value) {
+      isGroup.value = true
+    }
     if (!convList.value.length) {
       await loadConversationList()
     }
@@ -963,7 +1105,10 @@ async function loadConversationMeta() {
 
     currentConv.value = conv || null
     isGroup.value =
-      conv?.type === 'group' || !!(conv?.groupId || conv?.group_id || conv?.group?.id)
+      conv?.type === 'group' ||
+      route.params.type === 'group' ||
+      !!(conv?.groupId || conv?.group_id || conv?.group?.id)
+    upsertConversationMeta(currentConv.value || {})
     if (isGroup.value) {
       await loadGroupPanel()
     } else {
@@ -974,6 +1119,8 @@ async function loadConversationMeta() {
       // Let message loading continue; surface diagnostics in the console only
       console.error('loadConversationMeta failed', e)
     }
+  } finally {
+    metaLoading.value = false
   }
 }
 
@@ -1048,9 +1195,20 @@ function normalizeMessage(raw) {
     .filter(c => typeFor(c) === 'emoji' && contentFor(c))
     .map(c => contentFor(c))
 
-  const allEmojis = commentList
+  const reactionMap = new Map()
+  commentList
     .filter(c => typeFor(c) === 'emoji' && contentFor(c))
-    .map(c => contentFor(c))
+    .forEach(c => {
+      const emoji = contentFor(c)
+      const authorId = senderKey(c)
+      const authorName = authorId ? nameForSender(authorId) : 'Unknown'
+      if (!reactionMap.has(emoji)) {
+        reactionMap.set(emoji, new Set())
+      }
+      if (authorName) {
+        reactionMap.get(emoji).add(authorName)
+      }
+    })
 
   const myLastComment = [...byMe]
     .reverse()
@@ -1078,15 +1236,15 @@ function normalizeMessage(raw) {
     type: raw.type === 'image' ? 'image' : 'text',
     fileAbsUrl: fileRel ? absUrl(fileRel) : null,
     senderId: String(senderId || ''),
-      _sender: senderProfile.id
-        ? {
-            id: senderProfile.id,
-            name: senderProfile.name,
-            username: senderProfile.username,
-            avatar: senderProfile.avatar,
-            tag: senderProfile.tag,
-          }
-        : null,
+    _sender: senderProfile.id
+      ? {
+          id: senderProfile.id,
+          name: senderProfile.name,
+          username: senderProfile.username,
+          avatar: senderProfile.avatar,
+          tag: senderProfile.tag,
+        }
+      : null,
     _ts: new Date(ts).toISOString(),
     replyToId: replyToId ? String(replyToId) : '',
     _showCommentBox: false,
@@ -1094,7 +1252,11 @@ function normalizeMessage(raw) {
     _myLastComment:
       (myLastComment?.content || myLastComment?.text || '').trim(),
     _myReactions: Array.from(new Set(myEmojis)),
-    _reactions: Array.from(new Set(allEmojis)),
+    _reactions: Array.from(reactionMap.entries()).map(([emoji, authors]) => ({
+      emoji,
+      authors: Array.from(authors),
+      count: authors.size,
+    })),
     _replyPreview: replyPreview,
     _replyImage: replyImageAbs,
     _replyFrom: preferredDisplayName(replySenderProfile),
@@ -1104,7 +1266,7 @@ function normalizeMessage(raw) {
 // Load messages for the active conversation and hydrate reply previews.
 async function loadMessages() {
   await ensureAuthReady()
-  if (!isAuthenticated.value) return
+  if (!isAuthenticated.value || !convId.value) return
 
   loading.value = true
   err.value = ''
@@ -1137,13 +1299,13 @@ async function loadMessages() {
         }
       }
 
-    if (m._replyPreview && !m._replyFrom && m.replyToId) {
-      const target = byId.get(String(m.replyToId))
-      if (target) {
-        m._replyFrom = nameForSender(target.senderId, target)
-        m._replyImage = target.fileAbsUrl || m._replyImage
+      if (m._replyPreview && !m._replyFrom && m.replyToId) {
+        const target = byId.get(String(m.replyToId))
+        if (target) {
+          m._replyFrom = nameForSender(target.senderId, target)
+          m._replyImage = target.fileAbsUrl || m._replyImage
+        }
       }
-    }
     })
 
     messages.value = mapped
@@ -1245,6 +1407,7 @@ async function loadGroupPanel() {
     }
 
     groupNameDraft.value = groupInfo.value.name || ''
+    upsertConversationMeta(currentConv.value || {})
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to load group info'
   } finally {
@@ -1354,6 +1517,9 @@ async function toggleReaction(m, emoji) {
       await uncommentMessage(m.id)
       m._myReactions = []
     } else {
+      if (m._myReactions.length) {
+        await uncommentMessage(m.id)
+      }
       await commentMessage(m.id, {
         type: 'emoji',
         content: emoji,
@@ -1553,6 +1719,7 @@ async function onPickGroupPhoto(e) {
       currentConv.value = { ...(currentConv.value || {}), avatar: newAvatar }
     }
     updateConversationMeta({ name: groupInfo.value?.name, avatar: newAvatar || groupInfo.value?.avatar })
+    emitConversationReload()
   } catch (er) {
     groupErr.value = er?.response?.data?.message || er?.message || 'Failed to update group photo'
   } finally {
@@ -1571,6 +1738,7 @@ async function onRenameGroup() {
     groupNotice.value = 'Group name saved.'
     await loadGroupPanel()
     updateConversationMeta({ name: groupInfo.value?.name, avatar: groupInfo.value?.avatar })
+    emitConversationReload()
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to rename group'
   } finally {
@@ -1588,6 +1756,7 @@ async function onSelectNewMember(user) {
     await addToGroup(groupId.value, [userId])
     groupNotice.value = 'Member added.'
     await loadGroupPanel()
+    emitConversationReload()
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to add member'
   } finally {
@@ -1605,6 +1774,7 @@ async function onRemoveMember(userId) {
     await removeFromGroup(groupId.value, userId)
     groupNotice.value = 'Member removed.'
     await loadGroupPanel()
+    emitConversationReload()
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to remove member'
   } finally {
@@ -1620,6 +1790,7 @@ async function onLeaveGroup() {
   groupNotice.value = ''
   try {
     await leaveGroup(groupId.value)
+    emitConversationReload()
     router.push('/conversations')
   } catch (e) {
     groupErr.value = e?.response?.data?.message || e?.message || 'Failed to leave group'
@@ -1653,19 +1824,33 @@ function updateConversationMeta(extra = {}) {
   )
 }
 
-function resetChatState() {
-  convList.value = []
-  convErr.value = ''
-  convSearch.value = ''
+function emitConversationReload() {
+  window.dispatchEvent(new CustomEvent('conversations:reload'))
+}
+
+function resetChatState({ clearList = false } = {}) {
+  if (clearList) {
+    convList.value = []
+    convErr.value = ''
+    convSearch.value = ''
+  }
+  pinnedToBottom.value = true
   currentConv.value = null
   isGroup.value = false
   groupInfo.value = null
+  groupLoading.value = false
+  groupBusy.value = false
+  metaLoading.value = false
   groupErr.value = ''
   groupNotice.value = ''
   groupNameDraft.value = ''
+  addingMember.value = false
   messages.value = []
   draft.value = ''
   replyTarget.value = null
+  replyHighlightId.value = ''
+  deletingMessageId.value = ''
+  clearImageSelection()
   forwardPanelOpen.value = false
   forwardTargetMessage.value = null
   forwardSearch.value = ''
@@ -1677,19 +1862,21 @@ function resetChatState() {
 async function handleAuthChanged() {
   await ensureAuthReady()
   if (!isAuthenticated.value) {
-    resetChatState()
+    resetChatState({ clearList: true })
     return router.replace('/login')
   }
 
   const currentId = String(currentUser.value?.id || '')
   if (lastAuthUserId.value && lastAuthUserId.value !== currentId) {
-    resetChatState()
+    resetChatState({ clearList: true })
   }
   lastAuthUserId.value = currentId
 
   await loadConversationList()
+  primeConversationMeta()
   await loadConversationMeta()
   await loadMessages()
+  await scrollToBottom(true)
 }
 
 function startAutoRefresh() {
@@ -1721,13 +1908,18 @@ async function bootstrap() {
 
   lastAuthUserId.value = String(currentUser.value?.id || '')
 
+  resetChatState({ clearList: true })
   await loadConversationList()
+  primeConversationMeta()
   await loadConversationMeta()
   await loadMessages()
+  await scrollToBottom(true)
 }
 
 onMounted(() => {
   window.addEventListener('conversations:refresh', handleConversationRefresh)
+  window.addEventListener('conversations:hydrate', handleConversationHydrate)
+  window.addEventListener('conversations:reload', handleConversationReload)
   window.addEventListener('auth:changed', handleAuthChanged)
   startAutoRefresh()
   bootstrap()
@@ -1735,6 +1927,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('conversations:refresh', handleConversationRefresh)
+  window.removeEventListener('conversations:hydrate', handleConversationHydrate)
+  window.removeEventListener('conversations:reload', handleConversationReload)
   window.removeEventListener('auth:changed', handleAuthChanged)
   stopAutoRefresh()
 })
@@ -1747,16 +1941,12 @@ watch(
 )
 
 watch(convId, async () => {
-  pinnedToBottom.value = true
-  forwardPanelOpen.value = false
-  forwardTargetMessage.value = null
-  forwardSearch.value = ''
-  forwardError.value = ''
-  replyTarget.value = null
-  clearImageSelection()
+  resetChatState()
   await loadConversationList()
+  primeConversationMeta()
   await loadConversationMeta()
   await loadMessages()
+  await scrollToBottom(true)
 })
 </script>
 
@@ -1846,7 +2036,7 @@ watch(convId, async () => {
   gap: 3px;
   align-items: stretch;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 100vh;
   height: 100%;
 }
 
@@ -2053,6 +2243,11 @@ watch(convId, async () => {
 
 .group-panel {
   align-self: stretch;
+  height: 100%;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .group-card {
@@ -2064,8 +2259,8 @@ watch(convId, async () => {
   flex-direction: column;
   gap: 12px;
   min-height: 0;
-  max-height: 100%;
-  overflow: auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 .group-header {
@@ -2261,7 +2456,7 @@ watch(convId, async () => {
   overflow-y: auto;
   background: transparent;
   border-radius: 0;
-  padding: 10px 12px 14px;
+  padding: 10px 12px 88px;
 }
 
 .empty-thread {
@@ -2270,6 +2465,10 @@ watch(convId, async () => {
   place-items: center;
   text-align: center;
   color: #0f172a;
+}
+
+.empty-thread.loading {
+  min-height: 40vh;
 }
 
 .row {
@@ -2486,6 +2685,11 @@ img.member-avatar {
   padding: 2px 8px;
   font-size: 0.9rem;
   line-height: 1.2;
+}
+
+.reaction-count {
+  font-size: 0.75rem;
+  color: #475569;
 }
 
 .my-reactions__label {
