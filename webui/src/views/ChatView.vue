@@ -161,17 +161,21 @@
                       <!-- Incoming avatar -->
                       <span
                         v-if="!isMine(m) && !avatarUrlForMessage(m)"
-                        class="avatar avatar-fallback avatar-circle message-avatar"
+                        class="msg-avatar-container msg-avatar-fallback"
                       >
                         {{ avatarInitial(m) }}
                       </span>
-                      <img
+                      <span
                         v-else-if="!isMine(m)"
-                        class="avatar avatar-circle message-avatar"
-                        :src="avatarUrlForMessage(m)"
-                        alt="avatar"
-                        @error="onAvatarError(avatarUrlForMessage(m))"
-                      />
+                        class="msg-avatar-container"
+                      >
+                        <img
+                          class="msg-avatar-image"
+                          :src="avatarUrlForMessage(m)"
+                          alt="avatar"
+                          @error="onAvatarError(avatarUrlForMessage(m))"
+                        />
+                      </span>
 
                       <!-- Bubble -->
                       <div class="bubble-wrap" :class="{ mine: isMine(m) }">
@@ -280,19 +284,23 @@
                         </div>
                       </div>
 
-                      <!-- My avatar -->
+<!-- My avatar -->
                       <span
                         v-if="isMine(m) && !myAvatarUrl"
-                        class="avatar avatar-fallback avatar-circle mine message-avatar"
+                        class="msg-avatar-container msg-avatar-fallback mine"
                       >
                         {{ avatarInitial(m) }}
                       </span>
-                      <img
+                      <span
                         v-else-if="isMine(m)"
-                        class="avatar avatar-circle mine message-avatar"
-                        :src="myAvatarUrl"
-                        alt="avatar"
-                      />
+                        class="msg-avatar-container mine"
+                      >
+                        <img
+                          class="msg-avatar-image"
+                          :src="myAvatarUrl"
+                          alt="avatar"
+                        />
+                      </span>
                     </div>
                   </template>
 
@@ -2547,14 +2555,21 @@ watch(convId, async () => {
   border: 1px solid var(--avatar-border);
 }
 
-.msg-avatar,
-.chat-avatar,
-.message-avatar {
-  width: 32px;
-  height: 32px;
+.msg-avatar-container {
+  all: unset;
+  --avatar-size: 32px;
+  width: var(--avatar-size, 32px);
+  height: var(--avatar-size, 32px);
   border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
+  overflow: hidden;
+  flex: 0 0 var(--avatar-size, 32px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--avatar-bg);
+  color: var(--avatar-text);
+  border: 1px solid var(--avatar-border);
+  aspect-ratio: 1 / 1;
 }
 
 img.avatar,
@@ -2566,6 +2581,18 @@ img.member-avatar {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.msg-avatar-image {
+  all: unset;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.msg-avatar-fallback {
+  font-weight: 700;
 }
 
 .avatar-fallback,
@@ -2580,6 +2607,11 @@ img.member-avatar {
 }
 
 .avatar.mine {
+  margin-left: 4px;
+  align-self: flex-start;
+}
+
+.msg-avatar-container.mine {
   margin-left: 4px;
   align-self: flex-start;
 }
