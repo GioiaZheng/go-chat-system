@@ -577,17 +577,26 @@ onMounted(async () => {
 .sub{ color:#64748b; font-size:.9rem }
 .empty{ text-align:center; color:#64748b }
 
-.avatar{ object-fit:cover; }
-.avatar.sm{ width:28px; height:28px; border-radius:999px; }
+.avatar{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.avatar.sm{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
 
 .avatar-fallback{
   display:inline-flex;
   align-items:center; justify-content:center;
 }
 .avatar-fallback.sm{
-  width:28px;
-  height:28px;
-  border-radius:999px;
+  width:32px;
+  height:32px;
+  border-radius:50%;
   background:#e2e8f0;
   color:#475569;
   font-size:.75rem;

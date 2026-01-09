@@ -271,8 +271,8 @@ async function create() {
   flex-wrap: wrap;
 }
 .avatar-card {
-  width: 72px;
-  height: 72px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid #e2e8f0;
@@ -291,7 +291,7 @@ async function create() {
 .avatar-fallback {
   font-weight: 700;
   color: #64748b;
-  font-size: 1.4rem;
+  font-size: 0.9rem;
 }
 .avatar-overlay {
   position: absolute;

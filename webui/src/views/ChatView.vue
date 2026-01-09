@@ -678,11 +678,16 @@ function convTime(t) {
 
 const PREVIEW_LIMIT = 30
 
-function truncatePreview(value = '') {
-  const text = String(value || '').trim()
+function cleanPreviewText(value = '') {
+  return String(value || '')
+    .replace(/\[forwarded message\]|\[forwarded\]|forwarded message:?/gi, '')
+    .trim()
+}
+
+function formatPreviewText(value = '') {
+  const text = cleanPreviewText(value)
   if (!text) return ''
-  if (text.length <= PREVIEW_LIMIT) return text
-  return `${text.slice(0, PREVIEW_LIMIT)}...`
+  return text.split('\n')[0].slice(0, PREVIEW_LIMIT).trim()
 }
 
 function previewForMessage(raw = {}) {
@@ -690,7 +695,6 @@ function previewForMessage(raw = {}) {
 
   const type = String(raw?.type || '').toLowerCase()
   if (type === 'image' || raw?.imageUrl || raw?.image_url) return '[Image]'
-  if (type === 'file' || raw?.fileUrl || raw?.file_url) return '[File]'
 
   const content =
     raw?.content ||
@@ -702,7 +706,7 @@ function previewForMessage(raw = {}) {
     raw?.Body ||
     ''
 
-  return truncatePreview(content)
+  return formatPreviewText(content)
 }
 
 function normalizeConversationList(items = []) {
@@ -2310,11 +2314,11 @@ watch(convId, async () => {
 }
 
 .group-avatar {
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
 
-  border-radius: 999px;
+  border-radius: 50%;
   overflow: hidden;
 
   background: var(--avatar-bg);

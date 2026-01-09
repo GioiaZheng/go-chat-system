@@ -48,8 +48,8 @@ body{
 .avatar,
 .avatar-circle,
 .avatar-fallback {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -79,8 +79,8 @@ body{
 
 .group-panel .avatar,
 .group-panel .avatar img {
-  width: var(--avatar-size, 56px);
-  height: var(--avatar-size, 56px);
+  width: 32px;
+  height: 32px;
   object-fit: cover;
 }
 

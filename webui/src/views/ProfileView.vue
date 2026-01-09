@@ -351,9 +351,9 @@ function handleError(e, fallback) {
   border-radius: 50%;
 }
 .profile-avatar {
-  width: 86px !important;
-  height: 86px !important;
-  font-size: 1.6rem;
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 0.9rem;
   border: 2px solid #d9f99d;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
