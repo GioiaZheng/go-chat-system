@@ -168,77 +168,18 @@ function formatPreviewText(value = '') {
 function previewForMessage(raw = {}) {
   if (raw?.deleted || raw?.isDeleted) return '[Deleted]'
 
-  const type = String(raw?.type || '').toLowerCase()
-  if (type === 'image' || raw?.imageUrl || raw?.image_url) return '📷 Photo'
-  if (
-    type === 'reaction' ||
-    type === 'emoji' ||
-    raw?.reaction ||
-    raw?.reactionType ||
-    raw?.reaction_type ||
-    raw?.emoji
-  ) {
-    return '😃 Emoji'
-  }
+  const type = String(raw?.type || raw?.Type || '').toLowerCase()
+  if (type === 'image') return '📷 Photo'
 
-  const content =
-    raw?.content ||
-    raw?.text ||
-    raw?.body ||
-    raw?.message ||
-    raw?.Content ||
-    raw?.Text ||
-    raw?.Body ||
-    ''
+  const content = raw?.content ?? raw?.Content ?? ''
 
   return formatPreviewText(content)
-}
-
-function senderProfileFromRaw(raw = {}) {
-  const senderRaw =
-    raw.sender || raw.user || raw.author || raw.from || raw.owner || raw.created_by || raw.createdBy || {}
-
-  const senderIdValue =
-    raw.senderId || raw.sender_id || raw.userId || senderRaw.id || senderRaw.userId || senderRaw.user_id
-
-  const senderName =
-    senderRaw.name ||
-    senderRaw.username ||
-    senderRaw.displayName ||
-    senderRaw.display_name ||
-    senderRaw.fullName ||
-    senderRaw.full_name ||
-    raw.senderName ||
-    raw.sender_name ||
-    ''
-
-  const normalized = normalizeUser({
-    ...senderRaw,
-    id: senderIdValue ?? senderRaw.id,
-    name: senderName,
-  })
-
-  const senderId = normalized.id ? String(normalized.id) : ''
-
-  return senderId
-    ? {
-        id: senderId,
-        name: normalized.name || normalized.username || senderName,
-        username: normalized.username,
-      }
-    : { id: '', name: normalized.name || senderName }
 }
 
 function conversationPreviewForMessage(raw = {}, conv = null) {
   const base = previewForMessage(raw)
   if (!base) return ''
-  const isGroupType =
-    conv?.type === 'group' ||
-    !!(conv?.groupId || conv?.group_id || conv?.group?.id)
-  if (!isGroupType) return base
-  const sender = senderProfileFromRaw(raw)
-  const senderName = preferredDisplayName(sender || {}) || sender?.name || sender?.username || ''
-  return `${senderName || 'Someone'}: ${base}`
+  return base
 }
 
 // Helper to read the current user identifier as a string.
@@ -321,19 +262,9 @@ async function load() {
 
       const fromKnownFields =
         c.lastMessage ||
-        c.last_message ||
-        c.last ||
-        c.lastmessage ||
-        c.lastMsg ||
-        c.last_msg ||
-        (Array.isArray(c.messages) ? c.messages[c.messages.length - 1] : null)
+        c.last_message
 
-      if (fromKnownFields) return fromKnownFields
-
-      if (typeof c.lastMessageContent === 'string') return { content: c.lastMessageContent }
-      if (typeof c.last_message_content === 'string') return { content: c.last_message_content }
-
-      return null
+      return fromKnownFields || null
     }
 
     convs.value = (items || [])
@@ -358,7 +289,7 @@ async function load() {
           ...c,
           type: isGroupType ? 'group' : c?.type,
           participants: (c.participants || []).map(normalizeUser),
-          last_preview: previewContent || (isGroupType ? 'Say hello 👋' : 'No messages yet'),
+          last_preview: previewContent || 'No messages yet',
           last_time: time,
         }
       })

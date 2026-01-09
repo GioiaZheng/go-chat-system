@@ -31,24 +31,24 @@ type GroupMember struct {
 // Message is the internal representation used for both conversation messages
 // and comment rows while hiding routing-only fields from the public surface.
 type Message struct {
-	ID             string `db:"id"`
-	Content        string `db:"content"`
-	FileURL        string `db:"file_url"`
-	SenderID       string `db:"sender_id"`
-	ConversationID string `db:"conversation_id"`
-	CreatedAt      string `db:"created_at"`
+	ID             string `db:"id" json:"id"`
+	Content        string `db:"content" json:"content,omitempty"`
+	FileURL        string `db:"file_url" json:"fileUrl,omitempty"`
+	SenderID       string `db:"sender_id" json:"senderId,omitempty"`
+	ConversationID string `db:"conversation_id" json:"conversationId,omitempty"`
+	CreatedAt      string `db:"created_at" json:"createdAt,omitempty"`
 
 	// Type contains the message classification (text, image, or file).
-	Type   string `db:"type"`
-	Status string `db:"status"`
-	Read   bool   `db:"read"`
+	Type   string `db:"type" json:"type,omitempty"`
+	Status string `db:"status" json:"status,omitempty"`
+	Read   bool   `db:"read" json:"read,omitempty"`
 
 	// ReplyToID links to another message when the current one is a reply.
-	ReplyToID *string `db:"reply_to_id"`
+	ReplyToID *string `db:"reply_to_id" json:"replyToId,omitempty"`
 
 	// ReceiverID and GroupID are internal routing hints and are not exposed.
-	ReceiverID string `db:"receiver_id"`
-	GroupID    string `db:"group_id"`
+	ReceiverID string `db:"receiver_id" json:"-"`
+	GroupID    string `db:"group_id" json:"-"`
 }
 
 // Conversation follows the OpenAPI contract and bundles participants and
