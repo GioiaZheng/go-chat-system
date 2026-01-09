@@ -16,15 +16,23 @@
         <!-- Optional avatar upload -->
         <label class="label mt">Group Avatar (optional)</label>
         <div class="avatar-row">
-          <div class="avatar-preview" v-if="avatarPreview">
-            <img :src="avatarPreview" alt="preview" />
+          <div
+            class="avatar-card"
+            role="button"
+            tabindex="0"
+            @click="triggerFile"
+            @keydown.enter.prevent="triggerFile"
+          >
+            <img v-if="avatarPreview" :src="avatarPreview" alt="Group avatar preview" />
+            <span v-else class="avatar-fallback">+</span>
+            <div class="avatar-overlay">Upload</div>
           </div>
           <input
             ref="fileInput"
             type="file"
             accept="image/*"
             @change="onPickFile"
-            class="file"
+            class="hidden-input"
           />
           <button
             v-if="avatarFile"
@@ -58,15 +66,18 @@
             <button class="chip-x" @click="removePicked(u)">×</button>
           </div>
         </div>
-        <p v-else class="muted">Pick at least one user to create the group.</p>
-
-        <button
-          class="btn mt"
-          :disabled="!groupName.trim() || pickedUsers.length === 0 || loading"
-          @click="create"
-        >
-          {{ loading ? 'Creating…' : 'Create Group' }}
-        </button>
+        <div class="form-actions">
+          <button
+            class="btn btn-primary"
+            :disabled="!groupName.trim() || pickedUsers.length === 0 || loading"
+            @click="create"
+          >
+            {{ loading ? 'Creating…' : 'Create Group' }}
+          </button>
+          <p v-if="showHelper" class="helper">
+            Add a group name and at least one member to continue.
+          </p>
+        </div>
       </div>
     </section>
   </div>
@@ -93,6 +104,7 @@ const pickedUsers = ref([])
 const avatarFile = ref(null)
 const avatarPreview = ref('')
 const fileInput = ref(null)
+const attemptedCreate = ref(false)
 
 const avatar = (u) => getAvatarUrl(u)
 const initials = (u) => {
@@ -136,6 +148,9 @@ function removePicked(u) {
 
 function onPickFile(e) {
   const f = e?.target?.files?.[0]
+  if (avatarPreview.value) {
+    URL.revokeObjectURL(avatarPreview.value)
+  }
   avatarFile.value = f || null
   if (f) {
     const url = URL.createObjectURL(f)
@@ -146,13 +161,26 @@ function onPickFile(e) {
 }
 
 function clearAvatar() {
+  if (avatarPreview.value) {
+    URL.revokeObjectURL(avatarPreview.value)
+  }
   avatarFile.value = null
   avatarPreview.value = ''
   if (fileInput.value) fileInput.value.value = ''
 }
 
+function triggerFile() {
+  fileInput.value?.click()
+}
+
+const showHelper = computed(() => {
+  if (!attemptedCreate.value) return false
+  return !groupName.value.trim() || pickedUsers.value.length === 0
+})
+
 async function create() {
   err.value = ''
+  attemptedCreate.value = true
   if (!groupName.value.trim() || memberIds.value.length === 0) return
 
   loading.value = true
@@ -219,7 +247,13 @@ async function create() {
   font-weight: 800; color: #0f172a;
 }
 
-.content { flex: 1 1 auto; max-width: 900px; margin: 0 auto; padding: 18px; width: 100%; }
+.content {
+  flex: 1 1 auto;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+}
 
 .form { display: flex; flex-direction: column; gap: 10px; }
 .label { font-weight: 600; color: #334155; }
@@ -231,25 +265,77 @@ async function create() {
 .input:focus { border-color: #22c55e; box-shadow: 0 0 0 .2rem rgba(34,197,94,.15); }
 
 .avatar-row {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-.avatar-preview {
-  width: 56px; height: 56px; border-radius: 50%; overflow: hidden; border: 1px solid #e2e8f0;
+.avatar-card {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
 }
-.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
-.file { max-width: 280px; }
+.avatar-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.avatar-fallback {
+  font-weight: 700;
+  color: #64748b;
+  font-size: 1.4rem;
+}
+.avatar-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 4px 0;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  font-size: 0.7rem;
+  text-align: center;
+}
+.hidden-input {
+  display: none;
+}
 
 .btn {
-  border: 0; border-radius: 10px; color: #fff; padding: .65rem 1rem;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  padding: 0.65rem 1rem;
   background-image: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #3b82f6 120%);
-  box-shadow: 0 .6rem 1.4rem rgba(34,197,94,.25);
+  box-shadow: 0 0.6rem 1.4rem rgba(34, 197, 94, 0.25);
 }
-.btn:disabled { opacity: .65; }
+.btn:disabled { opacity: 0.65; }
+.btn-primary {
+  align-self: center;
+  width: min(100%, 240px);
+}
 .btn-outline {
   border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 10px; padding: .55rem .9rem;
 }
 
 .muted { color: #64748b; font-size: .9rem; }
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.helper {
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+}
 
 .picked { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {

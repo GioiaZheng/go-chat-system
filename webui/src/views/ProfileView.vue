@@ -85,19 +85,29 @@
           </div>
         </header>
 
-        <div v-if="successMessage" class="feedback">
+        <div v-if="toastMessage" class="toast" role="status" aria-live="polite">
           <span class="checkmark">✓</span>
-          <span>{{ successMessage }}</span>
+          <span>{{ toastMessage }}</span>
         </div>
 
         <section class="info-stack">
-          <details class="system-details">
-            <summary>Account</summary>
-            <div class="system-row">
-              <div class="muted">User ID</div>
-              <div class="system-value">{{ me.id || me.userId || me.user_id || '—' }}</div>
+          <div class="accordion-card">
+            <button
+              class="accordion-toggle"
+              type="button"
+              :aria-expanded="accountOpen"
+              @click="accountOpen = !accountOpen"
+            >
+              <span>Account</span>
+              <span class="accordion-icon" :class="{ open: accountOpen }">▸</span>
+            </button>
+            <div v-if="accountOpen" class="accordion-body">
+              <div class="system-row">
+                <div class="muted">User ID</div>
+                <div class="system-value">{{ me.id || me.userId || me.user_id || '—' }}</div>
+              </div>
             </div>
-          </details>
+          </div>
         </section>
       </section>
     </main>
@@ -122,8 +132,10 @@ const loading = ref(false)
 const err = ref('')
 const imgBroken = ref(false)
 const editingName = ref(false)
-const successMessage = ref('')
+const toastMessage = ref('')
 const pendingAction = ref('')
+const accountOpen = ref(true)
+let toastTimer = null
 
 const avatarUrl = computed(() => getAvatarUrl(me.value || {}))
 const avatarPreview = computed(() => previewUrl.value || (avatarUrl.value && !imgBroken.value ? avatarUrl.value : ''))
@@ -156,7 +168,7 @@ async function loadProfile() {
 function startNameEdit() {
   if (avatarDirty.value) resetPhotoSelection()
   editingName.value = true
-  successMessage.value = ''
+  toastMessage.value = ''
 }
 
 function cancelNameEdit() {
@@ -169,12 +181,12 @@ async function saveName() {
   loading.value = true
   pendingAction.value = 'name'
   err.value = ''
-  successMessage.value = ''
+  toastMessage.value = ''
   try {
     await setMyUserName(newName.value)
     await loadProfile()
     editingName.value = false
-    successMessage.value = 'Name updated'
+    showToast('Name updated')
     window.dispatchEvent(new CustomEvent('conversations:reload'))
   } catch (e) {
     handleError(e, 'Failed to set name')
@@ -196,7 +208,7 @@ function onFile(e) {
   previewUrl.value = URL.createObjectURL(selected)
   avatarDirty.value = true
   editingName.value = false
-  successMessage.value = ''
+  toastMessage.value = ''
 }
 
 function resetPhotoSelection() {
@@ -211,12 +223,12 @@ async function uploadPhoto() {
   loading.value = true
   pendingAction.value = 'photo'
   err.value = ''
-  successMessage.value = ''
+  toastMessage.value = ''
   try {
     await setMyPhotoFile(file.value)
     await loadProfile()
     resetPhotoSelection()
-    successMessage.value = 'Avatar updated'
+    showToast('Avatar updated')
     me.value = { ...(me.value || {}), updatedAt: Date.now() }
     if (me.value) {
       localStorage.setItem('me', JSON.stringify(me.value))
@@ -229,6 +241,15 @@ async function uploadPhoto() {
     loading.value = false
     pendingAction.value = ''
   }
+}
+
+function showToast(message) {
+  toastMessage.value = message
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toastMessage.value = ''
+    toastTimer = null
+  }, 3000)
 }
 
 function handleError(e, fallback) {
@@ -256,7 +277,7 @@ function handleError(e, fallback) {
 }
 .wrap {
   flex: 1 1 auto;
-  max-width: 820px;
+  max-width: 720px;
   margin: 0 auto;
   padding: 24px;
   width: 100%;
@@ -391,7 +412,7 @@ function handleError(e, fallback) {
 }
 .profile-name {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.65rem;
   color: #0f172a;
   font-weight: 800;
 }
@@ -418,11 +439,13 @@ function handleError(e, fallback) {
   flex-wrap: wrap;
 }
 .icon-btn {
-  border: 1px solid rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.25);
   background: rgba(34, 197, 94, 0.12);
   color: #15803d;
-  border-radius: 10px;
-  padding: 6px;
+  border-radius: 12px;
+  padding: 8px 10px;
+  min-width: 40px;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -436,8 +459,8 @@ function handleError(e, fallback) {
   fill: currentColor;
 }
 .icon-btn:hover {
-  background: rgba(34, 197, 94, 0.2);
-  box-shadow: 0 8px 16px rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.22);
+  box-shadow: 0 10px 18px rgba(34, 197, 94, 0.3);
   transform: translateY(-1px);
 }
 .icon-btn:focus-visible {
@@ -519,24 +542,33 @@ function handleError(e, fallback) {
   padding: 12px;
   box-shadow: 0 6px 16px rgba(2, 6, 23, 0.06);
 }
-.system-details {
+.accordion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.accordion-toggle {
+  border: 0;
+  background: transparent;
   color: #475569;
   font-weight: 700;
-}
-.system-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   cursor: pointer;
-  list-style: none;
-  position: relative;
-  padding-left: 18px;
+  padding: 6px 0;
 }
-.system-details summary::before {
-  content: '\25b8';
-  position: absolute;
-  left: 0;
+.accordion-icon {
   transition: transform 0.2s ease;
 }
-.system-details[open] summary::before {
+.accordion-icon.open {
   transform: rotate(90deg);
+}
+.accordion-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .system-row {
   margin-top: 8px;
@@ -550,18 +582,22 @@ function handleError(e, fallback) {
   font-weight: 600;
   font-size: 0.95rem;
 }
-.feedback {
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   background: #ecfdf3;
   border: 1px solid #bbf7d0;
   color: #166534;
-  border-radius: 10px;
-  padding: 8px 10px;
+  border-radius: 12px;
+  padding: 10px 14px;
   font-weight: 600;
-  width: fit-content;
   font-size: 0.95rem;
+  box-shadow: 0 12px 26px rgba(34, 197, 94, 0.18);
+  z-index: 10;
 }
 .checkmark {
   font-size: 1.1rem;

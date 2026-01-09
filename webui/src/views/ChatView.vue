@@ -2016,6 +2016,7 @@ watch(convId, async () => {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -2031,17 +2032,16 @@ watch(convId, async () => {
 }
 
 .chat-layout {
-  display: grid;
-  grid-template-columns: 300px minmax(420px, 1fr);
+  display: flex;
   gap: 3px;
   align-items: stretch;
   flex: 1 1 auto;
-  min-height: 100vh;
+  min-height: 0;
   height: 100%;
 }
 
 .chat-layout.has-group {
-  grid-template-columns: 300px minmax(420px, 1fr) 280px;
+  flex-direction: row;
 }
 
 .list-pane {
@@ -2052,6 +2052,7 @@ watch(convId, async () => {
   flex-direction: column;
   gap: 3px;
   height: 100%;
+  flex: 0 0 300px;
   min-height: 0;
   overflow: auto;
 }
@@ -2248,6 +2249,7 @@ watch(convId, async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  flex: 0 0 280px;
 }
 
 .group-card {
@@ -2774,6 +2776,7 @@ img.member-avatar {
 .composer {
   margin-top: 12px;
   flex: 0 0 auto;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;

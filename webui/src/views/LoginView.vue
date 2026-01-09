@@ -20,7 +20,11 @@
           maxlength="16"
           autofocus
           :disabled="busy"
+          @input="onUserInput"
         />
+        <p v-if="nameError" class="text-danger small mt-2 mb-0">
+          {{ nameError }}
+        </p>
 
         <button
           type="submit"
@@ -33,7 +37,7 @@
             role="status"
             aria-hidden="true"
           ></span>
-          {{ busy ? 'Signing in…' : 'Login' }}
+          {{ busy ? 'Logging in…' : 'Login' }}
         </button>
       </form>
 
@@ -55,6 +59,7 @@ const route = useRoute()
 
 const name = ref('')
 const err  = ref('')
+const nameError = ref('')
 const busy = ref(false)
 
 onMounted(async () => {
@@ -73,9 +78,21 @@ onUnmounted(() => {
   document.body.classList.remove('theme-light-login')
 })
 
+function onUserInput() {
+  if (err.value || nameError.value) {
+    err.value = ''
+    nameError.value = ''
+  }
+}
+
 async function login () {
-  if (!name.value || busy.value) return
+  if (busy.value) return
+  if (!name.value) {
+    nameError.value = 'Please enter a name to continue.'
+    return
+  }
   err.value = ''
+  nameError.value = ''
   busy.value = true
 
   try {
@@ -85,14 +102,15 @@ async function login () {
     const next = (route.query.redirect && String(route.query.redirect)) || '/conversations'
     router.replace(next)
   } catch (e) {
-    if (e?.response?.status === 409 || /exist|taken|already/i.test(e?.response?.data?.message)) {
-      err.value = 'Username already exists. Please choose another.'
+    const status = e?.response?.status
+    if (status === 409) {
+      err.value = 'Name already in use.'
+    } else if (status === 400 || status === 422) {
+      err.value = 'Invalid name.'
+    } else if (status === 500) {
+      err.value = 'Server error — try again later.'
     } else {
-      err.value =
-        e?.response?.data?.error ||
-        e?.response?.data?.message ||
-        e?.message ||
-        'Login failed'
+      err.value = 'Login failed — please try again.'
     }
   } finally {
     busy.value = false

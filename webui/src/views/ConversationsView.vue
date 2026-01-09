@@ -41,21 +41,22 @@
                     v-for="c in privateConvs"
                     :key="c.id"
                     class="item"
-                  @click="open(c)"
-                >
-                  <div class="left">
-                    <span v-if="!avatarFor(c)" class="avatar-fallback avatar-circle">{{ initials(c) }}</span>
-                    <img v-else class="avatar avatar-circle" :src="avatarFor(c)" alt="avatar" />
-                  </div>
+                    :class="{ active: selectedId === String(c.id) }"
+                    @click="open(c)"
+                  >
+                    <div class="left">
+                      <span v-if="!avatarFor(c)" class="avatar-fallback avatar-circle">{{ initials(c) }}</span>
+                      <img v-else class="avatar avatar-circle" :src="avatarFor(c)" alt="avatar" />
+                    </div>
 
-                  <div class="info">
-                    <div class="top">
-                      <div class="name">{{ displayName(c) }}</div>
-                      <div class="time">{{ fmtTime(c.last_time) }}</div>
-                    </div>
-                    <div class="bottom">
-                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-                    </div>
+                    <div class="info">
+                      <div class="top">
+                        <div class="name">{{ displayName(c) }}</div>
+                        <div class="time">{{ fmtTime(c.last_time) }}</div>
+                      </div>
+                      <div class="bottom">
+                        <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                      </div>
                     </div>
 
                     <button class="del" @click.stop="warnDelete(c)">Delete</button>
@@ -75,20 +76,21 @@
                     v-for="c in groupConvs"
                     :key="c.id"
                     class="item"
-                  @click="open(c)"
-                >
-                  <div class="left">
-                    <span v-if="!avatarFor(c)" class="avatar-fallback avatar-circle">{{ initials(c) }}</span>
-                    <img v-else class="avatar avatar-circle" :src="avatarFor(c)" alt="avatar" />
-                  </div>
-                  <div class="info">
-                    <div class="top">
-                      <div class="name">{{ displayName(c) }}</div>
-                      <div class="time">{{ fmtTime(c.last_time) }}</div>
+                    :class="{ active: selectedId === String(c.id) }"
+                    @click="open(c)"
+                  >
+                    <div class="left">
+                      <span v-if="!avatarFor(c)" class="avatar-fallback avatar-circle">{{ initials(c) }}</span>
+                      <img v-else class="avatar avatar-circle" :src="avatarFor(c)" alt="avatar" />
                     </div>
-                    <div class="bottom">
-                      <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
-                    </div>
+                    <div class="info">
+                      <div class="top">
+                        <div class="name">{{ displayName(c) }}</div>
+                        <div class="time">{{ fmtTime(c.last_time) }}</div>
+                      </div>
+                      <div class="bottom">
+                        <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+                      </div>
                     </div>
                     <button class="del" @click.stop="warnDelete(c)">Delete</button>
                   </li>
@@ -99,6 +101,7 @@
 
             <div class="conversation-pane">
               <div class="preview-empty">
+                <div class="preview-icon" aria-hidden="true">💬</div>
                 <h2 class="preview-title">Choose a chat to view messages</h2>
                 <p class="preview-description">
                   Your chats will appear here once you start a conversation.
@@ -127,6 +130,7 @@ const convs = ref([])
 const loading = ref(false)
 const err = ref('')
 const search = ref('')
+const selectedId = ref('')
 let refreshTimer = null
 
 function previewForMessage(raw = {}) {
@@ -277,6 +281,7 @@ async function load() {
 // Navigation helpers for the chat list.
 function open(c) {
   if (c) {
+    selectedId.value = String(c.id || '')
     upsertConversationMeta(c)
     window.dispatchEvent(
       new CustomEvent('conversations:hydrate', {
@@ -363,8 +368,8 @@ onUnmounted(() => {
 
 <style scoped>
 .page {
-  min-height: 100%;
-  height: 100%;
+  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
@@ -398,6 +403,7 @@ onUnmounted(() => {
   flex-direction: column;
   min-height: 0;
   padding: 16px;
+  overflow: hidden;
 }
 
 .content-inner {
@@ -412,10 +418,11 @@ onUnmounted(() => {
 .panel {
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  display: flex;
+  flex-direction: row;
   background: var(--panel);
   border: 1px solid var(--border);
+  overflow: hidden;
 }
 .list-pane {
   flex: 0 0 320px;
@@ -425,6 +432,7 @@ onUnmounted(() => {
   flex-direction: column;
   padding: 16px;
   gap: 10px;
+  min-height: 0;
 }
 
 .list-header {
@@ -451,6 +459,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
 }
 
 .section-head {
@@ -501,23 +510,43 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  max-height: 100%;
+  min-height: 0;
 }
 
 .item {
   background: #ffffff;
   border: 1px solid var(--border);
   border-radius: 0;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 16px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 12px;
   transition: background 0.15s ease, border-color 0.15s ease;
+  position: relative;
 }
 
 .item:hover {
   background: #f9fafb;
   border-color: #dfe3e8;
+}
+
+.item.active {
+  background: #ecfdf3;
+  border-color: #86efac;
+}
+
+.item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  background: #22c55e;
 }
 
 .left {
@@ -542,7 +571,7 @@ onUnmounted(() => {
 
 .name {
   font-weight: 600;
-  color: #111827;
+  color: #0f172a;
   font-size: var(--font-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -556,12 +585,12 @@ onUnmounted(() => {
 
 .time {
   font-size: var(--font-secondary);
-  color: #9ca3af;
+  color: #94a3b8;
   white-space: nowrap;
 }
 
 .preview {
-  color: #7b8794;
+  color: #64748b;
   font-size: var(--font-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -576,6 +605,14 @@ onUnmounted(() => {
   color: #fff;
   background: linear-gradient(135deg, #ef4444, #dc2626);
   transition: 0.2s;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.item:hover .del,
+.item:focus-within .del {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .del:hover {
@@ -601,21 +638,27 @@ onUnmounted(() => {
 .preview-empty {
   max-width: 420px;
   text-align: center;
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   color: #1f2937;
 }
 
+.preview-icon {
+  font-size: 2.5rem;
+}
+
 .preview-title {
-  font-size: var(--font-primary);
+  font-size: var(--font-title);
   margin: 0;
   color: #1f2937;
 }
 
 .preview-description {
   margin: 0;
-  color: #4b5563;
-  font-size: var(--font-secondary);
+  color: #64748b;
+  font-size: var(--font-primary);
 }
 
 .loading {

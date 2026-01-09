@@ -3,20 +3,21 @@
   <div class="page">
     <header class="topbar">
       <div class="title">Contacts</div>
-
-      <div class="search">
-        <input
-          v-model.trim="q"
-          class="input"
-          type="text"
-          placeholder="Search by name/username"
-          @keyup.enter="onSearch"
-        />
-        <button class="btn" @click="onSearch">Search</button>
-      </div>
     </header>
 
     <section class="content">
+      <div class="content-inner">
+        <div class="search">
+          <input
+            v-model.trim="q"
+            class="input"
+            type="text"
+            placeholder="Search by name/username"
+            @keyup.enter="onSearch"
+          />
+          <button class="btn" @click="onSearch">Search</button>
+        </div>
+
       <div v-if="loading" class="loading">
         <span class="spinner" aria-hidden="true"></span>
         Loading contacts…
@@ -41,6 +42,7 @@
         </li>
         <li v-if="!users.length" class="empty">No users.</li>
       </ul>
+      </div>
     </section>
   </div>
 </template>
@@ -165,21 +167,48 @@ onMounted(() => {
   font-weight:800; color:#0f172a;
 }
 
-.search{ display:flex; gap:8px; }
+.content{
+  flex:1 1 auto;
+  margin:0 auto;
+  padding:16px;
+  width:100%;
+  display:flex;
+  justify-content:center;
+}
+
+.content-inner{
+  width:min(100%, 720px);
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.search{ display:flex; gap:8px; width:100%; }
 .input{
-  width:260px; border:1px solid #cbd5e1; border-radius:10px; padding:.5rem .75rem; outline:none;
+  flex:1; border:1px solid #cbd5e1; border-radius:10px; padding:.5rem .75rem; outline:none;
 }
 .input:focus{ border-color:#22c55e; box-shadow:0 0 0 .2rem rgba(34,197,94,.15); }
 .btn{
   border:0; border-radius:10px; color:#fff; padding:.5rem .9rem; white-space:nowrap;
-  background-image: linear-gradient(135deg,#22c55e 0%, #16a34a 45%, #3b82f6 120%);
-  box-shadow:0 .6rem 1.4rem rgba(34,197,94,.25);
+  background:#34d399;
+  box-shadow:0 .5rem 1rem rgba(16,185,129,.2);
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.btn:hover{
+  background:#10b981;
+  box-shadow:0 .7rem 1.2rem rgba(16,185,129,.32);
+  transform:translateY(-1px);
 }
 .btn:disabled { opacity:.6; cursor:not-allowed; }
+.btn:disabled:hover { background:#34d399; box-shadow:0 .5rem 1rem rgba(16,185,129,.2); transform:none; }
 .btn-outline{
   background:#fff; color:#334155; border:1px solid #cbd5e1; box-shadow:none;
 }
-.content{ flex:1 1 auto; max-width:1100px; margin:0 auto; padding:16px; width:100%; }
+.btn.icon-only{
+  width:36px; height:36px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.btn.icon-only .btn__label{ display:none; }
 
 .loading{ color:#475569; display:flex; align-items:center; gap:.5rem }
 .spinner{
@@ -193,6 +222,12 @@ onMounted(() => {
   display:flex; align-items:center; gap:12px; justify-content:space-between;
   background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px;
   box-shadow:0 6px 18px rgba(2,6,23,.06);
+  transition:box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+}
+.item:hover{
+  border-color:#cbd5e1;
+  box-shadow:0 10px 22px rgba(2,6,23,.1);
+  transform:translateY(-1px);
 }
 .left{ display:flex; align-items:center; gap:12px; }
 .meta{ flex:1; min-width:0; }

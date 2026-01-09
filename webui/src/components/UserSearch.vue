@@ -10,13 +10,19 @@
         @keyup.enter="onSearch"
       />
       <button class="btn" @click="onSearch" :disabled="loading">
-        {{ loading ? '...' : 'Search' }}
+        <span v-if="loading" class="spinner" aria-hidden="true"></span>
+        <span>{{ loading ? 'Searching' : 'Search' }}</span>
       </button>
     </div>
 
     <ErrorMsg v-if="err" :text="err" class="mb-2" />
 
-    <ul v-if="!loading" class="list">
+    <div v-if="loading" class="loading">
+      <span class="spinner" aria-hidden="true"></span>
+      Searching users…
+    </div>
+
+    <ul v-else class="list">
       <li
         v-for="u in users"
         :key="String(u.id || u.user_id || u._id)"
@@ -30,7 +36,9 @@
           <div v-if="handle(u)" class="sub">{{ handle(u) }}</div>
         </div>
       </li>
-      <li v-if="!users.length && !err" class="empty">No results.</li>
+      <li v-if="!users.length && !err" class="empty">
+        No matches yet. Try another name or username.
+      </li>
     </ul>
   </div>
 </template>
@@ -95,8 +103,42 @@ async function onSearch() {
   border-radius: 10px;
   color: #fff;
   padding: 0.5rem 0.9rem;
-  background-image: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #3b82f6 120%);
-  box-shadow: 0 0.3rem 0.8rem rgba(34, 197, 94, 0.25);
+  background: #34d399;
+  box-shadow: 0 0.5rem 1rem rgba(16, 185, 129, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.btn:hover {
+  background: #10b981;
+  box-shadow: 0 0.7rem 1.2rem rgba(16, 185, 129, 0.32);
+  transform: translateY(-1px);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn:disabled:hover {
+  background: #34d399;
+  box-shadow: 0 0.5rem 1rem rgba(16, 185, 129, 0.2);
+  transform: none;
+}
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+.spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid rgba(15, 23, 42, 0.25);
+  border-top-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
 }
 .list {
   list-style: none;
@@ -134,5 +176,11 @@ async function onSearch() {
 .empty {
   text-align: center;
   color: #64748b;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
