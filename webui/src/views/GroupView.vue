@@ -141,6 +141,7 @@ import {
   addToGroup,
   removeFromGroup,
   leaveGroup,
+  fetchConversations,
   getAvatarUrl,
   preferredDisplayName,
   normalizeUser,
@@ -511,6 +512,8 @@ async function onLeave(id) {
         })
       )
     }
+    await fetchConversations()
+    router.push('/conversations')
     await loadList()
     emitConversationsReload()
   } catch (e) {

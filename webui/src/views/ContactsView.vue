@@ -12,7 +12,7 @@
             <div class="list-search">
               <input
                 v-model.trim="q"
-                class="input"
+                class="search"
                 type="text"
                 placeholder="Search by name/username"
                 @keyup.enter="onSearch"
@@ -74,9 +74,9 @@
                   />
                 </svg>
               </div>
-              <h2 class="preview-title">Select a contact to start chatting</h2>
+              <h2 class="preview-title">Choose a chat to view messages</h2>
               <p class="preview-description">
-                Your chats will appear here once you open a conversation.
+                Your chats will appear here once you start a conversation.
               </p>
             </div>
           </div>
@@ -378,24 +378,29 @@ onMounted(() => {
 
 <style scoped>
 .page{
-  min-height:100%;
-  height:100%;
-  width:100%;
-  min-width:0;
-  flex:1 1 auto;
-  display:flex;
-  flex-direction:column;
-  background:
-    radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
-    radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
-    linear-gradient(180deg, #ffffff, #f7fafe);
+  min-height: 100vh;
+  height: 100vh;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  background: #e5e7eb;
+  color: #1f2937;
 }
 .topbar{
-  height:56px; display:flex; align-items:center; justify-content:space-between;
-  padding:0 18px; border-bottom:1px solid rgba(20,100,60,.08); background:#fff8; backdrop-filter: blur(6px);
+  height: 56px;
+  display: grid;
+  place-items: center;
+  padding: 0 18px;
+  border-bottom: 1px solid rgba(20, 100, 60, 0.06);
+  background: #f8fafc;
 }
 .title{
-  font-weight:800; color:#0f172a;
+  font-weight: 700;
+  font-size: var(--font-title);
+  color: #0f172a;
+  text-align: center;
 }
 
 .workspace{
@@ -422,7 +427,7 @@ onMounted(() => {
   align-items:center;
   gap:8px;
 }
-.input{
+.search{
   flex:1;
   border:1px solid #e5e7eb;
   border-radius:var(--radius-control);
@@ -432,40 +437,44 @@ onMounted(() => {
   font-size:var(--font-primary);
   transition:border-color .15s ease, box-shadow .15s ease;
 }
-.input:focus{ border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.15); }
+.search:focus{
+  border-color:#32d583;
+  box-shadow:0 0 0 3px rgba(50, 213, 131, 0.2);
+}
 .btn{
   border:0;
   border-radius:var(--radius-control);
   color:#fff;
   padding:0.45rem 0.75rem;
   white-space:nowrap;
-  background:#34d399;
-  box-shadow:0 .35rem .8rem rgba(16,185,129,.2);
+  background:#32d583;
+  box-shadow:0 .35rem .8rem rgba(50, 213, 131, 0.22);
   transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
   font-weight:700;
 }
 .btn:hover{
-  background:#10b981;
-  box-shadow:0 .5rem 1rem rgba(16,185,129,.32);
+  background:#c6f6d5;
+  color:#065f46;
+  box-shadow:0 .5rem 1rem rgba(15, 118, 110, 0.18);
   transform:translateY(-1px);
 }
 .btn:disabled { opacity:.6; cursor:not-allowed; }
-.btn:disabled:hover { background:#34d399; box-shadow:0 .35rem .8rem rgba(16,185,129,.2); transform:none; }
+.btn:disabled:hover { background:#32d583; color:#fff; box-shadow:0 .35rem .8rem rgba(50, 213, 131, 0.22); transform:none; }
 .btn-search{
-  background:#fff;
-  color:#16a34a;
-  border:1px solid #bbf7d0;
+  background:#e5e7eb;
+  color:#1f2937;
+  border:1px solid #e5e7eb;
   box-shadow:none;
   padding:8px 12px;
 }
 .btn-search:hover{
-  background:#ecfdf3;
-  border-color:#22c55e;
-  color:#166534;
+  background:#c6f6d5;
+  border-color:#32d583;
+  color:#065f46;
   box-shadow:0 8px 16px rgba(15,23,42,0.06);
 }
 .btn-outline{
-  background:#fff; color:#334155; border:1px solid #cbd5e1; box-shadow:none;
+  background:#e5e7eb; color:#1f2937; border:1px solid #e5e7eb; box-shadow:none;
 }
 .btn.icon-only{
   width:36px; height:36px; padding:0;
@@ -490,7 +499,7 @@ onMounted(() => {
   overflow:hidden;
 }
 .list-pane{
-  flex:0 0 320px;
+  flex:0 0 360px;
   background:var(--panel);
   border-right:1px solid var(--border);
   display:flex;
@@ -498,9 +507,19 @@ onMounted(() => {
   padding:16px;
   gap:10px;
   min-height:0;
-  overflow:auto;
+  overflow:hidden;
 }
-.list{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px; min-height:0; }
+.list{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-height:0;
+  flex:1 1 auto;
+  overflow-y:auto;
+}
 .item{
   background:#ffffff;
   border:1px solid var(--border);
@@ -517,13 +536,13 @@ onMounted(() => {
   cursor:pointer;
 }
 .item:hover{
-  background:rgba(34, 197, 94, 0.1);
-  border-color:rgba(34, 197, 94, 0.35);
+  background:#c6f6d5;
+  border-color:rgba(50, 213, 131, 0.6);
   box-shadow:0 6px 16px rgba(15,23,42,0.08);
 }
 .item.active{
-  background:#dcfce7;
-  border-color:#22c55e;
+  background:#32d583;
+  border-color:#32d583;
 }
 .item.active::before{
   content:'';
@@ -532,7 +551,14 @@ onMounted(() => {
   top:10px;
   bottom:10px;
   width:3px;
-  background:#22c55e;
+  background:#16a34a;
+}
+.item.active .name{
+  color:#0f172a;
+}
+.item.active .time,
+.item.active .preview{
+  color:#065f46;
 }
 .item.disabled{
   cursor:not-allowed;
@@ -541,10 +567,10 @@ onMounted(() => {
 .left{ display:flex; align-items:center; justify-content:center; }
 .avatar,
 .avatar-fallback{
-  width:44px;
-  height:44px;
+  width:32px;
+  height:32px;
   border-radius:50%;
-  flex:0 0 44px;
+  flex:0 0 32px;
 }
 .avatar{
   object-fit:cover;
@@ -567,7 +593,7 @@ onMounted(() => {
 }
 .name{ font-weight:600; color:#0f172a; font-size:var(--font-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .time{
-  color:#94a3b8;
+  color:#64748b;
   font-size:.85rem;
   white-space:nowrap;
 }

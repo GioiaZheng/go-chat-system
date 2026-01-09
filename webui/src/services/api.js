@@ -429,6 +429,10 @@ export async function getMyConversations() {
   return unwrap(await get('/conversations'))
 }
 
+export async function fetchConversations() {
+  return getMyConversations()
+}
+
 // Fetch members directly; fall back to group lookup when the endpoint is missing.
 export async function getConversationMembers(conversationId) {
   const id = String(conversationId || '').trim();
@@ -690,6 +694,7 @@ const api = {
   startConversation,
   startPrivateConversation,
   getMyConversations,
+  fetchConversations,
   deleteConversation,
 
   // groups
