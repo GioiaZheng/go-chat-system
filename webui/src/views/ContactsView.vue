@@ -15,52 +15,73 @@
             placeholder="Search by name/username"
             @keyup.enter="onSearch"
           />
-          <button class="btn" @click="onSearch">Search</button>
+          <button class="btn btn-secondary" @click="onSearch">Search</button>
         </div>
 
-      <div v-if="loading" class="loading">
-        <span class="spinner" aria-hidden="true"></span>
-        Loading contacts…
-      </div>
-
-      <ErrorMsg v-else-if="err" :text="err" class="mb-2" />
-      <button v-if="err" class="btn btn-outline mb-3" @click="load">Retry</button>
-
-      <ul v-else class="list">
-        <li v-for="u in users" :key="asId(u)" class="item">
-          <div class="left">
-            <span v-if="!avatar(u)" class="avatar-fallback avatar-circle">{{ initials(u) }}</span>
-            <img v-else :src="avatar(u)" class="avatar avatar-circle" alt="avatar" />
-            <div class="meta">
-              <div class="name">{{ displayName(u) }}</div>
-              <div v-if="usernameLabel(u)" class="sub">{{ usernameLabel(u) }}</div>
+        <div class="contacts-layout">
+          <div>
+            <div v-if="loading" class="loading">
+              <span class="spinner" aria-hidden="true"></span>
+              Loading contacts…
             </div>
+
+            <ErrorMsg v-else-if="err" :text="err" class="mb-2" />
+            <button v-if="err" class="btn btn-outline mb-3" @click="load">Retry</button>
+
+            <ul v-else class="list">
+              <li v-for="u in users" :key="asId(u)" class="item">
+                <button
+                  class="item-button"
+                  type="button"
+                  :disabled="creatingId === asId(u)"
+                  @click="openChat(u)"
+                >
+                  <div class="left">
+                    <span v-if="!avatar(u)" class="avatar-fallback avatar-circle">{{ initials(u) }}</span>
+                    <img v-else :src="avatar(u)" class="avatar avatar-circle" alt="avatar" />
+                    <div class="meta">
+                      <div class="name">{{ displayName(u) }}</div>
+                      <div class="preview">
+                        {{ lastPreviewFor(u) }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="meta-right">
+                    <span class="time">{{ lastTimeFor(u) }}</span>
+                  </div>
+                </button>
+              </li>
+              <li v-if="!users.length" class="empty">No users.</li>
+            </ul>
           </div>
-          <button class="btn" :disabled="creatingId===asId(u)" @click="message(u)">
-            {{ creatingId===asId(u) ? 'Opening…' : 'Message' }}
-          </button>
-        </li>
-        <li v-if="!users.length" class="empty">No users.</li>
-      </ul>
+
+          <aside class="empty-state" aria-live="polite">
+            <div class="empty-title">Select a contact to start chatting</div>
+            <div class="empty-subtitle">
+              Choose someone from the list to open a conversation.
+            </div>
+          </aside>
+        </div>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import {
-  isAuthed,
   listContacts,
   searchUsers,
   startPrivateConversation,
   getAvatarUrl,
   preferredDisplayName,
-  safeUsername,
   initialsFor,
+  getMyConversations,
+  normalizeUser,
 } from '@/services/api'
+import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
 
 const router = useRouter()
 
@@ -69,19 +90,157 @@ const loading = ref(false)
 const err = ref('')
 const users = ref([])
 const creatingId = ref('') // Prevent duplicate conversation creation on rapid clicks
+const conversationIndex = ref({})
+
+const PREVIEW_LIMIT = 40
 
 const asId          = (u) => String(u.id ?? u.user_id ?? u._id ?? '')
 const displayName   = (u) => preferredDisplayName(u)
-const usernameLabel = (u) => safeUsername(u)
 const avatar        = (u) => getAvatarUrl({ avatarUri: u.avatarUri ?? u.avatar_uri ?? u.avatar_url ?? u.avatar })
 const initials      = (u) => initialsFor({ name: displayName(u) }, 'U')
+const me = computed(() => currentUser.value)
+const myId = () => String(me.value?.id ?? '')
+
+function cleanPreviewText(value = '') {
+  return String(value || '').trim()
+}
+
+function formatPreviewText(value = '') {
+  const text = cleanPreviewText(value)
+  if (!text) return ''
+  return text.split('\n')[0].slice(0, PREVIEW_LIMIT).trim()
+}
+
+function previewForMessage(raw = {}) {
+  if (!raw) return ''
+  const type = String(raw?.type || raw?.Type || '').toLowerCase()
+  const fileUrl = raw?.fileUrl ?? raw?.file_url ?? raw?.FileUrl
+  const content = raw?.content ?? raw?.Content ?? ''
+  const text = formatPreviewText(content)
+  const isImage = type === 'image'
+  const isFile = type === 'file' || (!isImage && !!fileUrl)
+  const mediaLabel = isImage ? '[image]' : (isFile ? '[file]' : '')
+
+  if (mediaLabel && text) return `${mediaLabel} ${text}`
+  if (mediaLabel) return mediaLabel
+  return text
+}
+
+function messageTime(raw = {}) {
+  return (
+    raw?.createdAt ||
+    raw?.created_at ||
+    raw?.CreatedAt ||
+    raw?.timestamp ||
+    raw?.Timestamp ||
+    null
+  )
+}
+
+function messageTimeValue(raw = {}) {
+  const value = messageTime(raw)
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.getTime()
+}
+
+function pickLastMessage(c) {
+  if (!c) return null
+
+  const fromKnownFields = c.lastMessage || c.last_message
+  if (fromKnownFields) return fromKnownFields
+
+  const list =
+    c.messages ||
+    c.Messages ||
+    c.messageList ||
+    c.message_list ||
+    c.items ||
+    c.list
+
+  if (!Array.isArray(list) || !list.length) return null
+
+  let best = null
+  let bestTime = null
+  list.forEach((msg) => {
+    const ts = messageTimeValue(msg)
+    if (ts !== null) {
+      if (bestTime === null || ts > bestTime) {
+        bestTime = ts
+        best = msg
+      }
+      return
+    }
+    if (!best) {
+      best = msg
+    }
+  })
+
+  return best || list[list.length - 1]
+}
+
+function formatTimestamp(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const now = new Date()
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  if (isToday) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${month}/${day}`
+}
+
+function buildConversationIndex(items = []) {
+  const index = {}
+  const meId = myId()
+
+  ;(items || []).forEach((c) => {
+    const isGroupType = c?.type === 'group' || !!(c?.groupId || c?.group_id || c?.group?.id)
+    if (isGroupType) return
+
+    const participants =
+      c.participants ||
+      c.members ||
+      c.memberList ||
+      c.users ||
+      []
+    const normalized = Array.isArray(participants) ? participants.map(normalizeUser) : []
+    const other = normalized.find(u => String(u.id) !== meId)
+    if (!other?.id) return
+
+    const last = pickLastMessage(c)
+    const preview = last ? previewForMessage(last) : ''
+    const lastTime = last ? messageTime(last) : ''
+    const conversationId = c?.id || c?.conversationId || c?.conversation_id
+
+    index[String(other.id)] = {
+      conversationId,
+      lastPreview: preview || 'No messages yet',
+      lastTime: lastTime || '',
+    }
+  })
+
+  conversationIndex.value = index
+}
 
 async function load () {
   loading.value = true
   err.value = ''
   try {
-    const list = await listContacts()  // Backend already excludes the current user
+    const [list, convs] = await Promise.all([
+      listContacts(), // Backend already excludes the current user
+      getMyConversations(),
+    ])
     users.value = Array.isArray(list) ? list : []
+    const items = convs?.data?.items || convs?.items || (Array.isArray(convs) ? convs : []) || []
+    buildConversationIndex(items)
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Failed to load contacts'
   } finally {
@@ -95,8 +254,13 @@ async function onSearch () {
   loading.value = true
   err.value = ''
   try {
-    const arr = await searchUsers(keyword)
+    const [arr, convs] = await Promise.all([
+      searchUsers(keyword),
+      getMyConversations(),
+    ])
     users.value = Array.isArray(arr) ? arr : []
+    const items = convs?.data?.items || convs?.items || (Array.isArray(convs) ? convs : []) || []
+    buildConversationIndex(items)
   } catch (e) {
     err.value = e?.response?.data?.message || e?.message || 'Search failed'
   } finally {
@@ -104,10 +268,28 @@ async function onSearch () {
   }
 }
 
-async function message (u) {
+function conversationMetaFor(u) {
+  return conversationIndex.value[asId(u)] || null
+}
+
+function lastPreviewFor(u) {
+  return conversationMetaFor(u)?.lastPreview || 'No messages yet'
+}
+
+function lastTimeFor(u) {
+  const meta = conversationMetaFor(u)
+  return formatTimestamp(meta?.lastTime)
+}
+
+async function openChat (u) {
   err.value = ''
   const id = asId(u)
   if (!id) return
+  const existing = conversationMetaFor(u)
+  if (existing?.conversationId) {
+    router.push({ name: 'chat', params: { type: 'conv', id: existing.conversationId } })
+    return
+  }
   creatingId.value = id
   try {
     const data = await startPrivateConversation(u)
@@ -140,8 +322,13 @@ watch(q, (val) => {
 })
 
 onMounted(() => {
-  if (!isAuthed()) { router.replace('/login'); return }
-  load()
+  ensureAuthReady().then(() => {
+    if (!isAuthenticated.value) {
+      router.replace('/login')
+      return
+    }
+    load()
+  })
 })
 </script>
 
@@ -177,7 +364,7 @@ onMounted(() => {
 }
 
 .content-inner{
-  width:min(100%, 820px);
+  width:min(100%, 1080px);
   display:flex;
   flex-direction:column;
   gap:14px;
@@ -201,6 +388,14 @@ onMounted(() => {
 }
 .btn:disabled { opacity:.6; cursor:not-allowed; }
 .btn:disabled:hover { background:#34d399; box-shadow:0 .5rem 1rem rgba(16,185,129,.2); transform:none; }
+.btn-secondary{
+  background:#475569;
+  box-shadow:none;
+}
+.btn-secondary:hover{
+  background:#334155;
+  box-shadow:none;
+}
 .btn-outline{
   background:#fff; color:#334155; border:1px solid #cbd5e1; box-shadow:none;
 }
@@ -217,21 +412,41 @@ onMounted(() => {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.contacts-layout{
+  display:grid;
+  grid-template-columns:minmax(280px, 1fr) minmax(260px, 360px);
+  gap:20px;
+  align-items:start;
+}
 .list{ list-style:none; padding:0; margin:0; display:grid; gap:12px }
 .item{
-  display:grid; align-items:center; gap:14px;
-  grid-template-columns:auto 1fr auto;
-  background:#fff; border:1px solid #e2e8f0; border-radius:var(--radius-control);
-  padding:14px 16px;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:var(--radius-control);
   box-shadow:0 4px 12px rgba(15,23,42,.06);
+  overflow:hidden;
+}
+.item-button{
+  width:100%;
+  border:0;
+  background:transparent;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:14px 16px;
+  text-align:left;
+  cursor:pointer;
   transition:background .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
-.item:hover{
+.item-button:hover{
   background:#f8fafc;
-  border-color:#d7dde5;
-  box-shadow:0 6px 16px rgba(15,23,42,.08);
 }
-.left{ display:flex; align-items:center; gap:12px; }
+.item-button:disabled{
+  cursor:not-allowed;
+  opacity:.7;
+}
+.left{ display:flex; align-items:center; gap:12px; min-width:0; flex:1; }
 .avatar,
 .avatar-fallback{
   width:40px;
@@ -253,6 +468,36 @@ onMounted(() => {
 }
 .meta{ flex:1; min-width:0; }
 .name{ font-weight:600; color:#0f172a }
-.sub{ color:#64748b; font-size:.92rem }
+.preview{ color:#64748b; font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.meta-right{
+  color:#94a3b8;
+  font-size:.85rem;
+  white-space:nowrap;
+  flex:0 0 auto;
+}
 .empty{ text-align:center; color:#64748b }
+.empty-state{
+  border:1px dashed #d8e1ee;
+  border-radius:16px;
+  padding:20px;
+  background:#f8fafc;
+  color:#475569;
+}
+.empty-title{
+  font-weight:600;
+  margin-bottom:6px;
+  color:#0f172a;
+}
+.empty-subtitle{
+  font-size:.92rem;
+  color:#64748b;
+}
+@media (max-width: 900px){
+  .contacts-layout{
+    grid-template-columns:1fr;
+  }
+  .empty-state{
+    order:-1;
+  }
+}
 </style>
