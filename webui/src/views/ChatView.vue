@@ -1,10 +1,6 @@
 <!-- src/views/ChatView.vue: Chat experience with in-place conversation switching. -->
 <template>
   <div class="page">
-    <header class="topbar">
-      <div class="title">Chats</div>
-    </header>
-
     <section class="workspace">
       <div class="content-inner">
         <ErrorMsg v-if="err" :text="err" class="mb-2" />
@@ -136,8 +132,30 @@
                             </div>
                           </button>
 
-                          <div v-if="m.fileAbsUrl" class="img-wrap">
-                            <img :src="m.fileAbsUrl" class="img" />
+                          <div
+                            v-if="m.fileAbsUrl"
+                            class="img-wrap"
+                            :class="{
+                              'is-loading': mediaStatusFor(m) === 'loading',
+                              'is-error': mediaStatusFor(m) === 'error'
+                            }"
+                          >
+                            <div v-if="mediaStatusFor(m) !== 'loaded'" class="img-state">
+                              <span
+                                v-if="mediaStatusFor(m) === 'error'"
+                                class="img-fallback"
+                              >
+                                🖼️ Image failed to load
+                              </span>
+                              <span v-else class="img-spinner" aria-label="Loading image"></span>
+                            </div>
+                            <img
+                              :src="m.fileAbsUrl"
+                              class="img"
+                              :class="{ 'is-hidden': mediaStatusFor(m) !== 'loaded' }"
+                              @load="onMediaLoad(m)"
+                              @error="onMediaError(m)"
+                            />
                           </div>
 
                           <div
@@ -564,6 +582,7 @@ const me = computed(() => currentUser.value)
 const meId = computed(() => String(me.value?.id || ''))
 const myAvatar = computed(() => getAvatarUrl(me.value || {}))
 const brokenAvatars = ref(new Set())
+const mediaStatus = ref({})
 
 const currentConv = ref(null)
 const isGroup = ref(false)
@@ -677,7 +696,7 @@ function previewForMessage(raw = {}) {
   const text = formatPreviewText(content)
   const isFile = type === 'file'
   const isImage = type === 'image'
-  const mediaLabel = isFile ? '[file]' : (isImage || fileUrl ? '[img]' : '')
+  const mediaLabel = isFile ? '[file]' : (isImage || fileUrl ? '[image]' : '')
 
   if (mediaLabel && text) return `${mediaLabel} ${text}`
   if (mediaLabel) return mediaLabel
@@ -698,7 +717,7 @@ function previewForNormalizedMessage(message) {
   const text = formatPreviewText(message.content)
   const isFile = message.type === 'file'
   const isImage = message.type === 'image'
-  const mediaLabel = isFile ? '[file]' : (isImage || message.fileAbsUrl ? '[img]' : '')
+  const mediaLabel = isFile ? '[file]' : (isImage || message.fileAbsUrl ? '[image]' : '')
 
   if (mediaLabel && text) return `${mediaLabel} ${text}`
   if (mediaLabel) return mediaLabel
@@ -1018,6 +1037,28 @@ function onAvatarError(url) {
 function avatarUrlForMessage(m) {
   const url = avatarFor(m)
   return isAvatarBroken(url) ? '' : url
+}
+
+function mediaKey(m) {
+  return String(m?.id || m?.fileAbsUrl || '')
+}
+
+function mediaStatusFor(m) {
+  if (!m?.fileAbsUrl) return 'loaded'
+  const key = mediaKey(m)
+  return mediaStatus.value[key] || 'loading'
+}
+
+function onMediaLoad(m) {
+  const key = mediaKey(m)
+  if (!key) return
+  mediaStatus.value = { ...mediaStatus.value, [key]: 'loaded' }
+}
+
+function onMediaError(m) {
+  const key = mediaKey(m)
+  if (!key) return
+  mediaStatus.value = { ...mediaStatus.value, [key]: 'error' }
 }
 
 const myAvatarUrl = computed(() => (isAvatarBroken(myAvatar.value) ? '' : myAvatar.value))
@@ -2105,25 +2146,6 @@ watch(convId, async () => {
   color: #1f2937;
 }
 
-.topbar {
-  height: 56px;
-  display: grid;
-  place-items: center;
-  padding: 0 18px;
-  border-bottom: 1px solid rgba(20, 100, 60, 0.06);
-  background: #f8fafc;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.title {
-  font-weight: 700;
-  font-size: var(--font-title);
-  color: #0f172a;
-  text-align: center;
-}
-
 .chat-header {
   position: sticky;
   top: 0;
@@ -2244,6 +2266,7 @@ watch(convId, async () => {
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .group-panel {
@@ -2709,6 +2732,9 @@ img.member-avatar {
 
 .img-wrap {
   display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 6px;
   max-width: 260px;
   max-height: 260px;
@@ -2722,6 +2748,52 @@ img.member-avatar {
   height: auto;
   object-fit: contain;
   border-radius: var(--radius-bubble);
+}
+
+.img.is-hidden {
+  opacity: 0;
+}
+
+.img-wrap.is-loading .img {
+  filter: blur(6px);
+  opacity: 0.7;
+}
+
+.img-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: var(--radius-bubble);
+  pointer-events: none;
+}
+
+.img-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(15, 23, 42, 0.2);
+  border-top-color: #22c55e;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.img-fallback {
+  font-size: 0.8rem;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .text-block {
@@ -2807,6 +2879,8 @@ img.member-avatar {
   gap: 6px;
   margin-top: var(--space-2);
   align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .icon-btn {
@@ -2823,6 +2897,7 @@ img.member-avatar {
   align-items: center;
   justify-content: center;
   color: #334155;
+  flex: 0 0 auto;
 }
 
 .icon-btn:focus-visible,

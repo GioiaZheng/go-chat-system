@@ -61,7 +61,7 @@ async function logout() {
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 16px;
 }
 
 .brand {
@@ -108,12 +108,16 @@ async function logout() {
 }
 
 .link {
-  display: block;
-  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
   color: #0f172a;
   font-weight: 500;
   text-decoration: none;
   transition: 0.2s;
+  border-radius: 10px;
 }
 .link:hover {
   background: #f1f5f9;
@@ -125,9 +129,9 @@ async function logout() {
 }
 
 .footer {
+  margin-top: auto;
   border-top: 1px solid #e2e8f0;
   padding-top: 16px;
-  margin-top: 0;
 }
 .logout {
   width: 100%;
@@ -182,7 +186,7 @@ async function logout() {
   }
 
   .footer {
-    margin: 0;
+    margin: 0 0 0 auto;
     padding-top: 0;
     border-top: 0;
   }

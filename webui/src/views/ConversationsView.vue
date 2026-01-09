@@ -1,12 +1,6 @@
 <!-- src/views/ConversationsView.vue: Conversation directory showing private and group chats. -->
 <template>
   <div class="page">
-    <header class="topbar">
-      <div>
-        <div class="title">Chats</div>
-      </div>
-    </header>
-
     <div v-if="toastMessage" class="toast" role="status" aria-live="polite">
       <span class="checkmark">✓</span>
       <span>{{ toastMessage }}</span>
@@ -111,7 +105,7 @@ function previewForMessage(raw = {}) {
   const text = formatPreviewText(content)
   const isFile = type === 'file'
   const isImage = type === 'image'
-  const mediaLabel = isFile ? '[file]' : (isImage || fileUrl ? '[img]' : '')
+  const mediaLabel = isFile ? '[file]' : (isImage || fileUrl ? '[image]' : '')
 
   if (mediaLabel && text) return `${mediaLabel} ${text}`
   if (mediaLabel) return mediaLabel
@@ -405,25 +399,6 @@ onUnmounted(() => {
   background: #e5e7eb;
   color: #1f2937;
 }
-.topbar {
-  height: 56px;
-  display: grid;
-  place-items: center;
-  padding: 0 18px;
-  border-bottom: 1px solid rgba(20, 100, 60, 0.06);
-  background: #f8fafc;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.title {
-  font-weight: 700;
-  font-size: var(--font-title);
-  color: #0f172a;
-  text-align: center;
-}
-
 .workspace {
   flex: 1 1 auto;
   display: flex;
@@ -545,13 +520,6 @@ onUnmounted(() => {
 }
 
 @media (max-width: 992px) {
-  .topbar {
-    height: auto;
-    align-items: flex-start;
-    grid-template-columns: 1fr;
-    padding: 10px 14px;
-  }
-
   .workspace {
     padding: 12px;
   }
