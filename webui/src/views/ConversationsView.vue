@@ -29,7 +29,8 @@
               :fmt-time="fmtTime"
               :show-delete="true"
               variant="split"
-              empty-group-text="▸ You have no group chats. Create one ➕"
+              empty-direct-text="No chats yet — start in Contacts 👋"
+              empty-group-text="No groups yet — create one 👋"
               @select="open"
               @delete="warnDelete"
             />

@@ -22,6 +22,8 @@
             :loading="convLoading"
             :error="convErr"
             variant="split"
+            empty-direct-text="No chats yet — start in Contacts 👋"
+            empty-group-text="No groups yet — create one 👋"
             @select="selectConversation"
           />
 
@@ -106,71 +108,75 @@
                           {{ displayNameFor(m) }}
                         </div>
 
-                        <div class="bubble" :class="{ mine: isMine(m) }">
-                          <button
-                            v-if="m._replyPreview"
-                            class="inline-reply"
-                            type="button"
-                            @click="jumpToMessage(m.replyToId)"
-                          >
-                            <div
-                              v-if="m._replyFrom"
-                              class="reply-from"
+                        <div class="message-block" :class="{ mine: isMine(m) }">
+                          <div class="bubble" :class="{ mine: isMine(m) }">
+                            <button
+                              v-if="m._replyPreview"
+                              class="inline-reply"
+                              type="button"
+                              @click="jumpToMessage(m.replyToId)"
                             >
-                              {{ m._replyFrom }}
-                            </div>
-                            <div class="reply-body">
-                              <img
-                                v-if="m._replyImage"
-                                :src="m._replyImage"
-                                class="reply-thumb"
-                                alt="reply image"
-                              />
-                              <div class="reply-text">
-                                {{ m._replyPreview }}
+                              <div
+                                v-if="m._replyFrom"
+                                class="reply-from"
+                              >
+                                {{ m._replyFrom }}
+                              </div>
+                              <div class="reply-body">
+                                <img
+                                  v-if="m._replyImage"
+                                  :src="m._replyImage"
+                                  class="reply-thumb"
+                                  alt="reply image"
+                                />
+                                <div class="reply-text">
+                                  {{ m._replyPreview }}
+                                </div>
+                              </div>
+                            </button>
+
+                            <div class="bubble-content">
+                              <div
+                                v-if="m.fileAbsUrl"
+                                class="img-wrap"
+                                :class="{
+                                  'is-loading': mediaStatusFor(m) === 'loading',
+                                  'is-error': mediaStatusFor(m) === 'error'
+                                }"
+                              >
+                                <div v-if="mediaStatusFor(m) !== 'loaded'" class="img-state">
+                                  <span
+                                    v-if="mediaStatusFor(m) === 'error'"
+                                    class="img-fallback"
+                                  >
+                                    🖼️ Image failed to load
+                                  </span>
+                                  <span v-else class="img-spinner" aria-label="Loading image"></span>
+                                </div>
+                                <img
+                                  :src="m.fileAbsUrl"
+                                  class="img"
+                                  :class="{ 'is-hidden': mediaStatusFor(m) !== 'loaded' }"
+                                  @load="onMediaLoad(m)"
+                                  @error="onMediaError(m)"
+                                />
+                              </div>
+
+                              <div
+                                v-if="m.content"
+                                class="text-block text-primary"
+                              >
+                                {{ m.content }}
                               </div>
                             </div>
-                          </button>
-
-                          <div
-                            v-if="m.fileAbsUrl"
-                            class="img-wrap"
-                            :class="{
-                              'is-loading': mediaStatusFor(m) === 'loading',
-                              'is-error': mediaStatusFor(m) === 'error'
-                            }"
-                          >
-                            <div v-if="mediaStatusFor(m) !== 'loaded'" class="img-state">
-                              <span
-                                v-if="mediaStatusFor(m) === 'error'"
-                                class="img-fallback"
-                              >
-                                🖼️ Image failed to load
-                              </span>
-                              <span v-else class="img-spinner" aria-label="Loading image"></span>
-                            </div>
-                            <img
-                              :src="m.fileAbsUrl"
-                              class="img"
-                              :class="{ 'is-hidden': mediaStatusFor(m) !== 'loaded' }"
-                              @load="onMediaLoad(m)"
-                              @error="onMediaError(m)"
-                            />
                           </div>
 
-                          <div
-                            v-if="m.content"
-                            class="text-block text-primary"
-                          >
-                            {{ m.content }}
+                          <div class="meta text-secondary">
+                            {{ fmtTime(m._ts) }}
+                            <span v-if="tickText(m)" class="ticks">
+                              {{ tickText(m) }}
+                            </span>
                           </div>
-                        </div>
-
-                        <div class="meta text-secondary">
-                          {{ fmtTime(m._ts) }}
-                          <span v-if="tickText(m)" class="ticks">
-                            {{ tickText(m) }}
-                          </span>
                         </div>
 
                         <div
@@ -247,9 +253,7 @@
                   </template>
 
                   <div v-else class="empty-thread" role="status">
-                    <p class="muted">
-                      {{ isGroup ? 'Start the conversation (only group members can see your messages).' : 'Start the conversation to send a message.' }}
-                    </p>
+                    <p class="muted">No messages yet — say hi 👋</p>
                   </div>
                 </div>
               </div>
@@ -326,115 +330,130 @@
           <!-- ===== RIGHT: GROUP PANEL ===== -->
           <aside v-if="isGroup" class="group-panel" :class="{ disabled: notFound }">
             <div class="group-card">
-              <div class="group-header">
-                <span
-                  v-if="!groupInfo?.avatar"
-                  class="group-avatar avatar-fallback avatar-circle"
-                >
-                  {{ (groupInfo?.name || headerTitle)[0] || 'G' }}
-                </span>
-                <img
-                  v-else
-                  class="group-avatar avatar avatar-circle"
-                  :src="groupInfo.avatar"
-                  alt="avatar"
-                />
-                <div class="group-meta">
-                  <div class="group-name">{{ groupInfo?.name || headerTitle }}</div>
-                  <div class="group-sub">{{ groupMembers.length === 1 ? '1 member' : `${groupMembers.length} members` }}</div>
+              <div class="group-section">
+                <div class="group-section__title">Group info</div>
+                <div class="group-header">
+                  <AvatarUpload
+                    :src="groupPhotoPreview || groupInfo?.avatar"
+                    :fallback-text="(groupInfo?.name || headerTitle)[0] || 'G'"
+                    overlay-text="Change photo"
+                    alt="Group avatar"
+                    :size="48"
+                    :disabled="groupBusy || notFound"
+                    @select="onSelectGroupPhoto"
+                  />
+                  <div class="group-meta">
+                    <div class="group-name">{{ groupInfo?.name || headerTitle }}</div>
+                    <div class="group-sub">{{ groupMembers.length === 1 ? '1 member' : `${groupMembers.length} members` }}</div>
+                  </div>
+                  <div class="group-actions">
+                    <button
+                      v-if="groupPhotoFile"
+                      class="link muted"
+                      type="button"
+                      :disabled="groupBusy || notFound"
+                      @click="saveGroupPhoto"
+                    >
+                      Save
+                    </button>
+                    <button
+                      v-if="groupPhotoFile"
+                      class="link"
+                      type="button"
+                      :disabled="groupBusy || notFound"
+                      @click="clearGroupPhotoSelection"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-                <button class="link muted" type="button" :disabled="notFound" @click="triggerGroupPhoto">
-                  Change photo
-                </button>
-                <input
-                  ref="groupPhotoInput"
-                  type="file"
-                  class="filepick"
-                  accept="image/*"
-                  :disabled="notFound"
-                  @change="onPickGroupPhoto"
-                />
+
+                <div class="field inline group-rename">
+                  <span class="field-label">Group name</span>
+                  <input
+                    v-model.trim="groupNameDraft"
+                    class="input"
+                    placeholder="Group name"
+                    :disabled="groupBusy || notFound"
+                  />
+                  <button
+                    class="btn sm"
+                    type="button"
+                    :disabled="groupBusy || !groupNameDraft || notFound"
+                    @click="onRenameGroup"
+                  >
+                    {{ groupBusy ? 'Saving…' : 'Save' }}
+                  </button>
+                </div>
+                <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
               </div>
 
-            <div class="field inline group-rename">
-              <span class="field-label">Group name</span>
-              <input
-                v-model.trim="groupNameDraft"
-                class="input"
-                placeholder="Group name"
-                :disabled="groupBusy || notFound"
-              />
-              <button
-                class="btn sm"
-                type="button"
-                :disabled="groupBusy || !groupNameDraft || notFound"
-                @click="onRenameGroup"
-              >
-                {{ groupBusy ? 'Saving…' : 'Save' }}
-              </button>
-            </div>
+              <div class="group-section">
+                <div class="group-section__title">Members</div>
+                <div class="members-block">
+                  <p v-if="groupLoading" class="muted">Loading group info…</p>
+                  <ErrorMsg v-else-if="groupErr" :text="groupErr" />
+                  <div v-else class="member-scroll" role="list">
+                    <ul class="member-list">
+                      <li v-for="u in groupMembers" :key="u.id" class="member-item" role="listitem">
+                        <div class="member-left">
+                          <span
+                            v-if="!u.avatar"
+                            class="member-avatar avatar-fallback avatar-circle"
+                          >
+                            {{ initialsFor(u, 'U') }}
+                          </span>
+                          <img
+                            v-else
+                            class="member-avatar avatar avatar-circle"
+                            :src="u.avatar"
+                            alt="avatar"
+                          />
+                          <div class="member-info">
+                            <div class="member-name">{{ u.name || 'Unknown' }}</div>
+                            <div v-if="safeUsername(u)" class="member-sub">{{ safeUsername(u) }}</div>
+                          </div>
+                        </div>
+                        <button
+                          v-if="String(u.id) !== meId"
+                          class="link danger"
+                          type="button"
+                          :disabled="groupBusy || notFound"
+                          @click="onRemoveMember(u.id)"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                      <li v-if="!groupMembers.length" class="muted">No members found.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
 
-            <div class="members-block">
-              <div class="section-label text-secondary">Members</div>
-              <p v-if="groupLoading" class="muted">Loading group info…</p>
-              <ErrorMsg v-else-if="groupErr" :text="groupErr" />
-              <div v-else class="member-scroll" role="list">
-                <ul class="member-list">
-                  <li v-for="u in groupMembers" :key="u.id" class="member-item" role="listitem">
-                    <div class="member-left">
-                      <span
-                        v-if="!u.avatar"
-                        class="member-avatar avatar-fallback avatar-circle"
-                      >
-                        {{ initialsFor(u, 'U') }}
-                      </span>
-                      <img
-                        v-else
-                        class="member-avatar avatar avatar-circle"
-                        :src="u.avatar"
-                        alt="avatar"
-                      />
-                      <div class="member-info">
-                        <div class="member-name">{{ u.name || 'Unknown' }}</div>
-                        <div v-if="safeUsername(u)" class="member-sub">{{ safeUsername(u) }}</div>
-                      </div>
-                    </div>
-              <button
-                v-if="String(u.id) !== meId"
-                class="link danger"
-                type="button"
-                :disabled="groupBusy || notFound"
-                @click="onRemoveMember(u.id)"
-              >
-                Remove
-              </button>
-            </li>
-            <li v-if="!groupMembers.length" class="muted">No members found.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="members-add">
-        <div class="section-label text-secondary">
-          Add members <span class="section-icon" aria-hidden="true">+</span>
-        </div>
-        <UserSearch
-          placeholder="Search members by name or username"
-          class="group-search"
-          :class="{ disabled: notFound || addingMember }"
-          @select="onSelectNewMember"
-          @error="groupErr = $event || ''"
-        />
-      </div>
+              <div class="group-section">
+                <div class="group-section__title">Add members</div>
+                <div class="members-add">
+                  <UserSearch
+                    placeholder="Search members by name or username"
+                    class="group-search"
+                    :class="{ disabled: notFound || addingMember }"
+                    @select="onSelectNewMember"
+                    @error="groupErr = $event || ''"
+                  />
+                </div>
+              </div>
 
-      <button
-        class="btn danger leave"
-        type="button"
-        :disabled="groupBusy || notFound"
-        @click="onLeaveGroup"
-      >
-        Leave group
-      </button>
-            <p v-if="groupNotice" class="notice small" role="status" aria-live="polite">{{ groupNotice }}</p>
+              <div class="group-section">
+                <div class="group-section__title">Leave group</div>
+                <button
+                  class="btn danger leave"
+                  type="button"
+                  :disabled="groupBusy || notFound"
+                  @click="onLeaveGroup"
+                >
+                  Leave group
+                </button>
+              </div>
             </div>
           </aside>
         </div>
@@ -509,6 +528,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import ConversationList from '@/components/ConversationList.vue'
 import UserSearch from '@/components/UserSearch.vue'
+import AvatarUpload from '@/components/AvatarUpload.vue'
 import {
   getMyConversations,
   getConversationMembers,
@@ -593,7 +613,8 @@ const groupErr = ref('')
 const groupNotice = ref('')
 const groupNameDraft = ref('')
 const addingMember = ref(false)
-const groupPhotoInput = ref(null)
+const groupPhotoFile = ref(null)
+const groupPhotoPreview = ref('')
 const groupMembers = computed(() => {
   const src = groupInfo.value?.members?.length ? groupInfo.value.members : participants.value
   return normalizeMembers(src)
@@ -612,6 +633,10 @@ const participants = computed(() => currentConv.value?.participants || [])
 const peer = computed(
   () => participants.value.find(u => String(u.id) !== meId.value) || null
 )
+
+watch(groupId, () => {
+  clearGroupPhotoSelection()
+})
 
 // Forward modal state.
 const forwardPanelOpen = ref(false)
@@ -639,6 +664,7 @@ function markChatNotFound() {
   replyTarget.value = null
   replyHighlightId.value = ''
   clearImageSelection()
+  clearGroupPhotoSelection()
   err.value = ''
   notice.value = ''
 }
@@ -1053,6 +1079,7 @@ function onMediaLoad(m) {
   const key = mediaKey(m)
   if (!key) return
   mediaStatus.value = { ...mediaStatus.value, [key]: 'loaded' }
+  scrollToBottom(true)
 }
 
 function onMediaError(m) {
@@ -1838,20 +1865,29 @@ function tickText(m) {
 }
 
 // Group management helpers.
-function triggerGroupPhoto() {
-  if (groupPhotoInput.value) groupPhotoInput.value.click()
+function clearGroupPhotoSelection() {
+  if (groupPhotoPreview.value) {
+    URL.revokeObjectURL(groupPhotoPreview.value)
+  }
+  groupPhotoPreview.value = ''
+  groupPhotoFile.value = null
 }
 
-async function onPickGroupPhoto(e) {
-  const file = e?.target?.files?.[0]
-  if (e?.target) e.target.value = ''
-  if (!file || !groupId.value) return
+function onSelectGroupPhoto(file) {
+  if (!file) return
+  clearGroupPhotoSelection()
+  groupPhotoFile.value = file
+  groupPhotoPreview.value = URL.createObjectURL(file)
+}
+
+async function saveGroupPhoto() {
+  if (!groupPhotoFile.value || !groupId.value) return
 
   groupErr.value = ''
   groupNotice.value = ''
   groupBusy.value = true
   try {
-    const response = await setGroupPhoto(groupId.value, file)
+    const response = await setGroupPhoto(groupId.value, groupPhotoFile.value)
     const avatarRaw =
       response?.avatarUrl ||
       response?.avatar_url ||
@@ -1887,6 +1923,7 @@ async function onPickGroupPhoto(e) {
     }
     updateConversationMeta({ name: groupInfo.value?.name, avatar: newAvatar || groupInfo.value?.avatar })
     emitConversationReload()
+    clearGroupPhotoSelection()
   } catch (er) {
     groupErr.value = er?.response?.data?.message || er?.message || 'Failed to update group photo'
   } finally {
@@ -2293,10 +2330,26 @@ watch(convId, async () => {
   box-shadow: 0 10px 24px rgba(2, 6, 23, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   min-height: 0;
   flex: 1 1 auto;
   overflow-y: auto;
+}
+
+.group-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.group-section__title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.95rem;
 }
 
 .group-header {
@@ -2330,6 +2383,13 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.group-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .group-name {
@@ -2661,6 +2721,18 @@ img.member-avatar {
   align-items: flex-end;
 }
 
+.message-block {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.message-block.mine {
+  align-items: flex-end;
+}
+
 .who {
   font-size: var(--font-secondary);
   margin-bottom: 3px;
@@ -2683,6 +2755,12 @@ img.member-avatar {
 .bubble.mine {
   background: #95ec69;
   color: #000;
+}
+
+.bubble-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .inline-reply {
@@ -2735,7 +2813,6 @@ img.member-avatar {
   position: relative;
   align-items: center;
   justify-content: center;
-  margin-bottom: 6px;
   max-width: 260px;
   max-height: 260px;
 }
@@ -2804,7 +2881,10 @@ img.member-avatar {
 .meta {
   font-size: var(--font-secondary);
   color: #6b7280;
-  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-end;
 }
 
 .ticks {
@@ -2881,6 +2961,17 @@ img.member-avatar {
   align-items: center;
   flex-wrap: nowrap;
   overflow-x: auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(2px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.row:hover .actions,
+.row:focus-within .actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .icon-btn {

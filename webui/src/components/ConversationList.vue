@@ -41,7 +41,7 @@
               <div class="time">{{ fmtTime(c.last_time) }}</div>
             </div>
             <div class="bottom">
-              <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+              <div class="preview">{{ previewText(c) }}</div>
             </div>
           </div>
 
@@ -79,7 +79,7 @@
               <div class="time">{{ fmtTime(c.last_time) }}</div>
             </div>
             <div class="bottom">
-              <div class="preview">{{ c.last_preview || 'No messages yet' }}</div>
+              <div class="preview">{{ previewText(c) }}</div>
             </div>
           </div>
           <button v-if="showDelete" class="del" @click.stop="emitDelete(c)">Delete</button>
@@ -146,6 +146,12 @@ function emitSelect(c) {
 function emitDelete(c) {
   emit('delete', c)
 }
+
+function previewText(c) {
+  const value = String(c?.last_preview || '').trim()
+  if (!value || /no messages yet/i.test(value)) return '— no messages yet —'
+  return value
+}
 </script>
 
 <style scoped>
@@ -177,7 +183,7 @@ function emitDelete(c) {
 
 .list-title {
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text);
 }
 
 .list-search {
@@ -204,6 +210,7 @@ function emitDelete(c) {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1 1 0;
   min-height: 0;
 }
 
@@ -224,7 +231,7 @@ function emitDelete(c) {
 .section-title {
   margin: 0;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text);
   font-size: var(--font-secondary);
 }
 
@@ -232,7 +239,7 @@ function emitDelete(c) {
   display: inline-flex;
   min-width: 28px;
   height: 22px;
-  border-radius: 0;
+  border-radius: var(--radius-control);
   padding: 0 8px;
   align-items: center;
   justify-content: center;
@@ -270,6 +277,7 @@ function emitDelete(c) {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 14px;
+  min-height: 64px;
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   position: relative;
   cursor: pointer;
@@ -327,7 +335,7 @@ function emitDelete(c) {
 
 .name {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text);
   font-size: var(--font-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -338,12 +346,12 @@ function emitDelete(c) {
 .time {
   margin-left: auto;
   font-size: 0.92rem;
-  color: #64748b;
+  color: var(--muted);
   white-space: nowrap;
 }
 
 .preview {
-  color: #64748b;
+  color: var(--muted);
   font-size: 0.92rem;
   overflow: hidden;
   text-overflow: ellipsis;
