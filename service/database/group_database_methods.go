@@ -3,8 +3,8 @@ package database
 import (
 	"database/sql"
 	"errors"
-	"strings"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
@@ -154,7 +154,7 @@ func (db *appdbimpl) GetGroupMembers(groupID string) ([]models.User, error) {
 		}
 		members = append(members, u)
 	}
-	
+
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}

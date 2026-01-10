@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,7 +14,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"log"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
 	"github.com/GioiaZheng/Wasa_proj/service/reqcontext"
