@@ -141,7 +141,8 @@ func (rt *_router) getMyConversations(
 
 	// OpenAPI: {code, data:{items:[]}}
 	resp := map[string]interface{}{
-		"code": http.StatusOK,
+		"code":    http.StatusOK,
+		"message": "Conversations list retrieved successfully",
 		"data": map[string]interface{}{
 			"items": convs,
 		},
@@ -192,5 +193,9 @@ func (rt *_router) deleteConversation(
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	resp := map[string]interface{}{
+		"code":    http.StatusOK,
+		"message": "Conversation deleted successfully",
+	}
+	_ = writeJSON(w, http.StatusOK, resp)
 }
