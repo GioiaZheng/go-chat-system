@@ -16,10 +16,19 @@
 
     <!-- Primary navigation links for core flows -->
     <div class="nav">
-      <RouterLink to="/conversations" class="link" active-class="active">💬 Chats</RouterLink>
-      <RouterLink to="/contacts" class="link" active-class="active">👥 Contacts</RouterLink>
-      <RouterLink to="/new-group" class="link" active-class="active">🗂 New Group</RouterLink>
-      <RouterLink to="/profile" class="link" active-class="active">🪪 Profile</RouterLink>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <RouterLink to="/conversations" class="link" active-class="active">💬 Chats</RouterLink>
+        <RouterLink to="/contacts" class="link" active-class="active">👥 Contacts</RouterLink>
+      </div>
+      <div class="nav-section nav-section--action">
+        <div class="nav-label">Actions</div>
+        <RouterLink to="/new-group" class="link link--action" active-class="active">🗂 New Group</RouterLink>
+      </div>
+      <div class="nav-section nav-section--settings">
+        <div class="nav-label">Settings</div>
+        <RouterLink to="/profile" class="link" active-class="active">🪪 Profile</RouterLink>
+      </div>
     </div>
 
     <!-- Session controls -->
@@ -107,6 +116,28 @@ async function logout() {
   flex-grow: 1;
 }
 
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nav-section--action,
+.nav-section--settings {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.nav-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+  padding: 0 4px;
+}
+
 .link {
   display: flex;
   align-items: center;
@@ -118,6 +149,10 @@ async function logout() {
   text-decoration: none;
   transition: 0.2s;
   border-radius: 10px;
+}
+
+.link--action {
+  font-weight: 600;
 }
 .link:hover {
   background: #f1f5f9;
@@ -135,16 +170,17 @@ async function logout() {
 }
 .logout {
   width: 100%;
-  border: 0;
+  border: 1px solid #fecaca;
   border-radius: var(--radius-control);
-  padding: 8px 0;
-  background: #ef4444;
-  color: #fff;
+  padding: 8px 12px;
+  background: #fee2e2;
+  color: #b91c1c;
   font-weight: 600;
-  transition: 0.25s;
+  font-size: 0.9rem;
+  transition: 0.2s ease;
 }
 .logout:hover {
-  background: #dc2626;
+  background: #fecaca;
 }
 
 @media (max-width: 992px) {
@@ -179,6 +215,23 @@ async function logout() {
     flex-wrap: wrap;
     gap: 6px;
     align-items: center;
+  }
+
+  .nav-section {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .nav-section--action,
+  .nav-section--settings {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .nav-label {
+    display: none;
   }
 
   .link {

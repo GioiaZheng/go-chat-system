@@ -370,6 +370,7 @@ file_url,
 func (db *appdbimpl) GetMessageByID(messageID string) (models.Message, error) {
 	var m models.Message
 	var fileURL, recv, grp, conv, reply sql.NullString
+	var readInt int
 
 	err := db.c.QueryRow(`
 SELECT
@@ -393,6 +394,7 @@ WHERE id = ?
 		&fileURL,
 		&m.Type,
 		&m.Status,
+		&readInt,
 		&m.SenderID,
 		&recv,
 		&grp,
@@ -407,6 +409,11 @@ WHERE id = ?
 	m.ReceiverID = recv.String
 	m.GroupID = grp.String
 	m.ConversationID = conv.String
+	m.Read = readInt != 0
+
+	if fileURL.Valid {
+		m.FileURL = fileURL.String
+	}
 
 	if reply.Valid {
 		m.ReplyToID = &reply.String

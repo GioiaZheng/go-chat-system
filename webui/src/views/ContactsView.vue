@@ -54,7 +54,7 @@
               </li>
               <li v-if="!sortedUsers.length" class="empty">
                 <span class="empty-icon" aria-hidden="true">👥</span>
-                <span>No users.</span>
+                <span>No contacts yet — try a search 👋</span>
               </li>
             </ul>
           </div>
@@ -289,7 +289,9 @@ function conversationMetaFor(u) {
 }
 
 function lastPreviewFor(u) {
-  return conversationMetaFor(u)?.lastPreview || 'No messages yet'
+  const preview = String(conversationMetaFor(u)?.lastPreview || '').trim()
+  if (!preview || /no messages yet/i.test(preview)) return '— no messages yet —'
+  return preview
 }
 
 function lastTimeFor(u) {
@@ -389,6 +391,7 @@ onMounted(() => {
   display:flex;
   align-items:center;
   gap:8px;
+  padding: 0 0 8px;
 }
 .search{
   flex:1;
@@ -492,7 +495,7 @@ onMounted(() => {
   grid-template-columns:auto 1fr auto;
   align-items:center;
   gap:14px;
-  box-shadow:0 4px 12px rgba(15,23,42,.04);
+  min-height:64px;
   overflow:hidden;
   transition:background .15s ease, box-shadow .15s ease, border-color .15s ease;
   position:relative;
@@ -553,14 +556,14 @@ onMounted(() => {
   align-items:center;
   gap:12px;
 }
-.name{ font-weight:600; color:#0f172a; font-size:var(--font-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.name{ font-weight:600; color:var(--text); font-size:var(--font-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .time{
-  color:#64748b;
+  color:var(--muted);
   font-size:.85rem;
   white-space:nowrap;
   margin-left:auto;
 }
-.preview{ color:#64748b; font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.preview{ color:var(--muted); font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .empty{
   text-align:center;
   color:#64748b;

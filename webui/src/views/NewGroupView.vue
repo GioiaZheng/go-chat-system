@@ -4,75 +4,74 @@
     <section class="content">
       <ErrorMsg v-if="err" :text="err" class="mb-3" />
 
-      <div class="form">
-        <!-- Group name input -->
-        <label class="label">Group Name</label>
-        <input v-model.trim="groupName" placeholder="Enter group name" class="input" />
+      <div class="panel new-group-panel">
+        <div class="form">
+          <!-- Group name input -->
+          <label class="label">Group Name</label>
+          <input v-model.trim="groupName" placeholder="Enter group name" class="input" />
 
-        <!-- Optional avatar upload -->
-        <label class="label mt">Group Avatar (optional)</label>
-        <div class="avatar-row">
-          <div
-            class="avatar-card"
-            role="button"
-            tabindex="0"
-            @click="triggerFile"
-            @keydown.enter.prevent="triggerFile"
-          >
-            <img v-if="avatarPreview" :src="avatarPreview" alt="Group avatar preview" />
-            <span v-else class="avatar-fallback">+</span>
-            <div class="avatar-overlay">Upload</div>
+          <!-- Optional avatar upload -->
+          <label class="label mt">Group Avatar (optional)</label>
+          <div class="avatar-row">
+            <AvatarUpload
+              :src="avatarPreview"
+              fallback-text="+"
+              overlay-text="Upload"
+              alt="Group avatar preview"
+              :size="48"
+              @select="onPickFile"
+            />
+            <button
+              v-if="avatarFile"
+              class="btn-outline"
+              type="button"
+              @click="clearAvatar"
+            >
+              Clear
+            </button>
           </div>
-          <input
-            ref="fileInput"
-            type="file"
-            accept="image/*"
-            @change="onPickFile"
-            class="hidden-input"
+
+          <!-- Member search and selection -->
+          <label class="label mt">Add Members</label>
+          <UserSearch
+            placeholder="Search users by name/username"
+            class="mb-2"
+            @select="onPickUser"
+            @error="onChildError"
           />
-          <button
-            v-if="avatarFile"
-            class="btn-outline"
-            type="button"
-            @click="clearAvatar"
-          >
-            Clear
-          </button>
-        </div>
 
-        <!-- Member search and selection -->
-        <label class="label mt">Add Members</label>
-        <UserSearch
-          placeholder="Search users by name/username"
-          class="mb-2"
-          @select="onPickUser"
-          @error="onChildError"
-        />
-
-        <div class="picked" v-if="pickedUsers.length">
-          <div
-            v-for="u in pickedUsers"
-            :key="String(u.id)"
-            class="chip"
-            :title="u.username || u.name || ''"
-          >
-            <div v-if="!avatar(u)" class="chip-avatar fallback">{{ initials(u) }}</div>
-            <img v-else :src="avatar(u)" class="chip-avatar" alt="avatar" />
-            <span class="chip-name">{{ u.name || u.username || '(user)' }}</span>
-            <button class="chip-x" @click="removePicked(u)">×</button>
+          <div class="selected-box">
+            <div class="selected-header">
+              <span>Selected members</span>
+              <span class="selected-count">{{ pickedUsers.length }}</span>
+            </div>
+            <div class="picked" v-if="pickedUsers.length">
+              <div
+                v-for="u in pickedUsers"
+                :key="String(u.id)"
+                class="chip"
+                :title="u.username || u.name || ''"
+              >
+                <div v-if="!avatar(u)" class="chip-avatar fallback">{{ initials(u) }}</div>
+                <img v-else :src="avatar(u)" class="chip-avatar" alt="avatar" />
+                <span class="chip-name">{{ u.name || u.username || '(user)' }}</span>
+                <button class="chip-x" @click="removePicked(u)">×</button>
+              </div>
+            </div>
+            <p v-else class="selected-empty">No members selected yet. Use the search above to add people.</p>
           </div>
-        </div>
-        <div class="form-actions">
-          <button
-            class="btn btn-primary"
-            :disabled="!groupName.trim() || pickedUsers.length === 0 || loading"
-            @click="create"
-          >
-            {{ loading ? 'Creating…' : 'Create Group' }}
-          </button>
-          <p v-if="showHelper" class="helper">
-            Add a group name and at least one member to continue.
-          </p>
+          <div class="form-actions">
+            <button
+              class="btn btn-primary"
+              :disabled="!groupName.trim() || pickedUsers.length === 0 || loading"
+              @click="create"
+            >
+              {{ loading ? 'Creating…' : 'Create Group' }}
+            </button>
+            <p v-if="showHelper" class="helper">
+              Add a group name and at least one member to continue.
+            </p>
+          </div>
         </div>
       </div>
     </section>
@@ -83,6 +82,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
+import AvatarUpload from '@/components/AvatarUpload.vue'
 import UserSearch from '@/components/UserSearch.vue'
 import { getAvatarUrl, createGroup as apiCreateGroup, setGroupPhoto } from '@/services/api'
 import { ensureAuthReady, isAuthenticated, currentUser, refreshProfile } from '@/services/auth'
@@ -99,7 +99,6 @@ const groupName = ref('')
 const pickedUsers = ref([])
 const avatarFile = ref(null)
 const avatarPreview = ref('')
-const fileInput = ref(null)
 const attemptedCreate = ref(false)
 
 const avatar = (u) => getAvatarUrl(u)
@@ -142,8 +141,7 @@ function removePicked(u) {
   pickedUsers.value = pickedUsers.value.filter(x => String(x.id) !== id)
 }
 
-function onPickFile(e) {
-  const f = e?.target?.files?.[0]
+function onPickFile(f) {
   if (avatarPreview.value) {
     URL.revokeObjectURL(avatarPreview.value)
   }
@@ -162,11 +160,6 @@ function clearAvatar() {
   }
   avatarFile.value = null
   avatarPreview.value = ''
-  if (fileInput.value) fileInput.value.value = ''
-}
-
-function triggerFile() {
-  fileInput.value?.click()
 }
 
 const showHelper = computed(() => {
@@ -225,32 +218,42 @@ async function create() {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(1200px 800px at 10% -10%, #f3f8ff 0, transparent 60%),
-    radial-gradient(1000px 700px at 110% 0%, #eef6ff 0, transparent 55%),
-    linear-gradient(180deg, #ffffff, #f7fafe);
+  background: #e5e7eb;
 }
 .content {
   flex: 1 1 auto;
-  padding: 24px;
+  padding: 16px;
   width: 100%;
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
+}
+
+.panel.new-group-panel {
+  width: min(100%, 760px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 20px;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: min(100%, 720px);
+  gap: 12px;
 }
-.label { font-weight: 600; color: #334155; }
+.label { font-weight: 600; color: var(--muted); }
 .mt { margin-top: 8px; }
 
 .input {
-  border: 1px solid #cbd5e1; border-radius: 10px; padding: .6rem .8rem; outline: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  outline: none;
+  background: #fff;
+  font-size: var(--font-primary);
 }
-.input:focus { border-color: #22c55e; box-shadow: 0 0 0 .2rem rgba(34,197,94,.15); }
+.input:focus { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
 
 .avatar-row {
   display: flex;
@@ -258,49 +261,14 @@ async function create() {
   gap: 12px;
   flex-wrap: wrap;
 }
-.avatar-card {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  cursor: pointer;
-}
-.avatar-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.avatar-fallback {
-  font-weight: 700;
-  color: #64748b;
-  font-size: 0.9rem;
-}
-.avatar-overlay {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 4px 0;
-  background: rgba(15, 23, 42, 0.55);
-  color: #fff;
-  font-size: 0.7rem;
-  text-align: center;
-}
-.hidden-input {
-  display: none;
-}
 
 .btn {
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   color: #fff;
-  padding: 0.65rem 1rem;
-  background-image: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #3b82f6 120%);
-  box-shadow: 0 0.6rem 1.4rem rgba(34, 197, 94, 0.25);
+  padding: 12px 16px;
+  background: var(--grad);
+  box-shadow: 0 10px 24px rgba(34, 197, 94, 0.2);
 }
 .btn:disabled { opacity: 0.65; }
 .btn-primary {
@@ -308,10 +276,14 @@ async function create() {
   width: min(100%, 240px);
 }
 .btn-outline {
-  border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 10px; padding: .55rem .9rem;
+  border: 1px solid var(--border);
+  background: #f1f5f9;
+  color: #0f172a;
+  border-radius: var(--radius-control);
+  padding: 8px 12px;
 }
 
-.muted { color: #64748b; font-size: .9rem; }
+.muted { color: var(--muted); font-size: .9rem; }
 .form-actions {
   display: flex;
   flex-direction: column;
@@ -320,9 +292,45 @@ async function create() {
   margin-top: 6px;
 }
 .helper {
-  color: #64748b;
+  color: var(--muted);
   font-size: 0.9rem;
   text-align: center;
+}
+
+.selected-box {
+  border: 1px dashed #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fff;
+}
+
+.selected-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.selected-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.selected-empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
 }
 
 .picked { display: flex; gap: 8px; flex-wrap: wrap; }

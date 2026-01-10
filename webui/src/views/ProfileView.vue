@@ -15,32 +15,14 @@
       <section v-if="me" class="profile-card">
         <header class="profile-header">
           <div class="avatar-section">
-            <div
-              class="avatar-container"
-              tabindex="0"
-              role="button"
-              @click="triggerFile"
-              @keydown.enter.prevent="triggerFile"
-            >
-              <img
-                v-if="avatarPreview && !imgBroken"
-                :src="avatarPreview"
-                alt="Profile photo"
-                class="avatar avatar-circle profile-avatar"
-                @error="imgBroken = true"
-              />
-              <div v-else class="avatar-fallback avatar-circle profile-avatar">{{ initials }}</div>
-              <div class="avatar-overlay">
-                <span class="overlay-icon" aria-hidden="true">📷</span>
-                <span class="overlay-text">Change photo</span>
-              </div>
-            </div>
-            <input
-              ref="fileInput"
-              type="file"
-              class="hidden-input"
-              accept="image/*"
-              @change="onFile"
+            <AvatarUpload
+              :src="avatarPreview && !imgBroken ? avatarPreview : ''"
+              :fallback-text="initials"
+              overlay-text="Change photo"
+              alt="Profile photo"
+              :size="72"
+              :disabled="loading"
+              @select="onAvatarSelect"
             />
             <p class="avatar-hint">Profile photo is visible in chats and groups.</p>
             <div v-if="avatarDirty" class="inline-actions">
@@ -131,6 +113,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
+import AvatarUpload from '@/components/AvatarUpload.vue'
 import { getAvatarUrl, setMyPhotoFile, setMyUserName } from '@/services/api'
 import { currentUser, ensureAuthReady, isAuthenticated, refreshProfile } from '@/services/auth'
 
@@ -138,7 +121,6 @@ const router = useRouter()
 const me = ref(null)
 const newName = ref('')
 const file = ref(null)
-const fileInput = ref(null)
 const previewUrl = ref('')
 const avatarDirty = ref(false)
 const loading = ref(false)
@@ -224,12 +206,7 @@ async function saveName() {
   }
 }
 
-function triggerFile() {
-  fileInput.value?.click()
-}
-
-function onFile(e) {
-  const selected = e.target.files?.[0] || null
+function onAvatarSelect(selected) {
   if (!selected) return
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   file.value = selected
@@ -333,7 +310,7 @@ function handleError(e, fallback) {
   flex: 1 1 auto;
   max-width: 760px;
   margin: 0;
-  padding: 24px 32px;
+  padding: 24px 16px;
   width: 100%;
   align-self: flex-start;
 }
@@ -374,61 +351,6 @@ function handleError(e, fallback) {
   flex-direction: column;
   gap: 10px;
   align-items: flex-start;
-}
-.avatar-container {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  outline: none;
-}
-.avatar-container:focus-visible {
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4);
-  border-radius: 50%;
-}
-.profile-avatar {
-  width: 56px !important;
-  height: 56px !important;
-  font-size: 1.2rem;
-  object-fit: cover;
-  border: 2px solid #d9f99d;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-.avatar-container:hover .profile-avatar {
-  transform: scale(1.01);
-  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.22);
-  border-color: #22c55e;
-}
-.avatar-fallback {
-  background: #e0f7ee;
-  color: #0f766e;
-  font-weight: 700;
-}
-.avatar-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border-radius: 50%;
-  background: rgba(34, 197, 94, 0.8);
-  color: #ecfdf3;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.avatar-container:hover .avatar-overlay,
-.avatar-container:focus-visible .avatar-overlay {
-  opacity: 1;
-}
-.overlay-icon {
-  font-size: 1rem;
-}
-.overlay-text {
-  font-size: 0.9rem;
-  font-weight: 600;
 }
 .avatar-hint {
   margin: 0;
@@ -584,9 +506,6 @@ function handleError(e, fallback) {
   to {
     transform: rotate(360deg);
   }
-}
-.hidden-input {
-  display: none;
 }
 .info-stack {
   background: #ffffff;

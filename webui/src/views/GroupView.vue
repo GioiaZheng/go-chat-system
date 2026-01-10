@@ -72,8 +72,22 @@
 
             <div class="row">
               <label class="lbl">Avatar</label>
-              <input ref="filePick" type="file" accept="image/*" @change="onPickPhoto(g.id, $event)" />
-              <button class="btn sm" :disabled="busy" @click="triggerPick">Upload</button>
+              <AvatarUpload
+                :src="pendingAvatarPreview || g.avatar"
+                :fallback-text="initials(g)"
+                overlay-text="Upload"
+                alt="Group avatar"
+                :size="40"
+                :disabled="busy"
+                @select="file => onSelectGroupAvatar(g, file)"
+              />
+              <button
+                class="btn sm"
+                :disabled="busy || !pendingAvatarFile"
+                @click="saveGroupAvatar(g.id)"
+              >
+                Save
+              </button>
             </div>
 
             <div class="row">
@@ -124,10 +138,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import AvatarUpload from '@/components/AvatarUpload.vue'
 import {
   getGroupsList,
   createGroup as apiCreateGroup,
@@ -176,7 +191,12 @@ const addIds = ref('')
 const manageMembers = ref([])
 const busy = ref(false)
 const panelErr = ref('')
-const filePick = ref(null)
+const pendingAvatarFile = ref(null)
+const pendingAvatarPreview = ref('')
+
+watch(manageId, () => {
+  clearPendingAvatar()
+})
 
 // Helper utilities for normalizing API payloads.
 function normalizeGroups(list) {
@@ -392,17 +412,28 @@ async function onRename(id) {
   }
 }
 
-function triggerPick () {
-  if (filePick.value) filePick.value.click()
+function clearPendingAvatar() {
+  if (pendingAvatarPreview.value) {
+    URL.revokeObjectURL(pendingAvatarPreview.value)
+  }
+  pendingAvatarPreview.value = ''
+  pendingAvatarFile.value = null
 }
-async function onPickPhoto(id, e) {
-  const file = e?.target?.files?.[0]
-  e.target.value = ''
+
+function onSelectGroupAvatar(group, file) {
   if (!file) return
+  panelErr.value = ''
+  clearPendingAvatar()
+  pendingAvatarFile.value = file
+  pendingAvatarPreview.value = URL.createObjectURL(file)
+}
+
+async function saveGroupAvatar(id) {
+  if (!pendingAvatarFile.value) return
   panelErr.value = ''
   busy.value = true
   try {
-    const response = await setGroupPhoto(id, file)
+    const response = await setGroupPhoto(id, pendingAvatarFile.value)
     const avatarRaw =
       response?.avatarUrl ||
       response?.avatar_url ||
@@ -432,6 +463,7 @@ async function onPickPhoto(id, e) {
     })
     await loadList()
     emitConversationsReload()
+    clearPendingAvatar()
   } catch (er) {
     panelErr.value = er?.response?.data?.message || er?.message || 'Failed to upload photo'
   } finally {
@@ -600,14 +632,18 @@ onMounted(async () => {
 .avatar-fallback{
   display:inline-flex;
   align-items:center; justify-content:center;
+  background:#e0f7ee;
+  color:#0f766e;
+  border:1px solid #a7f3d0;
 }
 .avatar-fallback.sm{
   width:32px;
   height:32px;
   border-radius:50%;
-  background:#e2e8f0;
-  color:#475569;
+  background:#e0f7ee;
+  color:#0f766e;
   font-size:.75rem;
+  border:1px solid #a7f3d0;
 }
 
 .manage{
