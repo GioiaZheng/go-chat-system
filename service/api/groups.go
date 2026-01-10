@@ -130,6 +130,10 @@ func (rt *_router) createGroup(
 		resolvedMembers = append(resolvedMembers, resolvedID)
 	}
 	sort.Strings(resolvedMembers)
+	if len(resolvedMembers) < 3 {
+		rt.sendError(w, http.StatusBadRequest, "Select at least 2 members to create a group")
+		return
+	}
 
 	conv, err := rt.db.StartConversation(r.Context(), userID, resolvedMembers, groupName)
 	if err != nil {
