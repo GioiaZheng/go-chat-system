@@ -338,7 +338,8 @@ func (rt *_router) getMessageByID(
 	}
 
 	resp := map[string]interface{}{
-		"code": http.StatusOK,
+		"code":    http.StatusOK,
+		"message": "Message details retrieved",
 		"data": map[string]interface{}{
 			"resource": dto,
 		},
