@@ -162,8 +162,15 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 	}
 
 	// Determine conversation type and mirror peer details for private chats.
+	var isGroupConversation bool
+	if err := db.c.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM groups WHERE conversation_id = ?)
+	`, cid).Scan(&isGroupConversation); err != nil {
+		return models.Conversation{}, err
+	}
+
 	convType := "group"
-	if len(participants) == 2 {
+	if !isGroupConversation && len(participants) == 2 {
 		convType = "private"
 
 		// Identify the peer for private conversations

@@ -24,12 +24,15 @@
         <div class="actions">
           <button
             class="btn"
-            :disabled="creating || !groupName"
+            :disabled="creating || !groupName.trim() || selectedMemberCount < 2"
             @click="createGroup"
           >
             {{ creating ? 'Creating…' : 'Create' }}
           </button>
         </div>
+        <p v-if="selectedMemberCount < 2" class="muted tip">
+          A group must include at least 3 people.
+        </p>
       </section>
 
       <!-- List -->
@@ -138,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
@@ -183,6 +186,19 @@ const groups = ref([])
 // Create form inputs.
 const groupName = ref('')
 const memberIdsRaw = ref('')
+const selectedMemberIds = computed(() => {
+  const ids = memberIdsRaw.value
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+  const uniq = new Set()
+  ids.forEach(id => {
+    if (meId.value && String(id) === String(meId.value)) return
+    uniq.add(id)
+  })
+  return Array.from(uniq)
+})
+const selectedMemberCount = computed(() => selectedMemberIds.value.length)
 
 // Manage panel state scoped per group.
 const manageId = ref('')
@@ -327,6 +343,10 @@ async function loadList() {
 async function createGroup() {
   err.value = ''
   notice.value = ''
+  if (selectedMemberCount.value < 2) {
+    err.value = 'Select at least 2 members to create a group'
+    return
+  }
   const list = memberIdsRaw.value
     .split(',')
     .map(s => s.trim())

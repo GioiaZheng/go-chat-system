@@ -63,13 +63,13 @@
           <div class="form-actions">
             <button
               class="btn btn-primary"
-              :disabled="!groupName.trim() || pickedUsers.length === 0 || loading"
+              :disabled="!groupName.trim() || pickedUsers.length < 2 || loading"
               @click="create"
             >
               {{ loading ? 'Creating…' : 'Create Group' }}
             </button>
             <p v-if="showHelper" class="helper">
-              Add a group name and at least one member to continue.
+              A group must include at least 3 people.
             </p>
           </div>
         </div>
@@ -164,13 +164,13 @@ function clearAvatar() {
 
 const showHelper = computed(() => {
   if (!attemptedCreate.value) return false
-  return !groupName.value.trim() || pickedUsers.value.length === 0
+  return !groupName.value.trim() || pickedUsers.value.length < 2
 })
 
 async function create() {
   err.value = ''
   attemptedCreate.value = true
-  if (!groupName.value.trim() || memberIds.value.length === 0) return
+  if (!groupName.value.trim() || pickedUsers.value.length < 2) return
 
   loading.value = true
   try {
