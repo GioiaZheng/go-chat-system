@@ -542,6 +542,7 @@ import {
   addToGroup,
   removeFromGroup,
   leaveGroup,
+  getGroupIdForConversation,
   sendMessage,
   sendImageMessage,
   startConversation,
@@ -990,6 +991,23 @@ function selectConversation(c) {
 
 async function warnDelete(c) {
   if (!c) return
+  if (c.type === 'group') {
+    convErr.value = ''
+    try {
+      const groupId =
+        c.groupId || c.group_id || c?.group?.id || (await getGroupIdForConversation(c.id))
+      if (!groupId) throw new Error('Group not found')
+      await leaveGroup(groupId)
+      window.dispatchEvent(
+        new CustomEvent('conversations:remove', {
+          detail: { conversationId: String(c.id || '') },
+        })
+      )
+    } catch (e) {
+      convErr.value = e?.response?.data?.message || e?.message || 'Failed to leave group'
+    }
+    return
+  }
   if (!confirm(`Delete chat:\n"${titleForConversation(c, meId.value)}"?`)) return
   convErr.value = ''
   try {

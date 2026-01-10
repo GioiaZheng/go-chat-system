@@ -68,7 +68,16 @@ import { useRouter } from 'vue-router'
 import ErrorMsg from '@/components/ErrorMsg.vue'
 import ConversationList from '@/components/ConversationList.vue'
 
-import { getMyConversations, getAvatarUrl, deleteConversation, preferredDisplayName, initialsFor, normalizeUser } from '@/services/api'
+import {
+  getMyConversations,
+  getAvatarUrl,
+  deleteConversation,
+  leaveGroup,
+  getGroupIdForConversation,
+  preferredDisplayName,
+  initialsFor,
+  normalizeUser,
+} from '@/services/api'
 import { hydrateConversationList, removeConversation, upsertConversationMeta } from '@/services/conversationStore'
 import { ensureAuthReady, isAuthenticated, currentUser } from '@/services/auth'
 
@@ -299,6 +308,28 @@ function open(c) {
 
 // Remove a conversation after user confirmation.
 async function warnDelete(c) {
+  if (!c) return
+  if (c.type === 'group') {
+    err.value = ''
+    try {
+      const groupId =
+        c.groupId || c.group_id || c?.group?.id || (await getGroupIdForConversation(c.id))
+      if (!groupId) throw new Error('Group not found')
+      await leaveGroup(groupId)
+      const targetId = String(c.id || '')
+      convs.value = convs.value.filter(conv => String(conv.id) !== targetId)
+      removeConversation(targetId)
+      if (selectedId.value === targetId) selectedId.value = ''
+      window.dispatchEvent(
+        new CustomEvent('conversations:remove', {
+          detail: { conversationId: targetId },
+        })
+      )
+    } catch (e) {
+      err.value = e?.response?.data?.message || e?.message || 'Failed to leave group'
+    }
+    return
+  }
   if (!confirm(`Delete chat:\n"${displayName(c)}"?`)) return
   try {
     await deleteConversation(c.id)

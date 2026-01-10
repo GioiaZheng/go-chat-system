@@ -482,6 +482,18 @@ export async function getGroupDetail(id) {
   return unwrap(await get(`/groups/${encodeURIComponent(String(id))}`))
 }
 
+export async function getGroupIdForConversation(conversationId) {
+  const id = String(conversationId || '').trim()
+  if (!id) return ''
+  const list = await getGroupsList()
+  const arr = Array.isArray(list) ? list : (list?.items ?? list?.groups ?? list?.list ?? [])
+  const hit = (arr || []).find(
+    g => String(g?.conversationId ?? g?.conversation_id ?? '') === id
+  )
+  if (!hit) return ''
+  return String(hit.id ?? hit.group_id ?? hit._id ?? '')
+}
+
 export async function setGroupName(id, name) {
   return unwrap(await put(`/groups/${encodeURIComponent(String(id))}/name`, { name }))
 }
@@ -701,6 +713,7 @@ const api = {
   createGroup,
   getGroupsList,
   getGroupDetail,
+  getGroupIdForConversation,
   setGroupName,
   setGroupPhoto,
   addToGroup,
