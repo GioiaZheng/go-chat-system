@@ -21,10 +21,12 @@
             :fmt-time="convTime"
             :loading="convLoading"
             :error="convErr"
+            :show-delete="true"
             variant="split"
             empty-direct-text="No chats yet — start in Contacts 👋"
             empty-group-text="No groups yet — create one 👋"
             @select="selectConversation"
+            @delete="warnDelete"
           />
 
           <section class="chat-pane">
@@ -549,6 +551,7 @@ import {
   commentMessage,
   uncommentMessage,
   forwardMessage,
+  deleteConversation,
   isAbortError,
   ticksFor,
   titleForConversation,
@@ -983,6 +986,22 @@ function selectConversation(c) {
   if (!c || String(c.id) === convId.value) return
   emitConversationHydrate(c)
   router.replace({ name: 'chat', params: { type: c.type === 'group' ? 'group' : 'conv', id: c.id } })
+}
+
+async function warnDelete(c) {
+  if (!c) return
+  if (!confirm(`Delete chat:\n"${titleForConversation(c, meId.value)}"?`)) return
+  convErr.value = ''
+  try {
+    await deleteConversation(c.id)
+    window.dispatchEvent(
+      new CustomEvent('conversations:remove', {
+        detail: { conversationId: String(c.id || '') },
+      })
+    )
+  } catch (e) {
+    convErr.value = e?.response?.data?.message || e?.message || 'Failed to delete conversation'
+  }
 }
 
 // Sender resolution helpers to keep author data accurate per userId.
