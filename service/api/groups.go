@@ -36,6 +36,38 @@ type CreateGroupRequest struct {
 // underscores and dashes. This allows names such as "Chinese Group" or O'Connor-Team.
 var groupNamePattern = regexp.MustCompile(`^[\p{L}\p{N}\s'_\-]+$`)
 
+func (rt *_router) ensureGroupAccess(w http.ResponseWriter, groupID, userID string) bool {
+	groupID = strings.TrimSpace(groupID)
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return false
+	}
+	if groupID == "" {
+		rt.sendError(w, http.StatusBadRequest, "Missing group id")
+		return false
+	}
+	exists, err := rt.db.GroupExists(groupID)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to load group")
+		return false
+	}
+	if !exists {
+		rt.sendError(w, http.StatusNotFound, "Group not found")
+		return false
+	}
+	isMember, err := rt.db.IsGroupMember(userID, groupID)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to inspect membership")
+		return false
+	}
+	if !isMember {
+		rt.sendError(w, http.StatusForbidden, "You are not a member of this group")
+		return false
+	}
+	return true
+}
+
 // createGroup creates a new group and adds the caller as a member.
 //
 // Flow:
@@ -196,8 +228,7 @@ func (rt *_router) getGroup(
 		return
 	}
 	groupID := strings.TrimSpace(ps.ByName("id"))
-	if groupID == "" {
-		rt.sendError(w, http.StatusBadRequest, "Missing group id")
+	if !rt.ensureGroupAccess(w, groupID, ctx.UserID) {
 		return
 	}
 
@@ -273,8 +304,7 @@ func (rt *_router) setGroupName(
 		return
 	}
 	groupID := strings.TrimSpace(ps.ByName("id"))
-	if groupID == "" {
-		rt.sendError(w, http.StatusBadRequest, "Missing group id")
+	if !rt.ensureGroupAccess(w, groupID, ctx.UserID) {
 		return
 	}
 
@@ -317,13 +347,8 @@ func (rt *_router) leaveGroup(
 	ctx reqcontext.RequestContext,
 ) {
 	uid := strings.TrimSpace(ctx.UserID)
-	if uid == "" {
-		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
 	groupID := strings.TrimSpace(ps.ByName("id"))
-	if groupID == "" {
-		rt.sendError(w, http.StatusBadRequest, "Missing group id")
+	if !rt.ensureGroupAccess(w, groupID, uid) {
 		return
 	}
 
@@ -336,20 +361,11 @@ func (rt *_router) leaveGroup(
 	}
 
 	targetID := strings.TrimSpace(req.UserID)
-	if targetID == "" {
-		targetID = uid
-	}
-
-	// Ensure caller is at least part of the group before modifying it.
-	isMember, err := rt.db.IsGroupMember(uid, groupID)
-	if err != nil {
-		rt.sendError(w, http.StatusInternalServerError, "Failed to inspect membership")
+	if targetID != "" && targetID != uid {
+		rt.sendError(w, http.StatusForbidden, "Cannot remove other members")
 		return
 	}
-	if !isMember {
-		rt.sendError(w, http.StatusForbidden, "You are not a member of this group")
-		return
-	}
+	targetID = uid
 
 	if err := rt.db.LeaveGroup(groupID, targetID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -385,8 +401,7 @@ func (rt *_router) addToGroup(
 		return
 	}
 	groupID := strings.TrimSpace(ps.ByName("id"))
-	if groupID == "" {
-		rt.sendError(w, http.StatusBadRequest, "Missing group id")
+	if !rt.ensureGroupAccess(w, groupID, ctx.UserID) {
 		return
 	}
 
@@ -426,9 +441,29 @@ func (rt *_router) addToGroup(
 		rt.sendError(w, http.StatusBadRequest, "memberIds is required (or legacy member_ids/userId)")
 		return
 	}
-	sort.Strings(list)
 
-	if err := rt.db.AddGroupMembers(groupID, list); err != nil {
+	resolved := make([]string, 0, len(list))
+	seenResolved := make(map[string]struct{}, len(list))
+	for _, member := range list {
+		resolvedID, err := rt.db.GetUserIDFromIdentifier(member)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				rt.sendError(w, http.StatusNotFound, "User not found")
+				return
+			}
+			ctx.Logger.WithError(err).Error("failed to resolve group member")
+			rt.sendError(w, http.StatusInternalServerError, "Failed to resolve group member")
+			return
+		}
+		if _, ok := seenResolved[resolvedID]; ok {
+			continue
+		}
+		seenResolved[resolvedID] = struct{}{}
+		resolved = append(resolved, resolvedID)
+	}
+	sort.Strings(resolved)
+
+	if err := rt.db.AddGroupMembers(groupID, resolved); err != nil {
 		ctx.Logger.WithError(err).Error("failed to add members to group")
 		rt.sendError(w, http.StatusInternalServerError, "Failed to add members to group")
 		return
@@ -437,7 +472,6 @@ func (rt *_router) addToGroup(
 	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
 		"code":    http.StatusOK,
 		"message": "Members added",
-		"data":    map[string]interface{}{"added": list},
 	})
 }
 
@@ -454,8 +488,7 @@ func (rt *_router) setGroupPhoto(
 	ctx reqcontext.RequestContext,
 ) {
 	groupID := strings.TrimSpace(ps.ByName("id"))
-	if groupID == "" {
-		rt.sendError(w, http.StatusBadRequest, "Group ID is required")
+	if !rt.ensureGroupAccess(w, groupID, ctx.UserID) {
 		return
 	}
 
