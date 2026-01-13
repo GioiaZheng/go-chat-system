@@ -150,6 +150,15 @@ func (rt *_router) getMyConversations(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
+func (rt *_router) getConversation(
+	w http.ResponseWriter,
+	r *http.Request,
+	ps httprouter.Params,
+	ctx reqcontext.RequestContext,
+) {
+	rt.getMessages(w, r, ps, ctx)
+}
+
 func (rt *_router) deleteConversation(
 	w http.ResponseWriter,
 	r *http.Request,

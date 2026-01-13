@@ -197,23 +197,29 @@ func (rt *_router) sendMessage(
 	_ = writeJSON(w, http.StatusCreated, resp)
 }
 
-// Endpoint: GET /messages -> getConversation (OpenAPI)
+// Endpoint: GET /conversations/{conversationId} -> getConversation (OpenAPI)
 
 // getMessages returns a cursor-paginated slice for a conversation.
 // Prefer database pagination; fall back to in-memory filtering to keep a 200 on failures.
 func (rt *_router) getMessages(
 	w http.ResponseWriter,
 	r *http.Request,
-	_ httprouter.Params,
+	ps httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
-	q := r.URL.Query()
-	convID := strings.TrimSpace(q.Get("conversationId"))
+	convID := strings.TrimSpace(ps.ByName("conversationId"))
+	if convID == "" {
+		convID = strings.TrimSpace(ps.ByName("id"))
+	}
+	if convID == "" {
+		convID = strings.TrimSpace(r.URL.Query().Get("conversationId"))
+	}
 	if convID == "" {
 		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
 		return
 	}
 
+	q := r.URL.Query()
 	// Simplified read receipts: mark every message in this conversation as read
 	// once the recipient opens it (no per-message polling or websockets).
 	if err := rt.db.MarkConversationRead(convID, strings.TrimSpace(ctx.UserID)); err != nil {
@@ -347,7 +353,7 @@ func (rt *_router) getMessageByID(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-// Endpoint: POST /messages/{id}/forwards -> forwardMessage (OpenAPI)
+// Endpoint: POST /messages/{id}/forward -> forwardMessage (OpenAPI)
 
 // forwardRequest matches OpenAPI: target conversationId only.
 type forwardRequest struct {
@@ -500,6 +506,11 @@ func (rt *_router) uncommentMessage(
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
+	commentID := strings.TrimSpace(ps.ByName("commentId"))
+	if commentID == "" {
+		rt.sendError(w, http.StatusBadRequest, "commentId is required")
+		return
+	}
 	if err := rt.db.UncommentMessage(msgID, ctx.UserID); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to remove comment(s)")
 		return
@@ -552,16 +563,21 @@ func (rt *_router) deleteMessage(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
-// POST /message-attachments
+// POST /messages/{id}/file
 func (rt *_router) uploadMessageFile(
 	w http.ResponseWriter,
 	r *http.Request,
-	_ httprouter.Params,
+	ps httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
 	userID := strings.TrimSpace(ctx.UserID)
 	if userID == "" {
 		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	msgID := strings.TrimSpace(ps.ByName("id"))
+	if msgID == "" {
+		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
 
@@ -581,7 +597,7 @@ func (rt *_router) uploadMessageFile(
 	}
 
 	// Persist the file under ./uploads/
-	fname := "msg_" + uuid.Must(uuid.NewV4()).String() + "_" + header.Filename
+	fname := "msg_" + msgID + "_" + uuid.Must(uuid.NewV4()).String() + "_" + header.Filename
 	path := filepath.Join(baseDir, fname)
 
 	out, err := os.Create(path)

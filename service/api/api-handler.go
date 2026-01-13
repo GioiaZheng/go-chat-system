@@ -35,6 +35,8 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.POST("/conversations", rt.wrap(rt.startConversation))
 	// GET /conversations -> getMyConversations
 	rt.router.GET("/conversations", rt.wrap(rt.getMyConversations))
+	// GET /conversations/{conversationId} -> getConversation
+	rt.router.GET("/conversations/:conversationId", rt.wrap(rt.getConversation))
 	// DELETE /conversations/{id} -> deleteConversation
 	rt.router.DELETE("/conversations/:id", rt.wrap(rt.deleteConversation))
 
@@ -61,25 +63,22 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.DELETE("/groups/:id/members", rt.wrap(rt.leaveGroup))
 
 	// Messages
-	// GET /messages?conversationId=...&limit=...&beforeCursor=...&afterCursor=... -> getConversation
-	// NOTE: the query key is "conversationId" (camelCase) to match the spec.
-	rt.router.GET("/messages", rt.wrap(rt.getMessages))
 	// POST /messages -> sendMessage
 	rt.router.POST("/messages", rt.wrap(rt.sendMessage))
-	// POST /message-attachments -> uploadMessageFile
-	rt.router.POST("/message-attachments", rt.wrap(rt.uploadMessageFile))
+	// POST /messages/{id}/file -> uploadMessageFile
+	rt.router.POST("/messages/:id/file", rt.wrap(rt.uploadMessageFile))
 	// GET /messages/{id} -> getMessageByID
 	rt.router.GET("/messages/:id", rt.wrap(rt.getMessageByID))
 	// DELETE /messages/{id} -> deleteMessage
 	rt.router.DELETE("/messages/:id", rt.wrap(rt.deleteMessage))
-	// POST /messages/{id}/forwards -> forwardMessage
-	rt.router.POST("/messages/:id/forwards", rt.wrap(rt.forwardMessage))
-	// GET /messages/{id}/comment -> getMessageComments
-	rt.router.GET("/messages/:id/comment", rt.wrap(rt.getMessageComments))
-	// POST /messages/{id}/comment -> commentMessage
-	rt.router.POST("/messages/:id/comment", rt.wrap(rt.commentMessage))
-	// DELETE /messages/{id}/comment -> uncommentMessage
-	rt.router.DELETE("/messages/:id/comment", rt.wrap(rt.uncommentMessage))
+	// POST /messages/{id}/forward -> forwardMessage
+	rt.router.POST("/messages/:id/forward", rt.wrap(rt.forwardMessage))
+	// GET /messages/{id}/comments -> getMessageComments
+	rt.router.GET("/messages/:id/comments", rt.wrap(rt.getMessageComments))
+	// POST /messages/{id}/comments -> commentMessage
+	rt.router.POST("/messages/:id/comments", rt.wrap(rt.commentMessage))
+	// DELETE /messages/{id}/comments/{commentId} -> uncommentMessage
+	rt.router.DELETE("/messages/:id/comments/:commentId", rt.wrap(rt.uncommentMessage))
 
 	// Section: static files served from the local uploads directory.
 	// The handler matches publicURL(...) outputs (e.g. /uploads/users/...).

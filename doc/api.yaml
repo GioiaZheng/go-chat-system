@@ -803,6 +803,17 @@ components:
         minLength: 1
         maxLength: 64
         description: unique identifier
+    commentId:
+      name: commentId
+      in: path
+      required: true
+      description: ID of the comment
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9-]+$'
+        minLength: 1
+        maxLength: 64
+        description: unique identifier
 
 paths:
   /conversations:
@@ -1470,7 +1481,9 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /message-attachments:
+  /messages/{id}/file:
+    parameters:
+      - $ref: '#/components/parameters/id'
     post:
       tags: [messages]
       operationId: uploadMessageFile
@@ -1557,7 +1570,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /messages/{id}/forwards:
+  /messages/{id}/forward:
     parameters:
       - $ref: '#/components/parameters/id'
     post:
@@ -1587,7 +1600,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /messages/{id}/comment:
+  /messages/{id}/comments:
     parameters:
       - $ref: '#/components/parameters/id'
     post:
@@ -1637,6 +1650,11 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /messages/{id}/comments/{commentId}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+      - $ref: '#/components/parameters/commentId'
     delete:
       tags:
       - messages

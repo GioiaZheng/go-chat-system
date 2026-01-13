@@ -568,7 +568,8 @@ export async function sendImageMessage({ conversationId, file, caption = '', rep
   if (!file) throw new Error('No file selected')
   
   // 1) Upload the binary first
-  const r = await uploadMessageAttachment(file)
+  const uploadId = `upload-${Date.now()}`
+  const r = await uploadMessageAttachment(uploadId, file)
 
   const fileUrl  = r?.fileUrl  || r?.file_url  || ''
   const filename = r?.filename || file.name
@@ -588,11 +589,12 @@ export async function sendImageMessage({ conversationId, file, caption = '', rep
   })
 }
 
-export async function uploadMessageAttachment(file) {
+export async function uploadMessageAttachment(messageId, file) {
   if (!file) throw new Error('No file selected')
   const form = new FormData()
   form.append('upload', file, file.name)
-  return unwrap(await post('/message-attachments', form))
+  const mid = encodeURIComponent(String(messageId))
+  return unwrap(await post(`/messages/${mid}/file`, form))
 }
 
 export async function getMessageById(id) {
@@ -605,7 +607,7 @@ export async function deleteMessage(id) {
 
 export async function forwardMessage(messageId, conversationId) {
   return unwrap(await post(
-    `/messages/${encodeURIComponent(String(messageId))}/forwards`,
+    `/messages/${encodeURIComponent(String(messageId))}/forward`,
     { conversationId: String(conversationId) }
   ))
 }
@@ -615,7 +617,7 @@ export async function forwardMessage(messageId, conversationId) {
 // Retrieve the comment list for a message.
 export async function getMessageComments(id) {
   const mid = encodeURIComponent(String(id))
-  return unwrap(await get(`/messages/${mid}/comment`))
+  return unwrap(await get(`/messages/${mid}/comments`))
 }
 
 // Create a comment or reply.
@@ -635,15 +637,16 @@ export async function commentMessage(msgId, payload) {
     }
   }
 
-  return unwrap(await post(`/messages/${mid}/comment`, body))
+  return unwrap(await post(`/messages/${mid}/comments`, body))
 }
 
 
 
-// Remove comments: OpenAPI uses DELETE /messages/{id}/comment.
-export async function uncommentMessage(id) {
+// Remove comments: OpenAPI uses DELETE /messages/{id}/comments/{commentId}.
+export async function uncommentMessage(id, commentId) {
   const mid = encodeURIComponent(String(id))
-  return unwrap(await del(`/messages/${mid}/comment`))
+  const cid = encodeURIComponent(String(commentId ?? 'comment'))
+  return unwrap(await del(`/messages/${mid}/comments/${cid}`))
 }
 
 // Semantic aliases for convenience.
@@ -658,7 +661,7 @@ export async function reactToMessage(id, emoji) {
 
 // Remove reactions: backend currently deletes all emojis at once.
 export async function unreactToMessage(id, emoji) {
-  return uncommentMessage(id)
+  return uncommentMessage(id, emoji || 'reaction')
 }
 
 /* Read receipt ticks (0=queued 1=sent 2=delivered 3=read; -1 for others) */
