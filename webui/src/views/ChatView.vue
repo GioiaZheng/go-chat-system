@@ -545,7 +545,7 @@ import {
   getGroupIdForConversation,
   sendMessage,
   sendImageMessage,
-  startConversation,
+  startPrivateConversation,
   getAvatarUrl,
   absUrl,
   deleteMessage,
@@ -1843,7 +1843,7 @@ async function forwardToUser(user) {
 
   forwardError.value = ''
   try {
-    const res = await startConversation({ memberIds: [userId] })
+    const res = await startPrivateConversation(userId)
     const cid =
       res?.conversationId ||
       res?.conversation_id ||
@@ -2471,6 +2471,37 @@ watch(convId, async () => {
   font-weight: 600;
   color: #64748b;
   white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .chat-layout {
+    flex-direction: column;
+  }
+
+  .chat-pane {
+    width: 100%;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .group-panel {
+    width: 100%;
+    max-width: none;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  :deep(.list-pane) {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  :deep(.list-pane--split) {
+    border-right: 0;
+  }
 }
 
 .field .input {
