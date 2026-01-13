@@ -49,7 +49,9 @@ func (rt *_router) getUserInfo(
 	_ = writeJSON(w, http.StatusOK, map[string]interface{}{
 		"code":    http.StatusOK,
 		"message": "User information retrieved",
-		"data":    u,
+		"data": map[string]interface{}{
+			"user": u,
+		},
 	})
 }
 
@@ -292,6 +294,10 @@ func (rt *_router) searchUsers(
 	if q == "" {
 		// Also accept the older ?query= variant
 		q = strings.TrimSpace(r.URL.Query().Get("query"))
+	}
+	if q == "" {
+		rt.sendError(w, http.StatusBadRequest, "q is required")
+		return
 	}
 
 	users, err := rt.db.SearchUsers(r.Context(), uid, q)

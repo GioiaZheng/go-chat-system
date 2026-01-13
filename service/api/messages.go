@@ -106,6 +106,52 @@ func parseLimit(raw string, dflt, min, max int) int {
 func timeBefore(a, b string) bool { return a < b }
 func timeAfter(a, b string) bool  { return a > b }
 
+func (rt *_router) ensureConversationAccess(w http.ResponseWriter, userID, conversationID string) bool {
+	userID = strings.TrimSpace(userID)
+	conversationID = strings.TrimSpace(conversationID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return false
+	}
+	if conversationID == "" {
+		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
+		return false
+	}
+	exists, err := rt.db.ConversationExists(conversationID)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to load conversation")
+		return false
+	}
+	if !exists {
+		rt.sendError(w, http.StatusNotFound, "Conversation not found")
+		return false
+	}
+	isMember, err := rt.db.IsConversationMember(userID, conversationID)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to inspect conversation membership")
+		return false
+	}
+	if !isMember {
+		rt.sendError(w, http.StatusForbidden, "You are not a member of this conversation")
+		return false
+	}
+	return true
+}
+
+func (rt *_router) canAccessMessage(userID string, msg models.Message) (bool, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return false, nil
+	}
+	if strings.TrimSpace(msg.ConversationID) != "" {
+		return rt.db.IsConversationMember(userID, msg.ConversationID)
+	}
+	if strings.TrimSpace(msg.ReceiverID) != "" {
+		return userID == msg.SenderID || userID == msg.ReceiverID, nil
+	}
+	return userID == msg.SenderID, nil
+}
+
 // Endpoint: POST /messages -> sendMessage (OpenAPI)
 
 // sendMessageRequest matches the OpenAPI request body for sending a message.
@@ -141,6 +187,9 @@ func (rt *_router) sendMessage(
 
 	if req.ConversationID == "" {
 		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
+		return
+	}
+	if !rt.ensureConversationAccess(w, userID, req.ConversationID) {
 		return
 	}
 
@@ -211,6 +260,9 @@ func (rt *_router) getMessages(
 	convID := strings.TrimSpace(q.Get("conversationId"))
 	if convID == "" {
 		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
+		return
+	}
+	if !rt.ensureConversationAccess(w, strings.TrimSpace(ctx.UserID), convID) {
 		return
 	}
 
@@ -300,10 +352,14 @@ func (rt *_router) getMessages(
 		"code":    http.StatusOK,
 		"message": "Messages retrieved successfully",
 		"data": map[string]interface{}{
-			"messages":   out,
-			"nextCursor": nextCursor,
-			"prevCursor": prevCursor,
+			"messages": out,
 		},
+	}
+	if nextCursor != nil {
+		resp["data"].(map[string]interface{})["nextCursor"] = *nextCursor
+	}
+	if prevCursor != nil {
+		resp["data"].(map[string]interface{})["prevCursor"] = *prevCursor
 	}
 	_ = writeJSON(w, http.StatusOK, resp)
 }
@@ -314,8 +370,13 @@ func (rt *_router) getMessageByID(
 	w http.ResponseWriter,
 	_ *http.Request,
 	ps httprouter.Params,
-	_ reqcontext.RequestContext,
+	ctx reqcontext.RequestContext,
 ) {
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 	id := strings.TrimSpace(ps.ByName("id"))
 	if id == "" {
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
@@ -324,6 +385,15 @@ func (rt *_router) getMessageByID(
 	m, err := rt.db.GetMessageByID(id)
 	if err != nil {
 		rt.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	access, err := rt.canAccessMessage(userID, m)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify access")
+		return
+	}
+	if !access {
+		rt.sendError(w, http.StatusForbidden, "You are not allowed to access this message")
 		return
 	}
 	dto := toMessageDTO(m)
@@ -384,6 +454,24 @@ func (rt *_router) forwardMessage(
 		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
 		return
 	}
+	if !rt.ensureConversationAccess(w, userID, req.ConversationID) {
+		return
+	}
+
+	orig, err := rt.db.GetMessageByID(msgID)
+	if err != nil {
+		rt.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	access, err := rt.canAccessMessage(userID, orig)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify access")
+		return
+	}
+	if !access {
+		rt.sendError(w, http.StatusForbidden, "You are not allowed to access this message")
+		return
+	}
 
 	// Map to existing DB API: treat target conversation as a "group" sink.
 	// (If you have a real conversation->group lookup, add it here.)
@@ -413,11 +501,30 @@ func (rt *_router) getMessageComments(
 	w http.ResponseWriter,
 	_ *http.Request,
 	ps httprouter.Params,
-	_ reqcontext.RequestContext,
+	ctx reqcontext.RequestContext,
 ) {
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 	msgID := strings.TrimSpace(ps.ByName("id"))
 	if msgID == "" {
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
+		return
+	}
+	msg, err := rt.db.GetMessageByID(msgID)
+	if err != nil {
+		rt.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	access, err := rt.canAccessMessage(userID, msg)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify access")
+		return
+	}
+	if !access {
+		rt.sendError(w, http.StatusForbidden, "You are not allowed to access this message")
 		return
 	}
 	rows, err := rt.db.GetMessageComments(msgID)
@@ -450,6 +557,20 @@ func (rt *_router) commentMessage(
 	msgID := strings.TrimSpace(ps.ByName("id"))
 	if msgID == "" {
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
+		return
+	}
+	msg, err := rt.db.GetMessageByID(msgID)
+	if err != nil {
+		rt.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	access, err := rt.canAccessMessage(userID, msg)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify access")
+		return
+	}
+	if !access {
+		rt.sendError(w, http.StatusForbidden, "You are not allowed to access this message")
 		return
 	}
 
@@ -495,9 +616,28 @@ func (rt *_router) uncommentMessage(
 	ps httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 	msgID := strings.TrimSpace(ps.ByName("id"))
 	if msgID == "" {
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
+		return
+	}
+	msg, err := rt.db.GetMessageByID(msgID)
+	if err != nil {
+		rt.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	access, err := rt.canAccessMessage(userID, msg)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify access")
+		return
+	}
+	if !access {
+		rt.sendError(w, http.StatusForbidden, "You are not allowed to access this message")
 		return
 	}
 	if err := rt.db.UncommentMessage(msgID, ctx.UserID); err != nil {
@@ -527,6 +667,21 @@ func (rt *_router) deleteMessage(
 	msgID := strings.TrimSpace(ps.ByName("id"))
 	if msgID == "" {
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
+		return
+	}
+
+	msg, err := rt.db.GetMessageByID(msgID)
+	if err != nil {
+		rt.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	access, err := rt.canAccessMessage(userID, msg)
+	if err != nil {
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify access")
+		return
+	}
+	if !access {
+		rt.sendError(w, http.StatusForbidden, "You are not allowed to access this message")
 		return
 	}
 

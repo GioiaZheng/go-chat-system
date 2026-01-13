@@ -35,6 +35,7 @@ type AppDatabase interface {
 	UpdateGroupPhoto(groupID, publicURL string) error
 	LeaveGroup(groupID, userID string) error
 	IsGroupMember(userID, groupID string) (bool, error)
+	GroupExists(groupID string) (bool, error)
 
 	// Section: conversations
 	StartConversation(ctx context.Context, userID string, memberIDs []string, name string) (models.Conversation, error)
@@ -42,6 +43,8 @@ type AppDatabase interface {
 	GetConversationMembers(conversationID string) ([]string, error)
 	GetMessagesByConversation(conversationID, before, after string, limit int) ([]models.Message, error)
 	DeleteConversation(conversationID string) error
+	ConversationExists(conversationID string) (bool, error)
+	IsConversationMember(userID, conversationID string) (bool, error)
 
 	// Section: messages
 	MarkConversationRead(conversationID, readerID string) error

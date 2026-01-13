@@ -69,6 +69,12 @@ func (db *appdbimpl) GetGroupsList(userID string) ([]models.Group, error) {
 			g.CreatedAt = normalizeTimestamp(createdAt.String)
 		}
 
+		members, err := db.getGroupMembersWithRole(g.ID)
+		if err != nil {
+			return nil, err
+		}
+		g.Members = members
+
 		result = append(result, g)
 	}
 	if err := rows.Err(); err != nil {
@@ -311,4 +317,20 @@ func (db *appdbimpl) IsGroupMember(userID, groupID string) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// GroupExists reports whether a group with the given ID exists.
+func (db *appdbimpl) GroupExists(groupID string) (bool, error) {
+	groupID = strings.TrimSpace(groupID)
+	if groupID == "" {
+		return false, nil
+	}
+	var exists bool
+	err := db.c.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM groups WHERE id = ?)
+	`, groupID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
 }

@@ -449,6 +449,7 @@ file_url,
 	for rows.Next() {
 		var m models.Message
 		var fileURL, recv, grp, conv, reply sql.NullString
+		var readInt int
 
 		if err := rows.Scan(
 			&m.ID,
@@ -456,8 +457,7 @@ file_url,
 			&fileURL,
 			&m.Type,
 			&m.Status,
-			&m.Read,
-			&m.Read,
+			&readInt,
 			&m.SenderID,
 			&recv,
 			&grp,
@@ -471,6 +471,7 @@ file_url,
 		m.ReceiverID = recv.String
 		m.GroupID = grp.String
 		m.ConversationID = conv.String
+		m.Read = readInt != 0
 
 		if fileURL.Valid {
 			m.FileURL = fileURL.String

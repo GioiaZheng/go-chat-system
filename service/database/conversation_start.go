@@ -255,21 +255,52 @@ func (db *appdbimpl) DeleteConversation(conversationID string) error {
 		return fmt.Errorf("empty conversation id")
 	}
 
-	var exists bool
-	err := db.c.QueryRow(`
-		SELECT EXISTS(SELECT 1 FROM conversations WHERE id = ?)
-	`, conversationID).Scan(&exists)
+	exists, err := db.ConversationExists(conversationID)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("conversation not found")
+		return sql.ErrNoRows
 	}
 
 	_, err = db.c.Exec(`
 		DELETE FROM conversations WHERE id = ?
 	`, conversationID)
 	return err
+}
+
+// ConversationExists reports whether a conversation with the given ID is present.
+func (db *appdbimpl) ConversationExists(conversationID string) (bool, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return false, nil
+	}
+	var exists bool
+	err := db.c.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM conversations WHERE id = ?)
+	`, conversationID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+// IsConversationMember checks if a user participates in a conversation.
+func (db *appdbimpl) IsConversationMember(userID, conversationID string) (bool, error) {
+	userID = strings.TrimSpace(userID)
+	conversationID = strings.TrimSpace(conversationID)
+	if userID == "" || conversationID == "" {
+		return false, nil
+	}
+	var cnt int
+	if err := db.c.QueryRow(`
+		SELECT COUNT(1)
+		FROM conversation_members
+		WHERE conversation_id = ? AND user_id = ?
+	`, conversationID, userID).Scan(&cnt); err != nil {
+		return false, err
+	}
+	return cnt > 0, nil
 }
 
 // GetMyConversations returns all conversations for a user, ordered by most

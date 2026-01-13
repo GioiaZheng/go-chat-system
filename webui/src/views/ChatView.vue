@@ -2359,6 +2359,24 @@ watch(convId, async () => {
   opacity: 0.65;
 }
 
+@media (max-width: 1200px) {
+  .chat-layout.has-group {
+    flex-direction: column;
+  }
+
+  .chat-pane {
+    border-left: none;
+  }
+
+  .group-panel {
+    flex: 0 0 auto;
+    max-width: none;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
 .group-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;

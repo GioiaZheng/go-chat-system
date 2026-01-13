@@ -4,6 +4,8 @@
 package api
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"regexp"
 	"strings"
@@ -18,6 +20,7 @@ type StartConversationRequest struct {
 	MemberIDs       []string `json:"memberIds,omitempty"`  // OpenAPI (camelCase)
 	LegacyMemberIDs []string `json:"member_ids,omitempty"` // legacy (snake_case)
 	Name            string   `json:"name,omitempty"`
+	Type            string   `json:"type,omitempty"`
 }
 
 // startConversation handles POST /conversations.
@@ -50,20 +53,7 @@ func (rt *_router) startConversation(
 		return
 	}
 
-	// Validate name by OpenAPI spec: 1..100 and pattern ^[a-zA-Z0-9\s'-]+$
 	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		rt.sendError(w, http.StatusBadRequest, "Name is required")
-		return
-	}
-	if ln := len(name); ln < 1 || ln > 100 {
-		rt.sendError(w, http.StatusBadRequest, "Name must be 1-100 characters long")
-		return
-	}
-	if !regexp.MustCompile(`^[a-zA-Z0-9\s'-]+$`).MatchString(name) {
-		rt.sendError(w, http.StatusBadRequest, "Name contains invalid characters")
-		return
-	}
 
 	// Merge without injecting self yet to respect the YAML minItems:1 rule
 	rawMembers := make([]string, 0, len(req.MemberIDs)+len(req.LegacyMemberIDs))
@@ -74,6 +64,21 @@ func (rt *_router) startConversation(
 	if len(rawMembers) == 0 {
 		rt.sendError(w, http.StatusBadRequest, "memberIds is required and must contain at least 1 item")
 		return
+	}
+	isPrivate := strings.EqualFold(strings.TrimSpace(req.Type), "private") || len(rawMembers) == 1
+	if !isPrivate && name == "" {
+		rt.sendError(w, http.StatusBadRequest, "Name is required")
+		return
+	}
+	if name != "" {
+		if ln := len(name); ln < 1 || ln > 100 {
+			rt.sendError(w, http.StatusBadRequest, "Name must be 1-100 characters long")
+			return
+		}
+		if !regexp.MustCompile(`^[a-zA-Z0-9\s'-]+$`).MatchString(name) {
+			rt.sendError(w, http.StatusBadRequest, "Name contains invalid characters")
+			return
+		}
 	}
 
 	// 3) Deduplicate and sanitize
@@ -189,6 +194,10 @@ func (rt *_router) deleteConversation(
 
 	// Delete conversation
 	if err := rt.db.DeleteConversation(cid); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			rt.writeErrorResponse(w, http.StatusNotFound, "conversation not found")
+			return
+		}
 		rt.writeErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
