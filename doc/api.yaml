@@ -151,7 +151,7 @@ components:
           description: name
           minLength: 1
           maxLength: 255
-          pattern: '^[\\s\\S]{1,255}$'
+          pattern: '^[\s\S]{1,255}$'
         avatarUri:
           type: string
           description: URL of user's avatar
@@ -420,7 +420,7 @@ components:
           description: Message content text
           minLength: 0
           maxLength: 1000
-          pattern: '^[\\s\\S]{0,1000}$'
+          pattern: '^[\s\S]{0,1000}$'
         fileUrl:
           type: string
           description: URL for an uploaded attachment
@@ -687,7 +687,7 @@ components:
           description: Group display name
           minLength: 1
           maxLength: 100
-          pattern: "^[\\p{L}\\p{N}\\s'_-]+$"
+          pattern: "^[A-Za-z0-9\\s'_-]+$"
         avatarUri:
           type: string
           description: Group avatar URL
@@ -815,7 +815,7 @@ components:
           type: string
           minLength: 1
           maxLength: 100
-          pattern: "^[\\p{L}\\p{N}\\s'_-]+$"
+          pattern: "^[A-Za-z0-9\\s'_-]+$"
           description: New name for the group
 
     Error:
@@ -834,7 +834,7 @@ components:
           description: Human-readable error message
           minLength: 1
           maxLength: 255
-          pattern: '^[\\s\\S]{1,255}$'
+          pattern: '^[\s\S]{1,255}$'
 
   parameters:
     userId:
@@ -979,7 +979,7 @@ paths:
                   description: User's display name (login name)
                   minLength: 3
                   maxLength: 16
-                  pattern: '^[\\s\\S]{3,16}$'
+                  pattern: '^[\s\S]{3,16}$'
                   example: Maria
       responses:
         '200':
@@ -1022,7 +1022,7 @@ paths:
                   description: New user's name
                   minLength: 1
                   maxLength: 255
-                  pattern: '^[\\s\\S]{1,255}$'
+                  pattern: '^[\s\S]{1,255}$'
       responses:
         '200':
           description: user's name updated successfully
@@ -1184,7 +1184,7 @@ paths:
                   description: Group display name
                   minLength: 1
                   maxLength: 100
-                  pattern: "^[\\p{L}\\p{N}\\s'_-]+$"
+                  pattern: "^[A-Za-z0-9\\s'_-]+$"
                 memberIds:
                   type: array
                   description: IDs of users to include
@@ -1515,7 +1515,7 @@ paths:
                   description: Message content
                   minLength: 0
                   maxLength: 1000
-                  pattern: '^[\\s\\S]{0,1000}$'
+                  pattern: '^[\s\S]{0,1000}$'
                 fileUrl:
                   type: string
                   description: URL of an uploaded attachment
