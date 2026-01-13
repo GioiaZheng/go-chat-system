@@ -1179,12 +1179,12 @@ paths:
               type: object
               required: [name, memberIds]
               properties:
-        name:
-          type: string
-          description: Group display name
-          minLength: 1
-          maxLength: 100
-          pattern: "^[A-Za-z0-9\\s'_-]+$"
+                name:
+                  type: string
+                  description: Group display name
+                  minLength: 1
+                  maxLength: 100
+                  pattern: "^[A-Za-z0-9\\s'_-]+$"
                 memberIds:
                   type: array
                   description: IDs of users to include
