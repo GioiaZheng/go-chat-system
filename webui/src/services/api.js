@@ -410,6 +410,11 @@ export async function startConversation(payload = {}) {
   else if (payload.user_id || payload.userId) memberIds = [payload.user_id || payload.userId]
 
   if (memberIds.length) body.memberIds = memberIds.map(String)
+
+  const name =
+    String(payload.name ?? payload.conversationName ?? payload.title ?? '').trim() ||
+    'private'
+  body.name = name
   return unwrap(await post('/conversations', body))
 }
 
@@ -438,13 +443,7 @@ export async function getConversationMembers(conversationId) {
   const id = String(conversationId || '').trim();
   if (!id) throw new Error('conversationId required');
 
-  // Step 1: Prefer the dedicated conversations members endpoint when available.
-  try {
-    const v = unwrap(await get(`/conversations/${encodeURIComponent(id)}/members`));
-    return Array.isArray(v) ? v : (v?.items ?? v?.members ?? v?.list ?? []);
-  } catch {}
-
-  // Step 2: Locate the group by conversationId, then read its members.
+  // Locate the group by conversationId, then read its members.
   try {
     const glist = unwrap(await get('/groups'));
     const arr = Array.isArray(glist) ? glist : (glist?.items ?? glist?.groups ?? glist?.list ?? []);
