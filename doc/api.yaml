@@ -184,8 +184,9 @@ components:
           required: [data]
           properties:
             data:
-              $ref: '#/components/schemas/User'
               description: The current user's profile details.
+              allOf:
+                - $ref: '#/components/schemas/User'
 
     UserEnvelopeCollection:
       description: Envelope with a list of users and optional pagination.
@@ -278,8 +279,9 @@ components:
           items:
             $ref: '#/components/schemas/User'
         lastMessage:
-          $ref: '#/components/schemas/Message'
           description: Most recent message in the conversation, if available.
+          allOf:
+            - $ref: '#/components/schemas/Message'
         updatedAt:
           type: string
           format: date-time
