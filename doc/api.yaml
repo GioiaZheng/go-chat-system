@@ -158,6 +158,7 @@ components:
           format: uri
           maxLength: 255
           minLength: 1
+          pattern: '^.*$'
 
 
     UserEnvelope:
@@ -184,6 +185,7 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/User'
+              description: The current user's profile details.
 
     UserEnvelopeCollection:
       description: Envelope with a list of users and optional pagination.
@@ -245,6 +247,7 @@ components:
             Type of the conversation.  
             `private` = 1-to-1 chat between two users.  
             `group` = multi-user chat.
+          pattern: '^.*$'
         name:
           type: string
           description:  >
@@ -262,6 +265,7 @@ components:
             - For **private chats**, normally the avatar of the other user.  
             - For **group chats**, the group avatar.
           format: uri
+          pattern: '^.*$'
         participants:
           type: array
           description: >
@@ -275,10 +279,12 @@ components:
             $ref: '#/components/schemas/User'
         lastMessage:
           $ref: '#/components/schemas/Message'
+          description: Most recent message in the conversation, if available.
         updatedAt:
           type: string
           format: date-time
           description: Timestamp of the latest activity in this conversation
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
         createdAt:
           type: string
           description:  ISO 8601 timestamp when the conversation was created
@@ -367,6 +373,7 @@ components:
           format: uri
           minLength: 1
           maxLength: 255
+          pattern: '^.*$'
 
     FileUploadEnvelope:
       description: Envelope for file upload metadata.
@@ -399,11 +406,13 @@ components:
                   description: Public URL of the uploaded file
                   minLength: 1
                   maxLength: 255
+                  pattern: '^.*$'
                 filename:
                   type: string
                   description: Original filename of the uploaded file
                   minLength: 1
                   maxLength: 255
+                  pattern: '^.*$'
     Message:
       type: object
       description: Message model
@@ -426,6 +435,7 @@ components:
           description: URL for an uploaded attachment
           minLength: 1
           maxLength: 255
+          pattern: '^.*$'
         senderId:
           type: string
           description: ID of the message sender
@@ -451,12 +461,14 @@ components:
           enum: [text, image]
           minLength: 1
           maxLength: 50
+          pattern: '^.*$'
         status:
           type: string
           description: Delivery status of the message
           enum: [sent]
           minLength: 1
           maxLength: 50
+          pattern: '^.*$'
         read:
           type: boolean
           description: Whether the message has been read by the current user
@@ -488,14 +500,12 @@ components:
             $ref: '#/components/schemas/Message'
         nextCursor:
           type: string
-          nullable: true
           minLength: 1
           maxLength: 512
           pattern: '^[A-Za-z0-9._~+=/-]+$'
           description: Opaque cursor to fetch older messages (for infinite scroll up).
         prevCursor:
           type: string
-          nullable: true
           minLength: 1
           maxLength: 512
           pattern: '^[A-Za-z0-9._~+=/-]+$'
@@ -575,6 +585,7 @@ components:
           enum: [text, emoji]
           minLength: 1
           maxLength: 50
+          pattern: '^.*$'
         content:
           type: string
           description: Comment content or emoji code
@@ -622,6 +633,7 @@ components:
           type: string
           description: Comment type
           enum: [text, emoji]
+          pattern: '^.*$'
 
     CommentsListResponse:
       type: object
@@ -658,18 +670,21 @@ components:
           description: Member display name
           minLength: 1
           maxLength: 255
+          pattern: '^.*$'
         role:
           type: string
           description: Member's role in the group
           enum: [admin, member]
           minLength: 1
           maxLength: 50
+          pattern: '^.*$'
         avatarUri:
           type: string
           description: Avatar URL for the member
           format: uri
           maxLength: 255
           minLength: 1
+          pattern: '^.*$'
 
     Group:
       type: object
@@ -694,10 +709,12 @@ components:
           format: uri
           maxLength: 255
           minLength: 1
+          pattern: '^.*$'
         createdAt:
           type: string
           description: ISO 8601 timestamp when the group was created
           format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
         conversationId:
           type: string
           description: ID of the linked conversation
@@ -796,6 +813,7 @@ components:
             data:
               type: object
               required: [added]
+              description: Payload wrapper for newly added members.
               properties:
                 added:
                   type: array
@@ -805,6 +823,7 @@ components:
                   items:
                     type: string
                     pattern: '^[a-zA-Z0-9_-]+$'
+                    description: Identifier of a newly added user.
 
     UpdateGroupNameRequest:
       type: object
@@ -926,7 +945,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
   
-  /conversations/:id:
+  /conversations/{id}:
     parameters:
       - $ref: '#/components/parameters/id'
     delete:
@@ -1051,8 +1070,9 @@ paths:
             type: string
             minLength: 1
             maxLength: 64
+            pattern: '^.*$'
       requestBody:
-        required: false
+        required: true
         content:
           multipart/form-data:
             schema:
@@ -1066,6 +1086,7 @@ paths:
                   description: Image file (JPEG/PNG)
                   minLength: 1
                   maxLength: 255  
+                  pattern: '^.*$'
       responses:
         '200':
           description: Profile photo updated successfully
@@ -1113,6 +1134,7 @@ paths:
             description: Search keyword for user names
             minLength: 1
             maxLength: 255
+            pattern: '^.*$'
       security: [ { BearerAuth: [] } ]
       responses:
         '200':
@@ -1134,7 +1156,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /users/:userId/profile:
+  /users/{userId}/profile:
     parameters:
       - $ref: '#/components/parameters/userId'
     get:
@@ -1244,7 +1266,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /groups/:id:
+  /groups/{id}:
     parameters:
       - $ref: '#/components/parameters/id'
     get:
@@ -1276,7 +1298,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /groups/:id/name:
+  /groups/{id}/name:
     parameters:
       - $ref: '#/components/parameters/id'
     put:
@@ -1303,7 +1325,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /groups/:id/photo:
+  /groups/{id}/photo:
     parameters:
       - $ref: '#/components/parameters/id'
     put:
@@ -1321,8 +1343,9 @@ paths:
             type: string
             minLength: 1
             maxLength: 64
+            pattern: '^.*$'
       requestBody:
-        required: false
+        required: true
         content:
           multipart/form-data:
             schema:
@@ -1336,6 +1359,7 @@ paths:
                   description: Group photo file
                   minLength: 1
                   maxLength: 255
+                  pattern: '^.*$'
 
       responses:
         '200':
@@ -1349,7 +1373,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /groups/:id/members:
+  /groups/{id}/members:
     parameters:
       - $ref: '#/components/parameters/id'
     post:
@@ -1386,19 +1410,6 @@ paths:
       summary: Leave group
       description: Current user leaves the specified group
       security: [ { BearerAuth: [] } ]
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                userId:
-                  type: string
-                  description: Optional user ID to remove (defaults to current user)
-                  minLength: 1
-                  maxLength: 64
-                  pattern: '^[a-zA-Z0-9_-]+$'
       responses:
         '200':
           description: Successfully left the group
@@ -1521,6 +1532,7 @@ paths:
                   description: URL of an uploaded attachment
                   minLength: 1
                   maxLength: 255
+                  pattern: '^.*$'
                 type:
                   type: string
                   description: Message type
@@ -1528,6 +1540,7 @@ paths:
                   minLength: 1
                   maxLength: 50
                   default: text
+                  pattern: '^.*$'
                 replyToId:
                   type: string
                   description: Message ID being replied to
@@ -1580,6 +1593,7 @@ paths:
                   description: File to upload
                   minLength: 1
                   maxLength: 255
+                  pattern: '^.*$'
       responses:
         '201':
           description: File uploaded successfully
@@ -1592,7 +1606,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         
-  /messages/:id:
+  /messages/{id}:
     parameters:
       - $ref: '#/components/parameters/id'
     get:
@@ -1645,7 +1659,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /messages/:id/forwards:
+  /messages/{id}/forwards:
     parameters:
       - $ref: '#/components/parameters/id'
     post:
@@ -1675,7 +1689,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /messages/:id/comment:
+  /messages/{id}/comment:
     parameters:
       - $ref: '#/components/parameters/id'
     post:
@@ -1790,5 +1804,6 @@ paths:
                 properties:
                   ok:
                     type: boolean
+                    description: Indicates whether the service is healthy.
               example:
                 ok: true

@@ -39,10 +39,16 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.DELETE("/conversations/:id", rt.wrap(rt.deleteConversation))
 
 	// Users
-	// GET /users/* (me, search, {userId}/profile) -> dispatch to user handlers
-	rt.router.GET("/users/*rest", rt.wrap(rt.routeUsersGet))
-	// PUT /users/* (me/name, me/photo) -> dispatch to user handlers
-	rt.router.PUT("/users/*rest", rt.wrap(rt.routeUsersPut))
+	// GET /users/me -> getUserInfo
+	rt.router.GET("/users/me", rt.wrap(rt.getUserInfo))
+	// PUT /users/me/name -> setMyUserName
+	rt.router.PUT("/users/me/name", rt.wrap(rt.setMyUserName))
+	// PUT /users/me/photo -> setMyPhoto
+	rt.router.PUT("/users/me/photo", rt.wrap(rt.setMyPhoto))
+	// GET /users/search -> searchUsers
+	rt.router.GET("/users/search", rt.wrap(rt.searchUsers))
+	// GET /users/{userId}/profile -> getUserProfile
+	rt.router.GET("/users/:userId/profile", rt.wrap(rt.getUserProfile))
 
 	// Groups
 	// POST /groups -> createGroup
