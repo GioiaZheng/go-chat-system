@@ -2312,8 +2312,7 @@ watch(convId, async () => {
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .chat-layout.has-group {
@@ -2342,11 +2341,12 @@ watch(convId, async () => {
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .chat-column {
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .group-panel {
@@ -3121,8 +3121,6 @@ img.member-avatar {
   background: white;
   border-radius: 0;
   border: 1px solid #e1e5eb;
-  position: sticky;
-  bottom: 0;
 }
 
 .attach-preview {
