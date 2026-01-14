@@ -2492,9 +2492,10 @@ watch(convId, async () => {
   }
 
   :deep(.list-pane) {
-    flex: 0 0 auto;
+    flex: 0 0 clamp(200px, 35vh, 360px);
     width: 100%;
     max-width: none;
+    max-height: clamp(200px, 35vh, 360px);
     border-right: 0;
     border-bottom: 1px solid var(--border);
   }
