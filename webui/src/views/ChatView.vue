@@ -30,7 +30,7 @@
           />
 
           <section class="chat-pane">
-            <div class="chat-pane__body">
+            <div class="chat-pane__body chat-column">
               <header v-if="convId && !notFound" class="chat-header">
                 <div class="chat-header__left">
                   <span
@@ -68,7 +68,7 @@
               <div
                 v-else
                 ref="scrollbox"
-                class="scroll"
+                class="scroll chat-messages"
                 @scroll="handleScroll"
               >
                 <template v-if="messages.length">
@@ -261,7 +261,7 @@
               </div>
 
               <!-- ===== COMPOSER ===== -->
-              <div v-if="convId && !notFound" class="composer">
+              <div v-if="convId && !notFound" class="composer chat-input">
                 <div v-if="replyTarget" class="reply-banner">
                   Replying to
                   {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}
@@ -2210,7 +2210,7 @@ watch(convId, async () => {
   --avatar-text: #0f766e;
   --panel-pad: 16px;
   min-height: 100vh;
-  height: 100vh;
+  height: auto;
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
@@ -2285,7 +2285,7 @@ watch(convId, async () => {
   flex-direction: column;
   min-height: 0;
   padding: 16px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .content-inner {
@@ -2304,7 +2304,7 @@ watch(convId, async () => {
   flex-direction: row;
   background: var(--panel);
   border: 1px solid var(--border);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .chat-layout {
@@ -2313,6 +2313,7 @@ watch(convId, async () => {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  overflow-y: auto;
 }
 
 .chat-layout.has-group {
@@ -2332,15 +2333,20 @@ watch(convId, async () => {
   min-height: 0;
   height: 100%;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.chat-pane__body {
+.chat-pane__body,
+.chat-column {
   display: flex;
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.chat-column {
+  min-height: 100%;
 }
 
 .group-panel {
@@ -2654,7 +2660,8 @@ watch(convId, async () => {
 }
 
 
-.scroll {
+.scroll,
+.chat-messages {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -3102,7 +3109,8 @@ img.member-avatar {
   color: #475569;
 }
 
-.composer {
+.composer,
+.chat-input {
   margin-top: 12px;
   flex: 0 0 auto;
   flex-shrink: 0;
