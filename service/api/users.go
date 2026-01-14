@@ -53,7 +53,7 @@ func (rt *_router) getUserInfo(
 	})
 }
 
-// getUserProfile handles GET /users/{userId}/profile and returns public profile
+// getUserProfile handles GET /users/profile/{userId} and returns public profile
 // data. A minimal query-key fallback is kept for older clients.
 func (rt *_router) getUserProfile(
 	w http.ResponseWriter,
