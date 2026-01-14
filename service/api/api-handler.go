@@ -47,8 +47,8 @@ func (rt *_router) RegisterRoutes() {
 	rt.router.PUT("/users/me/photo", rt.wrap(rt.setMyPhoto))
 	// GET /users/search -> searchUsers
 	rt.router.GET("/users/search", rt.wrap(rt.searchUsers))
-	// GET /users/{userId}/profile -> getUserProfile
-	rt.router.GET("/users/:userId/profile", rt.wrap(rt.getUserProfile))
+	// GET /users/profile/{userId} -> getUserProfile
+	rt.router.GET("/users/profile/:userId", rt.wrap(rt.getUserProfile))
 
 	// Groups
 	// POST /groups -> createGroup

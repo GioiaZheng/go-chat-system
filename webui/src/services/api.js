@@ -283,7 +283,7 @@ export async function getMyProfile() {
 export async function getUserProfile(userId) {
   const id = String(userId || '').trim()
   if (!id) throw new Error('userId required')
-  return unwrap(await get(`/users/${encodeURIComponent(id)}/profile`))
+  return unwrap(await get(`/users/profile/${encodeURIComponent(id)}`))
 }
 
 export async function setMyUserName(name) {
