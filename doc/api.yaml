@@ -926,7 +926,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
   
-  /conversations/{id}:
+  /conversations/:id:
     parameters:
       - $ref: '#/components/parameters/id'
     delete:
@@ -1134,7 +1134,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /users/{userId}/profile:
+  /users/:userId/profile:
     parameters:
       - $ref: '#/components/parameters/userId'
     get:
@@ -1244,7 +1244,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /groups/{id}:
+  /groups/:id:
     parameters:
       - $ref: '#/components/parameters/id'
     get:
@@ -1276,7 +1276,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /groups/{id}/name:
+  /groups/:id/name:
     parameters:
       - $ref: '#/components/parameters/id'
     put:
@@ -1303,7 +1303,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /groups/{id}/photo:
+  /groups/:id/photo:
     parameters:
       - $ref: '#/components/parameters/id'
     put:
@@ -1349,7 +1349,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /groups/{id}/members:
+  /groups/:id/members:
     parameters:
       - $ref: '#/components/parameters/id'
     post:
@@ -1592,7 +1592,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         
-  /messages/{id}:
+  /messages/:id:
     parameters:
       - $ref: '#/components/parameters/id'
     get:
@@ -1645,7 +1645,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /messages/{id}/forwards:
+  /messages/:id/forwards:
     parameters:
       - $ref: '#/components/parameters/id'
     post:
@@ -1675,7 +1675,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /messages/{id}/comment:
+  /messages/:id/comment:
     parameters:
       - $ref: '#/components/parameters/id'
     post:
