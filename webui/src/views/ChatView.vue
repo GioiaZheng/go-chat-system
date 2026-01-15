@@ -2209,8 +2209,8 @@ watch(convId, async () => {
   --avatar-border: #a7f3d0;
   --avatar-text: #0f766e;
   --panel-pad: 16px;
-  min-height: 100vh;
-  height: auto;
+  height: 100%;
+  min-height: 0;
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
@@ -2218,6 +2218,7 @@ watch(convId, async () => {
   flex-direction: column;
   background: #e5e7eb;
   color: #1f2937;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -2285,7 +2286,7 @@ watch(convId, async () => {
   flex-direction: column;
   min-height: 0;
   padding: 16px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .content-inner {
@@ -2295,6 +2296,7 @@ watch(convId, async () => {
   gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
 }
 
 .panel {
@@ -2304,7 +2306,7 @@ watch(convId, async () => {
   flex-direction: row;
   background: var(--panel);
   border: 1px solid var(--border);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .chat-layout {
@@ -2332,7 +2334,7 @@ watch(convId, async () => {
   min-height: 0;
   height: 100%;
   flex: 1 1 auto;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .chat-pane__body,
@@ -2667,7 +2669,7 @@ watch(convId, async () => {
   overflow-y: auto;
   background: transparent;
   border-radius: 0;
-  padding: 10px 12px 88px;
+  padding: 10px 12px 16px;
 }
 
 .empty-thread {
