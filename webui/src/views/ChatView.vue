@@ -30,7 +30,7 @@
           />
 
           <section class="chat-pane">
-            <div class="chat-pane__body chat-column">
+            <div class="chat-pane__body">
               <header v-if="convId && !notFound" class="chat-header">
                 <div class="chat-header__left">
                   <span
@@ -68,7 +68,7 @@
               <div
                 v-else
                 ref="scrollbox"
-                class="scroll chat-messages"
+                class="scroll"
                 @scroll="handleScroll"
               >
                 <template v-if="messages.length">
@@ -261,7 +261,7 @@
               </div>
 
               <!-- ===== COMPOSER ===== -->
-              <div v-if="convId && !notFound" class="composer chat-input">
+              <div v-if="convId && !notFound" class="composer">
                 <div v-if="replyTarget" class="reply-banner">
                   Replying to
                   {{ nameForSender(replyTarget.senderId, replyTarget) || 'message' }}
@@ -2209,8 +2209,8 @@ watch(convId, async () => {
   --avatar-border: #a7f3d0;
   --avatar-text: #0f766e;
   --panel-pad: 16px;
-  height: 100%;
-  min-height: 0;
+  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
@@ -2218,7 +2218,6 @@ watch(convId, async () => {
   flex-direction: column;
   background: #e5e7eb;
   color: #1f2937;
-  overflow: hidden;
 }
 
 .chat-header {
@@ -2285,7 +2284,7 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 16px 16px 0;
+  padding: 16px;
   overflow: hidden;
 }
 
@@ -2296,7 +2295,6 @@ watch(convId, async () => {
   gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
 }
 
 .panel {
@@ -2314,7 +2312,7 @@ watch(convId, async () => {
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  height: 100%;
 }
 
 .chat-layout.has-group {
@@ -2325,7 +2323,7 @@ watch(convId, async () => {
   background: var(--panel);
   border-left: 1px solid var(--border);
   border-radius: 0;
-  padding: 24px 24px 0;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -2337,17 +2335,11 @@ watch(convId, async () => {
   overflow: hidden;
 }
 
-.chat-pane__body,
-.chat-column {
+.chat-pane__body {
   display: flex;
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
-  overflow: hidden;
-}
-
-.chat-column {
-  height: 100%;
   overflow: hidden;
 }
 
@@ -2662,14 +2654,13 @@ watch(convId, async () => {
 }
 
 
-.scroll,
-.chat-messages {
+.scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   background: transparent;
   border-radius: 0;
-  padding: 10px 12px 16px;
+  padding: 10px 12px 88px;
 }
 
 .empty-thread {
@@ -3111,9 +3102,8 @@ img.member-avatar {
   color: #475569;
 }
 
-.composer,
-.chat-input {
-  margin-top: auto;
+.composer {
+  margin-top: 12px;
   flex: 0 0 auto;
   flex-shrink: 0;
   display: flex;
@@ -3125,7 +3115,6 @@ img.member-avatar {
   border: 1px solid #e1e5eb;
   position: sticky;
   bottom: 0;
-  z-index: 1;
 }
 
 .attach-preview {
