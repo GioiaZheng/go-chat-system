@@ -2285,7 +2285,7 @@ watch(convId, async () => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 16px;
+  padding: 16px 16px 0;
   overflow: hidden;
 }
 
@@ -2325,7 +2325,7 @@ watch(convId, async () => {
   background: var(--panel);
   border-left: 1px solid var(--border);
   border-radius: 0;
-  padding: 24px;
+  padding: 24px 24px 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
