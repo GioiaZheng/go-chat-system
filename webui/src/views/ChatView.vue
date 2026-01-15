@@ -3113,7 +3113,7 @@ img.member-avatar {
 
 .composer,
 .chat-input {
-  margin-top: 12px;
+  margin-top: auto;
   flex: 0 0 auto;
   flex-shrink: 0;
   display: flex;
@@ -3123,6 +3123,9 @@ img.member-avatar {
   background: white;
   border-radius: 0;
   border: 1px solid #e1e5eb;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
 }
 
 .attach-preview {
