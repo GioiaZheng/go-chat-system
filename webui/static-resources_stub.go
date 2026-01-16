@@ -1,6 +1,9 @@
 //go:build !webui
 // +build !webui
 
+// static-resources_stub.go provides the empty embed used when the webui build
+// tag is not enabled.
+// Related files: webui/static-resources.go, webui/register_webui.go.
 package webui
 
 import "embed"

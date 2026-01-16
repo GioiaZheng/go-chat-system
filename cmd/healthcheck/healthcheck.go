@@ -16,6 +16,10 @@ Exit codes:
 
 0   HTTP 200/204 received
 >0  connection error or unexpected status code
+
+Related files:
+- cmd/webapi/main.go (hosts the /liveness endpoint)
+- service/api/liveness.go (handler implementation)
 */
 package main
 
@@ -26,6 +30,7 @@ import (
 	"os"
 )
 
+// main runs the CLI healthcheck probe against the API server.
 func main() {
 	port := flag.Int("port", 3000, "HTTP port for healthcheck")
 

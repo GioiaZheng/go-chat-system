@@ -1,4 +1,5 @@
-// file: service/database/conversation_database_methods.go
+// conversation_start.go implements conversation creation and hydration helpers.
+// Related files: service/api/conversation.go, service/models/models.go.
 package database
 
 import (

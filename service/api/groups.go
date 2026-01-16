@@ -1,5 +1,6 @@
 // groups.go contains the group management endpoints, including creation,
 // membership updates, and media uploads while enforcing OpenAPI constraints.
+// Related files: service/api/api-handler.go, service/database/group_database_methods.go.
 package api
 
 import (

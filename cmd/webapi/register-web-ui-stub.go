@@ -2,6 +2,7 @@
 
 // register-web-ui-stub.go provides a no-op placeholder when the binary is
 // compiled without the `webui` build tag, leaving routing untouched.
+// Related files: cmd/webapi/register-web-ui.go, webui/register_webui.go.
 package main
 
 import (

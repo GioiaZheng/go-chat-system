@@ -1,3 +1,6 @@
+// app_database.go defines the database interface and initializes the SQLite
+// schema used by the service.
+// Related files: service/database/*_methods.go, service/models/models.go, service/api/api.go.
 package database
 
 import (
@@ -89,6 +92,7 @@ func New(db *sql.DB) (*appdbimpl, error) {
 	return &appdbimpl{c: db}, nil
 }
 
+// initializeTables creates or updates core tables and index definitions.
 func initializeTables(db *sql.DB) error {
 	_, err := db.Exec(`
 		PRAGMA foreign_keys = ON;

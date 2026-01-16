@@ -1,3 +1,6 @@
+// models.go defines API-facing data structures shared between handlers and
+// database layers.
+// Related files: service/api/*.go, service/database/*.go.
 package models
 
 // User represents the minimal public profile returned by the API.

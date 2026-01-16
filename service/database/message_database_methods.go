@@ -1,3 +1,6 @@
+// message_database_methods.go contains message persistence and retrieval logic
+// for conversations, private messages, and comments.
+// Related files: service/api/messages.go, service/models/models.go.
 package database
 
 import (

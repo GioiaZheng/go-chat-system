@@ -1,6 +1,7 @@
 // conversation.go hosts the conversation creation endpoints, validating names
 // and member lists, normalizing identifiers, and delegating persistence while
 // keeping responses aligned with the OpenAPI contract.
+// Related files: service/api/api-handler.go, service/database/conversation_start.go.
 package api
 
 import (
@@ -150,6 +151,8 @@ func (rt *_router) getMyConversations(
 	_ = writeJSON(w, http.StatusOK, resp)
 }
 
+// deleteConversation handles DELETE /conversations/{id} and removes the record
+// after verifying the caller is a member.
 func (rt *_router) deleteConversation(
 	w http.ResponseWriter,
 	r *http.Request,

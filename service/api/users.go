@@ -1,5 +1,6 @@
 // users.go exposes user profile endpoints, covering display name updates, photo
 // uploads, user search, and profile retrieval per the OpenAPI spec.
+// Related files: service/api/api-handler.go, service/database/user_database_methods.go.
 package api
 
 import (
@@ -146,7 +147,6 @@ func (rt *_router) setMyUserName(
 // setUserPhoto handles PUT /users/me/photo for avatar updates.
 // It supports preset query parameters or multipart uploads and returns a
 // FileUploadEnvelope: data.file { filename, uri, size? }.
-
 func (rt *_router) setUserPhoto(
 	w http.ResponseWriter,
 	r *http.Request,

@@ -1,5 +1,6 @@
 // context-utils.go centralizes JSON helpers for decoding request payloads and
 // sending structured responses and error envelopes.
+// Related files: service/api/api-context-wrapper.go, service/api/api.go.
 package api
 
 import (

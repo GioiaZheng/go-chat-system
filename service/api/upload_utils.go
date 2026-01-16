@@ -1,5 +1,6 @@
 // upload_utils.go centralizes helpers for sanitizing upload paths and
 // validating basic file properties before persisting user-supplied content.
+// Related files: service/api/messages.go, service/api/groups.go.
 package api
 
 import (

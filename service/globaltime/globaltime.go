@@ -1,3 +1,6 @@
+// globaltime.go provides a controllable clock for tests and time-dependent
+// behavior throughout the service.
+// Related files: service/api/messages.go, service/database/*.go.
 package globaltime
 
 import "time"
