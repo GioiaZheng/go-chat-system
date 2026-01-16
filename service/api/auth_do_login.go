@@ -1,6 +1,7 @@
 // auth_do_login.go implements the session login endpoint and its response
 // envelope to match the OpenAPI user/token contract. Authentication is based on
 // a display name and returns a token equal to the user ID for simplicity.
+// Related files: service/api/api-handler.go, service/database/user_database_methods.go.
 package api
 
 import (
@@ -33,6 +34,7 @@ type authEnvelope struct {
 	} `json:"data"`
 }
 
+// toAPIUser maps a database user model into the API response shape.
 func toAPIUser(u models.User) apiUser {
 	return apiUser{
 		ID:        u.ID,

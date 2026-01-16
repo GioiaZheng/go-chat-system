@@ -1,3 +1,6 @@
+// register_webui.go serves embedded frontend assets and provides SPA fallback
+// routing for client-side routes.
+// Related files: webui/static-resources.go, webui/static-resources_stub.go, cmd/webapi/register-web-ui.go.
 package webui
 
 import (

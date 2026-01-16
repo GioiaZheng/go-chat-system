@@ -1,5 +1,6 @@
 // messages.go serves message read/write endpoints and the DTO helpers that map
 // internal models to the OpenAPI JSON shapes.
+// Related files: service/api/api-handler.go, service/database/message_database_methods.go, service/api/upload_utils.go.
 package api
 
 import (
@@ -20,6 +21,7 @@ import (
 
 // Section: DTOs (match OpenAPI JSON shapes; keep models.* as internal)
 
+// MessageDTO represents the public-facing message shape used in JSON responses.
 type MessageDTO struct {
 	ID             string       `json:"id"`
 	Content        string       `json:"content"`
@@ -104,7 +106,9 @@ func parseLimit(raw string, dflt, min, max int) int {
 
 // timeBefore reports a < b assuming RFC3339 timestamps (lex compare is OK for full RFC3339Z).
 func timeBefore(a, b string) bool { return a < b }
-func timeAfter(a, b string) bool  { return a > b }
+
+// timeAfter reports a > b using the same RFC3339-safe comparison as timeBefore.
+func timeAfter(a, b string) bool { return a > b }
 
 // Endpoint: POST /messages -> sendMessage (OpenAPI)
 

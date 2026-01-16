@@ -1,5 +1,6 @@
 // api-handler.go centralizes route registration so OpenAPI endpoints stay
 // consistent and easy to audit in one place.
+// Related files: service/api/api.go, service/api/*, cmd/webapi/main.go.
 package api
 
 import (

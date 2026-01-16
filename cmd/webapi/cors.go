@@ -1,5 +1,6 @@
 // cors.go centralizes the CORS middleware used by the web API server to make
 // cross-origin requests predictable for browsers and API clients.
+// Related files: cmd/webapi/main.go, service/api/api.go.
 package main
 
 import (

@@ -3,6 +3,7 @@
 // register-web-ui.go mounts the compiled frontend assets when the binary is
 // built with the `webui` tag, while forwarding API paths to the existing API
 // handler.
+// Related files: cmd/webapi/register-web-ui-stub.go, webui/register_webui.go.
 package main
 
 import (

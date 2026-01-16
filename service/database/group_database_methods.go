@@ -1,3 +1,5 @@
+// group_database_methods.go implements group persistence and member lookups.
+// Related files: service/api/groups.go, service/models/models.go.
 package database
 
 import (

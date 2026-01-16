@@ -1,5 +1,6 @@
 // api.go constructs the HTTP router for the service API and centralizes shared
 // dependencies such as logging and database connectivity.
+// Related files: service/api/api-handler.go, service/api/api-context-wrapper.go, service/database/app_database.go.
 package api
 
 import (

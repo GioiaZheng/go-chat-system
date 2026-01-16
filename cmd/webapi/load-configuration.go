@@ -1,6 +1,7 @@
 // load-configuration.go defines the configuration structures and helpers used
 // to assemble runtime settings for the web API server from CLI flags,
 // environment variables, and optional YAML overlays.
+// Related files: cmd/webapi/main.go, README.md, doc/*.
 package main
 
 import (

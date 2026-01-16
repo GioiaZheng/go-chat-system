@@ -1,5 +1,5 @@
-// file: service/database/user_database_methods.go
-// comment
+// user_database_methods.go implements user CRUD and search queries.
+// Related files: service/api/users.go, service/models/models.go.
 package database
 
 import (
@@ -37,6 +37,7 @@ func (db *appdbimpl) CreateUser(u models.User) (models.User, error) {
 	return db.GetUserByID(u.ID)
 }
 
+// GetUser resolves a user by ID and mirrors GetUserByID for compatibility.
 func (db *appdbimpl) GetUser(userID string) (models.User, error) {
 	return db.GetUserByID(userID)
 }

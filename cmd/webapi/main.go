@@ -17,6 +17,15 @@ Exit codes:
 
 The program migrates the embedded database schema to the latest version on
 startup before accepting requests.
+
+Related files:
+- cmd/webapi/load-configuration.go (configuration loading)
+- cmd/webapi/cors.go (CORS middleware)
+- cmd/webapi/register-web-ui.go (web UI mounting, webui build tag)
+- cmd/webapi/register-web-ui-stub.go (web UI stub, non-webui builds)
+- service/api/api.go (API router)
+- service/database/app_database.go (database initialization)
+- webui/register_webui.go (embedded static handler)
 */
 package main
 
@@ -181,7 +190,7 @@ func run() error {
 		// 	return fmt.Errorf("could not stop server gracefully: %w", err)
 		// }
 
-		//// a fix because I'm using windows
+		// Windows-friendly shutdown mapping.
 		switch {
 		case sig == syscall.SIGTERM || sig == os.Interrupt:
 			return errors.New("received shutdown signal")
