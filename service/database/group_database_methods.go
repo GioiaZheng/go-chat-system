@@ -287,7 +287,13 @@ func (db *appdbimpl) SetGroupPhoto(groupID, photoUrl string) error {
 // LeaveGroup removes a user from a group.
 // Matches interface: LeaveGroup(groupID, userID string) error
 func (db *appdbimpl) LeaveGroup(groupID, userID string) error {
-	res, err := db.c.Exec(`
+	tx, err := db.c.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.Exec(`
                 DELETE FROM group_members WHERE group_id = ? AND user_id = ?
         `, groupID, userID)
 	if err != nil {
@@ -296,7 +302,16 @@ func (db *appdbimpl) LeaveGroup(groupID, userID string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return sql.ErrNoRows
 	}
-	return nil
+
+	if _, err := tx.Exec(`
+                DELETE FROM conversation_members
+                WHERE conversation_id = (SELECT conversation_id FROM groups WHERE id = ?)
+                  AND user_id = ?
+        `, groupID, userID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // IsGroupMember checks if a user is a member of a given group.
