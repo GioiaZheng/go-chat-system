@@ -842,6 +842,24 @@ function normalizeParticipantList(list = []) {
     .filter(u => u.id)
 }
 
+function matchesConversationId(conversation = {}, targetId = '') {
+  const target = String(targetId || '')
+  if (!target) return false
+  const conversationId = String(
+    conversation?.id ||
+      conversation?.conversationId ||
+      conversation?.conversation_id ||
+      ''
+  )
+  const groupId = String(
+    conversation?.groupId ||
+      conversation?.group_id ||
+      conversation?.group?.id ||
+      ''
+  )
+  return target === conversationId || (groupId && target === groupId)
+}
+
 async function loadConversationList() {
   convErr.value = ''
   await ensureAuthReady()
@@ -954,8 +972,24 @@ function handleConversationRemove(e) {
   const detail = e?.detail || {}
   const targetId = detail.conversationId ? String(detail.conversationId) : ''
   if (!targetId) return
-  convList.value = convList.value.filter(c => String(c.id) !== targetId)
-  removeConversation(targetId)
+  const matched = convList.value.filter(c => matchesConversationId(c, targetId))
+  convList.value = convList.value.filter(c => !matchesConversationId(c, targetId))
+  const idsToRemove = new Set([targetId])
+  matched.forEach(c => {
+    const candidateIds = [
+      c?.id,
+      c?.conversationId,
+      c?.conversation_id,
+      c?.groupId,
+      c?.group_id,
+      c?.group?.id,
+    ]
+    candidateIds.forEach(id => {
+      const key = String(id || '')
+      if (key) idsToRemove.add(key)
+    })
+  })
+  idsToRemove.forEach(id => removeConversation(id))
 
   if (String(convId.value || '') === targetId) {
     resetChatState()
@@ -2031,14 +2065,30 @@ async function onLeaveGroup() {
   groupNotice.value = ''
   try {
     await leaveGroup(groupId.value)
-    if (convId.value) {
-      convList.value = convList.value.filter(c => String(c.id) !== convId.value)
-      removeConversation(convId.value)
-      window.dispatchEvent(
-        new CustomEvent('conversations:remove', {
-          detail: { conversationId: convId.value },
-        })
+    const removalIds = new Set([
+      convId.value,
+      groupId.value,
+      currentConv.value?.id,
+      currentConv.value?.conversationId,
+      currentConv.value?.conversation_id,
+      currentConv.value?.groupId,
+      currentConv.value?.group_id,
+      currentConv.value?.group?.id,
+    ])
+    removalIds.delete('')
+    const idsToRemove = Array.from(removalIds).filter(Boolean).map(id => String(id))
+    if (idsToRemove.length) {
+      convList.value = convList.value.filter(
+        c => !idsToRemove.some(id => matchesConversationId(c, id))
       )
+      idsToRemove.forEach(id => {
+        removeConversation(id)
+        window.dispatchEvent(
+          new CustomEvent('conversations:remove', {
+            detail: { conversationId: id },
+          })
+        )
+      })
     }
     emitConversationReload()
     router.replace('/conversations')
