@@ -2,6 +2,26 @@
 
 This repository hosts the **WASA Text – Chat Application**, built on top of the *Fantastic Coffee (decaffeinated)* starter shared in class. The goal is to provide a clean baseline for the Web and Software Architecture (WASA) homework while keeping production concerns out of scope. The original fully fledged reference remains in the "Fantastic Coffee" repository.
 
+## Overview
+WASA Text is a client-server chat application with a Go backend and a Vue.js frontend. It exposes REST APIs for chat workflows and ships a Web UI for interactive usage and manual testing.
+
+## Tech stack & skills
+
+**Backend**
+- Go (modules + vendoring)
+- HTTP API server
+- Dependency injection / wiring in `cmd/`
+
+**Frontend**
+- Vue.js + Vite
+- Bootstrap UI + Feather icons
+- Yarn with offline mirror
+
+**Skills emphasized**
+- Web API design and documentation (OpenAPI)
+- Full-stack integration (frontend consumes backend API)
+- Build/release workflows with asset embedding
+
 ## Project structure
 - `cmd/` — all executables. Go programs here should focus on executable concerns (CLI/env parsing, wiring, etc.).
   - `cmd/healthcheck/` — example daemon for checking the health of server processes; useful when the hypervisor lacks HTTP readiness/liveness probes (e.g., Docker engine).
@@ -12,8 +32,8 @@ This repository hosts the **WASA Text – Chat Application**, built on top of th
   - `service/api/` — example API server.
   - `service/globaltime/` — wrapper around `time.Time` (useful for unit testing).
 - `vendor/` — managed by Go; contains vendored dependencies.
-- `webui/` — example Vue.js web frontend including:
-  - Bootstrap JavaScript framework
+- `webui/` — Vue.js web frontend including:
+  - Bootstrap UI framework
   - Customized "Bootstrap dashboard" template
   - Feather icons as SVG
   - Go code for release embedding
@@ -21,6 +41,15 @@ This repository hosts the **WASA Text – Chat Application**, built on top of th
 Other project files include:
 
 - `open-node.sh` — starts a new (temporary) container using the `node:20` image for safe frontend development.
+
+## What the Web UI is for
+The Web UI (`webui/`) is a lightweight client used to:
+- Log in/register users (if enabled in your API)
+- Browse users and chat conversations
+- Create and send messages
+- Quickly verify API behavior without external tools
+
+It is useful for demos, manual QA, and validating end-to-end API integration.
 
 ## Go vendoring
 
