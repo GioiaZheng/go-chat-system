@@ -306,6 +306,24 @@ function open(c) {
   })
 }
 
+function matchesConversationId(conversation = {}, targetId = '') {
+  const target = String(targetId || '')
+  if (!target) return false
+  const conversationId = String(
+    conversation?.id ||
+      conversation?.conversationId ||
+      conversation?.conversation_id ||
+      ''
+  )
+  const groupId = String(
+    conversation?.groupId ||
+      conversation?.group_id ||
+      conversation?.group?.id ||
+      ''
+  )
+  return target === conversationId || (groupId && target === groupId)
+}
+
 // Remove a conversation after user confirmation.
 async function warnDelete(c) {
   if (!c) return
@@ -378,8 +396,24 @@ const handleRemoveEvent = e => {
   const detail = e?.detail || {}
   const targetId = detail.conversationId ? String(detail.conversationId) : ''
   if (!targetId) return
-  convs.value = convs.value.filter(c => String(c.id) !== targetId)
-  removeConversation(targetId)
+  const matched = convs.value.filter(c => matchesConversationId(c, targetId))
+  convs.value = convs.value.filter(c => !matchesConversationId(c, targetId))
+  const idsToRemove = new Set([targetId])
+  matched.forEach(c => {
+    const candidateIds = [
+      c?.id,
+      c?.conversationId,
+      c?.conversation_id,
+      c?.groupId,
+      c?.group_id,
+      c?.group?.id,
+    ]
+    candidateIds.forEach(id => {
+      const key = String(id || '')
+      if (key) idsToRemove.add(key)
+    })
+  })
+  idsToRemove.forEach(id => removeConversation(id))
 }
 
 onMounted(async () => {
