@@ -1,9 +1,9 @@
 # WASA Text – Chat Application
 
-This repository hosts the **WASA Text – Chat Application**, built on top of the *Fantastic Coffee (decaffeinated)* starter shared in class. The goal is to provide a clean baseline for the Web and Software Architecture (WASA) homework while keeping production concerns out of scope. The original fully fledged reference remains in the "Fantastic Coffee" repository.
+This repository hosts the **WASA Text – Chat Application**, a WASA homework baseline built on top of the *Fantastic Coffee (decaffeinated)* starter shared in class. It is intended as a positive, educational full-stack chat project for practicing Web and Software Architecture concepts. The original fully fledged reference remains in the "Fantastic Coffee" repository.
 
 ## Overview
-WASA Text is a client-server chat application with a Go backend and a Vue.js frontend. It exposes REST APIs for chat workflows and ships a Web UI for interactive usage and manual testing.
+WASA Text is a client-server chat application with a Go backend and a Vue.js frontend. It exposes REST APIs for chat workflows and ships a Web UI for interactive usage, demos, and manual testing in a course setting.
 
 ## Tech stack & skills
 
@@ -50,6 +50,15 @@ The Web UI (`webui/`) is a lightweight client used to:
 - Quickly verify API behavior without external tools
 
 It is useful for demos, manual QA, and validating end-to-end API integration.
+
+## Known limitations
+
+This project is intentionally scoped as a course/full-stack homework baseline rather than a production-grade or research system. Current limitations include:
+
+- **Simplified authentication** — local development uses a lightweight authentication model suitable for coursework, not a hardened session system.
+- **Limited authorization hardening** — key chat flows include access checks, but the project has not been fully security-audited for production use.
+- **SQLite/dev deployment** — the default database and deployment flow are optimized for local development and grading, not high-availability operation.
+- **No formal research benchmark yet** — the project is useful for implementation practice and demos, but it does not include a validated research benchmark or comparative evaluation suite.
 
 ## Go vendoring
 
@@ -110,7 +119,7 @@ Launch the WebUI (in a new tab):
 yarn run dev
 ```
 
-## How to build for production / homework delivery
+## How to build for release / homework delivery
 
 ```bash
 ./open-node.sh
