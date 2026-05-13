@@ -337,7 +337,7 @@ func (rt *_router) getMessageByID(
 	w http.ResponseWriter,
 	_ *http.Request,
 	ps httprouter.Params,
-	_ reqcontext.RequestContext,
+	ctx reqcontext.RequestContext,
 ) {
 	id := strings.TrimSpace(ps.ByName("id"))
 	if id == "" {
@@ -347,6 +347,9 @@ func (rt *_router) getMessageByID(
 	m, err := rt.db.GetMessageByID(id)
 	if err != nil {
 		rt.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	if !rt.authorizeMessageConversation(w, ctx.UserID, m) {
 		return
 	}
 	dto := toMessageDTO(m)
@@ -408,6 +411,18 @@ func (rt *_router) forwardMessage(
 		return
 	}
 
+	if _, ok := rt.loadAuthorizedMessage(w, userID, msgID); !ok {
+		return
+	}
+	if err := rt.requireConversationMember(userID, req.ConversationID); err != nil {
+		if errors.Is(err, ErrConversationNotMember) {
+			rt.sendError(w, http.StatusForbidden, "not your conversation")
+			return
+		}
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify conversation membership")
+		return
+	}
+
 	// Map to existing DB API: treat target conversation as a "group" sink.
 	// (If you have a real conversation->group lookup, add it here.)
 	if err := rt.db.ForwardMessage(userID, msgID /*toUserID*/, "" /*toGroupID*/, req.ConversationID); err != nil {
@@ -436,11 +451,14 @@ func (rt *_router) getMessageComments(
 	w http.ResponseWriter,
 	_ *http.Request,
 	ps httprouter.Params,
-	_ reqcontext.RequestContext,
+	ctx reqcontext.RequestContext,
 ) {
 	msgID := strings.TrimSpace(ps.ByName("id"))
 	if msgID == "" {
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
+		return
+	}
+	if _, ok := rt.loadAuthorizedMessage(w, ctx.UserID, msgID); !ok {
 		return
 	}
 	rows, err := rt.db.GetMessageComments(msgID)
@@ -499,6 +517,10 @@ func (rt *_router) commentMessage(
 		return
 	}
 
+	if _, ok := rt.loadAuthorizedMessage(w, userID, msgID); !ok {
+		return
+	}
+
 	// Persist the comment using the normalized type and sanitized content.
 	if err := rt.db.CommentMessage(msgID, userID, req.Type, req.Content); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to add comment")
@@ -518,12 +540,20 @@ func (rt *_router) uncommentMessage(
 	ps httprouter.Params,
 	ctx reqcontext.RequestContext,
 ) {
+	userID := strings.TrimSpace(ctx.UserID)
+	if userID == "" {
+		rt.sendError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 	msgID := strings.TrimSpace(ps.ByName("id"))
 	if msgID == "" {
 		rt.sendError(w, http.StatusBadRequest, "Message ID is required")
 		return
 	}
-	if err := rt.db.UncommentMessage(msgID, ctx.UserID); err != nil {
+	if _, ok := rt.loadAuthorizedMessage(w, userID, msgID); !ok {
+		return
+	}
+	if err := rt.db.UncommentMessage(msgID, userID); err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to remove comment(s)")
 		return
 	}

@@ -48,7 +48,8 @@ func New(cfg Config) (*_router, error) {
 	// Fixes small path issues like duplicate slashes or case differences.
 	router.RedirectFixedPath = true
 
-	// We handle OPTIONS ourselves via middleware.
+	// CORS, including preflight handling, is centralized at the HTTP
+	// server entrypoint in cmd/webapi/cors.go instead of this API package.
 	router.HandleOPTIONS = false
 
 	r := &_router{
