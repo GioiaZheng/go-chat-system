@@ -4,6 +4,7 @@
 package api
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -164,6 +165,15 @@ func (rt *_router) sendMessage(
 		return
 	}
 
+	if err := rt.requireConversationMember(userID, req.ConversationID); err != nil {
+		if errors.Is(err, ErrConversationNotMember) {
+			rt.sendError(w, http.StatusForbidden, "not your conversation")
+			return
+		}
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify conversation membership")
+		return
+	}
+
 	id, err := newMsgID()
 	if err != nil {
 		rt.sendError(w, http.StatusInternalServerError, "Failed to generate message ID")
@@ -215,6 +225,15 @@ func (rt *_router) getMessages(
 	convID := strings.TrimSpace(q.Get("conversationId"))
 	if convID == "" {
 		rt.sendError(w, http.StatusBadRequest, "conversationId is required")
+		return
+	}
+
+	if err := rt.requireConversationMember(ctx.UserID, convID); err != nil {
+		if errors.Is(err, ErrConversationNotMember) {
+			rt.sendError(w, http.StatusForbidden, "not your conversation")
+			return
+		}
+		rt.sendError(w, http.StatusInternalServerError, "Failed to verify conversation membership")
 		return
 	}
 

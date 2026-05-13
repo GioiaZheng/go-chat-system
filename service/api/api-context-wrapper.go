@@ -83,14 +83,15 @@ func (rt *_router) wrap(fn httpRouterHandler) func(http.ResponseWriter, *http.Re
 //  1. "Authorization: Bearer <token>"
 //  2. "Authorization: <token>" (bare token, kept for assignment/client compatibility)
 func extractTokenFromHeader(r *http.Request) (string, error) {
-	raw := strings.TrimSpace(r.Header.Get("Authorization"))
+	rawHeader := r.Header.Get("Authorization")
+	raw := strings.TrimSpace(rawHeader)
 	if raw == "" {
 		return "", ErrNoAuthHeader
 	}
 
-	low := strings.ToLower(raw)
+	low := strings.ToLower(rawHeader)
 	if strings.HasPrefix(low, "bearer ") {
-		token := strings.TrimSpace(raw[len("Bearer "):])
+		token := strings.TrimSpace(rawHeader[len("Bearer "):])
 		if token == "" {
 			return "", ErrNoToken
 		}

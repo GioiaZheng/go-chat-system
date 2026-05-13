@@ -19,6 +19,9 @@ bin/
 *.sqlite3
 dev.sqlite
 data/
+uploads/
+cmd/webapi/uploads/
+**/uploads/
 uploads/*
 !uploads/.gitkeep
 

@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Check Go formatting
+        run: |
+          files="$(git ls-files '*.go' ':!:vendor/*')"
+          test -z "$(gofmt -l $files)"
+
+      - name: Run Go tests
+        run: go test ./...
+
+      - name: Run Go vet
+        run: go vet ./...
+
+      - name: Install frontend dependencies
+        run: yarn install --cwd webui --immutable
+
+      - name: Build frontend
+        run: yarn --cwd webui run build-prod
+
+      - name: Install OpenAPI lint dependencies
+        run: yarn install --immutable
+
+      - name: Lint OpenAPI spec
+        run: yarn exec spectral lint doc/api.yaml --ruleset doc/spectral.yaml

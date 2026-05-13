@@ -1,5 +1,6 @@
-// cors.go centralizes the CORS middleware used by the web API server to make
-// cross-origin requests predictable for browsers and API clients.
+// cors.go is the single place where the web API server configures CORS.
+// Keep this development-only policy near the HTTP server entrypoint until a
+// production CORS policy is introduced.
 // Related files: cmd/webapi/main.go, service/api/api.go.
 package main
 
@@ -9,10 +10,9 @@ import (
 	"github.com/gorilla/handlers"
 )
 
-// applyCORSHandler wraps the given handler with the CORS policy enforced by the
-// API server. CORS (Cross-Origin Resource Sharing) is enforced by browsers to
-// control cross-domain requests, so explicitly defining the allowed headers,
-// methods, and origins keeps client behavior consistent.
+// applyCORSHandler wraps the given handler with the development CORS policy
+// enforced by the API server. CORS is intentionally configured here rather than
+// inside service/api so preflight handling stays at the server boundary.
 func applyCORSHandler(h http.Handler) http.Handler {
 	return handlers.CORS(
 		handlers.AllowedHeaders([]string{
