@@ -51,6 +51,37 @@ The Web UI (`webui/`) is a lightweight client used to:
 
 It is useful for demos, manual QA, and validating end-to-end API integration.
 
+## Quickstart
+
+```bash
+git clone https://github.com/GioiaZheng/go-chat-system.git
+cd go-chat-system
+
+go mod download
+go run ./cmd/webapi/
+```
+
+Expected output:
+
+```text
+API listening on 0.0.0.0:3000
+```
+
+For the Web UI:
+
+```bash
+cd webui
+yarn install
+yarn run dev
+```
+
+Expected output:
+
+```text
+VITE v...
+Local: http://localhost:<port>/
+```
+
 ## Known limitations
 
 This project is intentionally scoped as a course/full-stack homework baseline rather than a production-grade or research system. Current limitations include:
