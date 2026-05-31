@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Chat conversation screen</title>
+  <desc id="desc">Desktop chat layout with contacts, conversations, and a message thread.</desc>
+  <rect width="1200" height="760" fill="#eef2f7"/>
+  <rect x="30" y="30" width="1140" height="700" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="30" y="30" width="250" height="700" rx="12" fill="#172033"/>
+  <text x="58" y="78" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">WASA Text</text>
+  <rect x="58" y="118" width="194" height="42" rx="8" fill="#253047"/>
+  <text x="76" y="145" font-family="Arial, sans-serif" font-size="14" fill="#cbd5e1">Search users</text>
+  <rect x="58" y="196" width="194" height="58" rx="10" fill="#334155"/>
+  <text x="78" y="226" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#ffffff">Alice</text>
+  <text x="78" y="246" font-family="Arial, sans-serif" font-size="12" fill="#cbd5e1">Latest message preview</text>
+  <rect x="310" y="62" width="820" height="54" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="334" y="96" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#172033">Alice</text>
+  <rect x="334" y="164" width="360" height="58" rx="14" fill="#e2e8f0"/>
+  <text x="356" y="199" font-family="Arial, sans-serif" font-size="15" fill="#172033">Hi, are you joining the project demo?</text>
+  <rect x="740" y="254" width="330" height="58" rx="14" fill="#2563eb"/>
+  <text x="762" y="289" font-family="Arial, sans-serif" font-size="15" fill="#ffffff">Yes, I will bring the API notes.</text>
+  <rect x="334" y="642" width="720" height="48" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="356" y="672" font-family="Arial, sans-serif" font-size="14" fill="#64748b">Write a message...</text>
+  <rect x="1070" y="642" width="60" height="48" rx="10" fill="#2563eb"/>
+  <text x="1086" y="672" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#ffffff">Send</text>
+</svg>

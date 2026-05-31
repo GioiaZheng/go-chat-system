@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844" role="img" aria-labelledby="title desc">
+  <title id="title">Chat login screen</title>
+  <desc id="desc">Login form for the chat web interface.</desc>
+  <rect width="390" height="844" fill="#f6f7fb"/>
+  <rect x="22" y="54" width="346" height="736" rx="22" fill="#ffffff" stroke="#d8dde8"/>
+  <text x="52" y="126" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#172033">WASA Text</text>
+  <text x="52" y="158" font-family="Arial, sans-serif" font-size="15" fill="#617089">Sign in with a display name</text>
+  <rect x="52" y="230" width="286" height="52" rx="8" fill="#f2f4f8" stroke="#c9d1df"/>
+  <text x="70" y="263" font-family="Arial, sans-serif" font-size="15" fill="#6b778c">Alice</text>
+  <rect x="52" y="306" width="286" height="52" rx="8" fill="#2563eb"/>
+  <text x="161" y="338" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">Log in</text>
+  <line x1="52" y1="414" x2="338" y2="414" stroke="#e2e8f0"/>
+  <text x="52" y="462" font-family="Arial, sans-serif" font-size="14" fill="#617089">Local development token is returned by POST /session.</text>
+</svg>

@@ -82,6 +82,47 @@ VITE v...
 Local: http://localhost:<port>/
 ```
 
+Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Expected output:
+
+```text
+backend-1   | API listening on 0.0.0.0:3000
+frontend-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+```
+
+Open the Web UI at `http://localhost:8080`; the API is exposed at `http://localhost:3000`.
+
+## API tests
+
+The API test suite covers authentication parsing, login behavior, user search, conversation membership checks, message access, and message mutation authorization.
+
+```bash
+go test ./service/api ./service/database
+```
+
+Expected output:
+
+```text
+ok  	github.com/GioiaZheng/Wasa_proj/service/api
+ok  	github.com/GioiaZheng/Wasa_proj/service/database
+```
+
+## Security Notes
+
+The current authentication model is documented in [docs/auth-threat-model.md](docs/auth-threat-model.md). It is intentionally lightweight for local development and coursework; production use should replace user-ID tokens with signed, expiring sessions.
+
+## Screenshots
+
+The documentation screenshots are stored with explicit filenames:
+
+- [docs/screenshots/chat-login-screen.svg](docs/screenshots/chat-login-screen.svg)
+- [docs/screenshots/chat-conversation-screen.svg](docs/screenshots/chat-conversation-screen.svg)
+
 ## Known limitations
 
 This project is intentionally scoped as a course/full-stack homework baseline rather than a production-grade or research system. Current limitations include:
