@@ -217,6 +217,9 @@ CGO build can take close to a minute and may look stalled even though it is
 working. Once the driver object files are cached, subsequent `go test ./...`
 runs finish in under a second.
 
+Detailed testing notes, including Windows CGO troubleshooting and CI coverage,
+are in [TESTING.md](TESTING.md).
+
 ## License
 
 See [LICENSE](LICENSE).
