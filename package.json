@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "check:api-routes": "node scripts/check-api-routes.js"
+  },
   "devDependencies": {
     "@stoplight/spectral-cli": "^6.15.0"
   },

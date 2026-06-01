@@ -48,3 +48,6 @@ jobs:
 
       - name: Lint OpenAPI spec
         run: yarn exec spectral lint doc/api.yaml --ruleset doc/spectral.yaml
+
+      - name: Check API route coverage
+        run: yarn check:api-routes

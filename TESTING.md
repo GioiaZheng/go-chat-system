@@ -71,6 +71,12 @@ yarn install --immutable
 yarn exec spectral lint doc/api.yaml --ruleset doc/spectral.yaml
 ```
 
+Check that registered Go routes and documented OpenAPI paths stay aligned:
+
+```bash
+yarn check:api-routes
+```
+
 ## CI Coverage
 
 The GitHub Actions workflow runs:
@@ -80,4 +86,5 @@ The GitHub Actions workflow runs:
 - `go vet ./...`,
 - Web UI dependency install,
 - Web UI production build,
-- OpenAPI linting.
+- OpenAPI linting,
+- API route coverage against `doc/api.yaml`.
