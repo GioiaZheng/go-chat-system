@@ -5,15 +5,18 @@ package api
 
 import (
 	"encoding/json"
+	"mime"
 	"net/http"
-	"strings"
 )
 
 // readJSON decodes the request body into dst and rejects unknown fields.
 // Accepts Content-Type: application/json or application/json; charset=utf-8.
 func readJSON(r *http.Request, dst interface{}) error {
-	if ct := r.Header.Get("Content-Type"); ct != "" && !strings.HasPrefix(ct, "application/json") {
-		return http.ErrNotSupported
+	if ct := r.Header.Get("Content-Type"); ct != "" {
+		mediaType, _, err := mime.ParseMediaType(ct)
+		if err != nil || mediaType != "application/json" {
+			return http.ErrNotSupported
+		}
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
