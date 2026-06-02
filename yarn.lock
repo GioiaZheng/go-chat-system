@@ -218,9 +218,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stoplight/spectral-cli@npm:^6.15.0":
-  version: 6.15.0
-  resolution: "@stoplight/spectral-cli@npm:6.15.0"
+"@stoplight/spectral-cli@npm:^6.16.0":
+  version: 6.16.0
+  resolution: "@stoplight/spectral-cli@npm:6.16.0"
   dependencies:
     "@stoplight/json": ~3.21.0
     "@stoplight/path": 1.3.2
@@ -236,14 +236,14 @@ __metadata:
     chalk: 4.1.2
     fast-glob: ~3.2.12
     hpagent: ~1.2.0
-    lodash: ~4.17.21
+    lodash: ^4.18.1
     pony-cause: ^1.1.1
     stacktracey: ^2.1.8
     tslib: ^2.8.1
     yargs: ~17.7.2
   bin:
     spectral: dist/index.js
-  checksum: 528cf314fc9a60215aa0efe38d15fa655082cf2ace315f788ae1674d0b6c0848ca653e24a5a08fb3bab1b3e7c570eb1f6868ce448cf21df1f5cbafe2d08c61e7
+  checksum: c758e6ef1d33a51d8e17f95eae711213042ddc01a7456f6d2fd4ffea5f860dd48f323c60b5776c4211cb451eb5995b4bfdddf0561bd279e295883a52e84fb172
   languageName: node
   linkType: hard
 
@@ -2003,6 +2003,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lodash@npm:^4.18.1":
+  version: 4.18.1
+  resolution: "lodash@npm:4.18.1"
+  checksum: bb5f5b49aad29614e709af02b64c56b0f8b78c6a81434a3c1ae527d2f0f78ca08f9d9fb22aa825a053876c9d2166e9c01f31c356014b5e2bdc0556c057433102
+  languageName: node
+  linkType: hard
+
 "lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0":
   version: 10.4.3
   resolution: "lru-cache@npm:10.4.3"
@@ -2512,7 +2519,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@stoplight/spectral-cli": ^6.15.0
+    "@stoplight/spectral-cli": ^6.16.0
   languageName: unknown
   linkType: soft
 
