@@ -1017,7 +1017,7 @@ paths:
                     id: usr-999
                     name: maria
                     avatarUri: https://example.com/avatars/maria.jpg
-                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItOTk5IiwiaWF0IjoxNjk2MDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+                  token: usr-999
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
