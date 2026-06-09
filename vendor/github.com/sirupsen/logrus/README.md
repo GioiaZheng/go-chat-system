@@ -199,7 +199,7 @@ var logger = logrus.New()
 
 func main() {
   // The API for setting attributes is a little different than the package level
-  // exported logger. See Godoc.
+  // exported logger. See Godoc. 
   logger.Out = os.Stdout
 
   // You could set this to any `io.Writer` such as a file

@@ -1,18 +1,15 @@
 // Copyright (C) 2019 Yasuhiro Matsumoto <mattn.jp@gmail.com>.
+// Copyright (C) 2018 G.J.R. Timmer <gjr.timmer@gmail.com>.
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
 
-//go:build windows
-// +build windows
+//go:build sqlite_percentile
+// +build sqlite_percentile
 
 package sqlite3
 
 /*
-#cgo CFLAGS: -I.
-#cgo CFLAGS: -fno-stack-check
-#cgo CFLAGS: -fno-stack-protector
-#cgo CFLAGS: -mno-stack-arg-probe
-#cgo windows,386 CFLAGS: -D_USE_32BIT_TIME_T
+#cgo CFLAGS: -DSQLITE_ENABLE_PERCENTILE
 */
 import "C"
