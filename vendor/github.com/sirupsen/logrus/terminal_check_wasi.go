@@ -1,4 +1,5 @@
-// +build js
+//go:build wasi
+// +build wasi
 
 package logrus
 
