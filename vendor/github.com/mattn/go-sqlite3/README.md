@@ -9,8 +9,6 @@ go-sqlite3
 
 Latest stable version is v1.14 or later, not v2.
 
-~~**NOTE:** The increase to v2 was an accident. There were no major changes or features.~~
-
 # Description
 
 A sqlite3 driver that conforms to the built-in database/sql interface.
@@ -301,7 +299,7 @@ go build -tags "darwin arm64"
 If you wish to link directly to libsqlite3, use the `libsqlite3` build tag:
 
 ```
-# x86
+# x86 
 go build -tags "libsqlite3 darwin amd64"
 # ARM
 go build -tags "libsqlite3 darwin arm64"
