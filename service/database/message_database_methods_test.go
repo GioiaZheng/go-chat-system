@@ -1,17 +1,15 @@
 package database
 
 import (
-	"database/sql"
 	"path/filepath"
 	"testing"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestGetAllMessagesReturnsInsertedMessage(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "messages.db")
-	sqlDB, err := sql.Open("sqlite3", dbPath)
+	sqlDB, err := OpenSQLite(dbPath)
 	if err != nil {
 		t.Fatalf("open sqlite database: %v", err)
 	}

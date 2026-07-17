@@ -161,6 +161,9 @@ func (db *appdbimpl) buildConversationFromID(cid string, requesterID string) (mo
 	if err := rows.Err(); err != nil {
 		return models.Conversation{}, err
 	}
+	if err := rows.Close(); err != nil {
+		return models.Conversation{}, err
+	}
 
 	// Determine conversation type and mirror peer details for private chats.
 	var isGroupConversation bool
@@ -298,7 +301,7 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 	}
 	defer rows.Close()
 
-	result := []models.Conversation{}
+	conversationIDs := make([]string, 0)
 
 	for rows.Next() {
 		var cid string
@@ -308,16 +311,24 @@ func (db *appdbimpl) GetMyConversations(userID string) ([]models.Conversation, e
 			return nil, err
 		}
 
+		conversationIDs = append(conversationIDs, cid)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	result := make([]models.Conversation, 0, len(conversationIDs))
+	for _, cid := range conversationIDs {
 		conv, err := db.buildConversationFromID(cid, userID)
 		if err != nil {
 			return nil, err
 		}
 
 		result = append(result, conv)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	return result, nil

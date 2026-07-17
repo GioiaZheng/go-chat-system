@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/GioiaZheng/Wasa_proj/service/models"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // AppDatabase defines the database operations required by the API layer.
@@ -71,8 +70,10 @@ type appdbimpl struct {
 	c *sql.DB
 }
 
-// New wires a *sql.DB into the implementation, enabling PRAGMAs and ensuring
-// that the schema is present before returning a ready-to-use database handle.
+// New wires a *sql.DB into the implementation and ensures that the schema is
+// present before returning a ready-to-use database handle. Production callers
+// should obtain the pool through OpenSQLite so connection-local options apply
+// to every physical connection.
 func New(db *sql.DB) (*appdbimpl, error) {
 	// Verify connection
 	if err := db.Ping(); err != nil {

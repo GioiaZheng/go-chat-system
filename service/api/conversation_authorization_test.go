@@ -1,14 +1,12 @@
 package api
 
 import (
-	"database/sql"
 	"errors"
 	"io"
 	"path/filepath"
 	"testing"
 
 	"github.com/GioiaZheng/Wasa_proj/service/database"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -50,7 +48,7 @@ func TestRequireConversationMemberDeniesEmptyConversationID(t *testing.T) {
 func newConversationAuthorizationTestRouter(t *testing.T) *_router {
 	t.Helper()
 
-	sqlDB, err := sql.Open("sqlite3", filepath.Join(t.TempDir(), "conversation-auth.db"))
+	sqlDB, err := database.OpenSQLite(filepath.Join(t.TempDir(), "conversation-auth.db"))
 	if err != nil {
 		t.Fatalf("open sqlite database: %v", err)
 	}
