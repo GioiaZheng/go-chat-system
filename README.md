@@ -118,6 +118,18 @@ Automated repository checks include:
 These checks improve the development baseline but do not constitute a
 production security audit.
 
+## SQLite connection policy
+
+The API opens SQLite once at startup and shares a bounded `database/sql` pool
+across requests. The pool is limited to eight open and four idle connections;
+foreign-key enforcement, a five-second busy timeout, and WAL journaling are
+applied through driver options to every physical connection. Query result sets
+are closed before dependent follow-up queries, avoiding pool self-deadlocks.
+
+This is a correctness-oriented local deployment policy, not a published
+throughput claim. The repository does not currently report QPS or P99 latency
+without a reproducible benchmark and workload definition.
+
 ## Screenshots
 
 - [Login screen](docs/screenshots/chat-login-screen.svg)
