@@ -1,7 +1,6 @@
 # WASA Text
 
 [![CI](https://github.com/GioiaZheng/go-chat-system/actions/workflows/ci.yml/badge.svg)](https://github.com/GioiaZheng/go-chat-system/actions/workflows/ci.yml)
-[![govulncheck](https://github.com/GioiaZheng/go-chat-system/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/GioiaZheng/go-chat-system/actions/workflows/govulncheck.yml)
 [![Secret scan](https://github.com/GioiaZheng/go-chat-system/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/GioiaZheng/go-chat-system/actions/workflows/secret-scan.yml)
 
 A full-stack chat application with a Go REST API, Vue frontend, SQLite
