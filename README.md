@@ -1,57 +1,50 @@
-# WASA Text – Chat Application
+# WASA Text
 
-This repository hosts the **WASA Text – Chat Application**, a WASA homework baseline built on top of the *Fantastic Coffee (decaffeinated)* starter shared in class. It is intended as a positive, educational full-stack chat project for practicing Web and Software Architecture concepts. The original fully fledged reference remains in the "Fantastic Coffee" repository.
+[![CI](https://github.com/GioiaZheng/go-chat-system/actions/workflows/ci.yml/badge.svg)](https://github.com/GioiaZheng/go-chat-system/actions/workflows/ci.yml)
+[![Secret scan](https://github.com/GioiaZheng/go-chat-system/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/GioiaZheng/go-chat-system/actions/workflows/secret-scan.yml)
 
-## Overview
-WASA Text is a client-server chat application with a Go backend and a Vue.js frontend. It exposes REST APIs for chat workflows and ships a Web UI for interactive usage, demos, and manual testing in a course setting.
+A full-stack chat application with a Go REST API, Vue frontend, SQLite
+persistence, OpenAPI documentation, authorization checks, and reproducible local
+deployment.
 
-## Tech stack & skills
+This is a Web and Software Architecture course project. It demonstrates
+end-to-end system integration and security-aware API design; it is not presented
+as a production messaging service.
 
-**Backend**
-- Go (modules + vendoring)
-- HTTP API server
-- Dependency injection / wiring in `cmd/`
+## What it implements
 
-**Frontend**
-- Vue.js + Vite
-- Bootstrap UI + Feather icons
-- Yarn with offline mirror
+- user registration, login, and user search;
+- one-to-one and group conversation workflows;
+- message creation, access, and mutation rules;
+- conversation membership and authorization checks;
+- a Vue + Vite interface for interactive use and manual QA;
+- an OpenAPI contract under [`doc/api.yaml`](doc/api.yaml);
+- SQLite-backed local persistence;
+- Docker Compose for a two-service local deployment;
+- automated API, vulnerability, and secret-scanning checks.
 
-**Skills emphasized**
-- Web API design and documentation (OpenAPI)
-- Full-stack integration (frontend consumes backend API)
-- Build/release workflows with asset embedding
+## Architecture
 
-## Project structure
-- `cmd/` — all executables. Go programs here should focus on executable concerns (CLI/env parsing, wiring, etc.).
-  - `cmd/healthcheck/` — example daemon for checking the health of server processes; useful when the hypervisor lacks HTTP readiness/liveness probes (e.g., Docker engine).
-  - `cmd/webapi/` — example web API server daemon.
-- `demo/` — demo configuration file.
-- `doc/` — documentation (for APIs, this is typically an OpenAPI file).
-- `service/` — packages that implement project-specific functionality.
-  - `service/api/` — example API server.
-  - `service/globaltime/` — wrapper around `time.Time` (useful for unit testing).
-- `vendor/` — managed by Go; contains vendored dependencies.
-- `webui/` — Vue.js web frontend including:
-  - Bootstrap UI framework
-  - Customized "Bootstrap dashboard" template
-  - Feather icons as SVG
-  - Go code for release embedding
+```text
+Vue + Vite web client
+        │
+        │ HTTP / JSON
+        ▼
+Go REST API
+        │
+        ▼
+SQLite persistence
+```
 
-Other project files include:
-
-- `open-node.sh` — starts a new (temporary) container using the `node:20` image for safe frontend development.
-
-## What the Web UI is for
-The Web UI (`webui/`) is a lightweight client used to:
-- Log in/register users (if enabled in your API)
-- Browse users and chat conversations
-- Create and send messages
-- Quickly verify API behavior without external tools
-
-It is useful for demos, manual QA, and validating end-to-end API integration.
+The backend keeps executable wiring under `cmd/` and project logic under
+`service/`. The frontend consumes the documented API and can run separately
+during development or be embedded into the Go binary for release builds.
 
 ## Quickstart
+
+### Backend
+
+Requires Go and a working CGO toolchain for the SQLite driver.
 
 ```bash
 git clone https://github.com/GioiaZheng/go-chat-system.git
@@ -61,13 +54,13 @@ go mod download
 go run ./cmd/webapi/
 ```
 
-Expected output:
+Expected startup message:
 
 ```text
 API listening on 0.0.0.0:3000
 ```
 
-For the Web UI:
+### Frontend
 
 ```bash
 cd webui
@@ -75,115 +68,87 @@ yarn install
 yarn run dev
 ```
 
-Expected output:
+Vite prints the local development URL after startup.
 
-```text
-VITE v...
-Local: http://localhost:<port>/
-```
-
-Docker Compose:
+### Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-Expected output:
+Open the Web UI at `http://localhost:8080`; the API is exposed at
+`http://localhost:3000`.
 
-```text
-backend-1   | API listening on 0.0.0.0:3000
-frontend-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
-```
+## Testing
 
-Open the Web UI at `http://localhost:8080`; the API is exposed at `http://localhost:3000`.
-
-## API tests
-
-The API test suite covers authentication parsing, login behavior, user search, conversation membership checks, message access, and message mutation authorization.
+The API suite covers authentication parsing, login behavior, user search,
+conversation membership, message access, and message mutation authorization.
 
 ```bash
 go test ./service/api ./service/database
 ```
 
-Expected output:
+For the full repository suite:
 
-```text
-ok  	github.com/GioiaZheng/Wasa_proj/service/api
-ok  	github.com/GioiaZheng/Wasa_proj/service/database
+```bash
+go test ./...
 ```
 
-## Security Notes
+The first full run compiles the vendored SQLite3 C driver and can take close to
+a minute. Subsequent runs use the build cache. See [TESTING.md](TESTING.md) for
+Windows CGO troubleshooting and CI details.
 
-The current authentication model is documented in [docs/auth-threat-model.md](docs/auth-threat-model.md). It is intentionally lightweight for local development and coursework; production use should replace user-ID tokens with signed, expiring sessions.
+## API and security model
+
+The API contract is maintained in [`doc/api.yaml`](doc/api.yaml).
+
+The authentication model is intentionally lightweight and suitable for local
+development and coursework. It uses user-ID tokens rather than signed,
+expiring sessions. The assumptions, trust boundaries, and production
+hardening requirements are documented in
+[docs/auth-threat-model.md](docs/auth-threat-model.md).
+
+Automated repository checks include:
+
+- Go tests and build validation;
+- `govulncheck` for known Go dependency vulnerabilities;
+- secret scanning;
+- frontend build checks in CI.
+
+These checks improve the development baseline but do not constitute a
+production security audit.
 
 ## Screenshots
 
-The documentation screenshots are stored with explicit filenames:
+- [Login screen](docs/screenshots/chat-login-screen.svg)
+- [Conversation screen](docs/screenshots/chat-conversation-screen.svg)
 
-- [docs/screenshots/chat-login-screen.svg](docs/screenshots/chat-login-screen.svg)
-- [docs/screenshots/chat-conversation-screen.svg](docs/screenshots/chat-conversation-screen.svg)
+## Repository layout
 
-## Known limitations
-
-This project is intentionally scoped as a course/full-stack homework baseline rather than a production-grade or research system. Current limitations include:
-
-- **Simplified authentication** — local development uses a lightweight authentication model suitable for coursework, not a hardened session system.
-- **Limited authorization hardening** — key chat flows include access checks, but the project has not been fully security-audited for production use.
-- **SQLite/dev deployment** — the default database and deployment flow are optimized for local development and grading, not high-availability operation.
-- **No formal research benchmark yet** — the project is useful for implementation practice and demos, but it does not include a validated research benchmark or comparative evaluation suite.
-
-## Go vendoring
-
-This project uses Go vendoring. After changing dependencies (`go get` or `go mod tidy`), run:
-
-```bash
-go mod vendor
+```text
+cmd/
+  webapi/          API server and dependency wiring
+  healthcheck/     process health-check utility
+service/
+  api/             HTTP handlers and chat workflows
+  database/        persistence layer
+  globaltime/      testable time abstraction
+webui/             Vue + Vite frontend
+doc/api.yaml       OpenAPI contract
+docs/              security, testing, and screenshots
+demo/              local demo configuration
+vendor/            vendored Go dependencies
 ```
-Commit all files under the `vendor/` directory.
 
-- More information: <https://go.dev/ref/mod#vendoring>
-- Guidance: <https://www.ardanlabs.com/blog/2020/04/modules-06-vendoring.html>
+## Build modes
 
-## Node/Yarn vendoring
-
-The repository uses Yarn with an offline mirror to vendor dependencies. Commit the files inside the `.yarn` directory.
-
-## How to customize for this chat project
-
-1. Confirm the Go module path for your environment in `go.mod`, `go.sum`, and any `*.go` files.
-2. Keep the API documentation current in `doc/api.yaml`, reflecting the chat endpoints and payloads.
-3. If you do not need the WebUI for a given exercise, you can remove `webui/` and `cmd/webapi/register-webui.go`; otherwise keep them for the chat frontend.
-4. Update the top-level package comment in `cmd/webapi/main.go` with the current project goal (WASA Text – Chat Application) and any environment notes.
-5. Extend the `run()` function (`cmd/webapi/main.go`) to wire databases or external resources used by the chat service.
-6. Implement chat-related API logic inside `service/api/` and add supporting packages under `service/` (or subdirectories).
-
-## How to build
-
-If you're **not** using the WebUI, or you don't want to embed the WebUI into the final executable:
+Backend without an embedded frontend:
 
 ```bash
 go build ./cmd/webapi/
 ```
 
-If you're using the WebUI **and** want to embed it into the final executable:
-
-```bash
-./open-node.sh
-# inside the container
-yarn run build-embed
-exit
-# outside the container
-go build -tags webui ./cmd/webapi/
-```
-
-## How to run (development mode)
-
-Launch the backend only:
-
-```bash
-go run ./cmd/webapi/
-```
-Launch the WebUI (in a new tab):
+Frontend development through the provided Node container:
 
 ```bash
 ./open-node.sh
@@ -191,17 +156,17 @@ Launch the WebUI (in a new tab):
 yarn run dev
 ```
 
-## How to build for release / homework delivery
+Release build with embedded frontend assets:
 
 ```bash
 ./open-node.sh
 # inside the container
-yarn run build-prod
+yarn run build-embed
+exit
+go build -tags webui ./cmd/webapi/
 ```
 
-### My build works with `yarn run dev`, but there is a JavaScript crash in production/grading
-
-Some errors are not surfaced by Vite development mode. To preview the code that will be used in production/grading:
+To preview the production frontend bundle before delivery:
 
 ```bash
 ./open-node.sh
@@ -210,15 +175,36 @@ yarn run build-prod
 yarn run preview
 ```
 
-## Testing
+## Known limitations
 
-The first `go test ./...` invocation compiles the vendored SQLite3 C driver. That
-CGO build can take close to a minute and may look stalled even though it is
-working. Once the driver object files are cached, subsequent `go test ./...`
-runs finish in under a second.
+- Authentication is designed for coursework, not hardened production use.
+- Authorization tests cover key chat flows, but the system has not undergone a
+  full security audit.
+- SQLite and the default deployment target local development rather than
+  high-availability operation.
+- The project does not include a formal performance or research benchmark.
+- The dependency workflow uses Go vendoring and a Yarn offline mirror, which
+  increases repository size but supports reproducible course builds.
 
-Detailed testing notes, including Windows CGO troubleshooting and CI coverage,
-are in [TESTING.md](TESTING.md).
+## Course context and attribution
+
+WASA Text was developed for the Web and Software Architecture course using the
+*Fantastic Coffee (decaffeinated)* starter shared in class. The starter provided
+the initial project structure; the chat workflows, API behavior, frontend
+integration, persistence, tests, and project-specific documentation form the
+application presented here.
+
+## Dependency maintenance
+
+After changing Go dependencies:
+
+```bash
+go mod tidy
+go mod vendor
+```
+
+Commit the updated files under `vendor/`. The frontend similarly keeps a Yarn
+offline mirror under `.yarn/`.
 
 ## License
 
