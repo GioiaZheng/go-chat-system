@@ -201,10 +201,28 @@ yarn run preview
 ## Course context and attribution
 
 WASA Text was developed for the Web and Software Architecture course using the
-*Fantastic Coffee (decaffeinated)* starter shared in class. The starter provided
-the initial project structure; the chat workflows, API behavior, frontend
-integration, persistence, tests, and project-specific documentation form the
-application presented here.
+*Fantastic Coffee (decaffeinated)* starter shared in class.
+
+The public history begins with
+[`bd2d40e`](https://github.com/GioiaZheng/go-chat-system/commit/bd2d40ebd1cc1e8670b8b0607e00575b2bf35705),
+a full project upload rather than an untouched copy of the starter. It therefore
+does not support file-by-file authorship claims. Attribution is deliberately
+stated at the feature and development-phase level:
+
+| Phase | Scope |
+|---|---|
+| Course starter | Initial full-stack project scaffold and WASA build conventions. The original starter snapshot is not present in this repository, so those foundations are not claimed as original work. |
+| Course application | Chat-specific user, one-to-one and group conversation, message, reply, forward, and deletion workflows; SQLite-backed application state; the OpenAPI contract; Vue integration; and local Docker packaging. |
+| Later repository maintenance | API and authorization tests, CI, secret and vulnerability scanning, security documentation, dependency maintenance, and SQLite connection and query-lifecycle hardening. |
+
+The later-maintenance boundary is visible in the history: CI
+([`c3afd7f`](https://github.com/GioiaZheng/go-chat-system/commit/c3afd7f)), API
+tests ([`9b70ea4`](https://github.com/GioiaZheng/go-chat-system/commit/9b70ea4)),
+secret and vulnerability scans
+([`2376b4f`](https://github.com/GioiaZheng/go-chat-system/commit/2376b4f),
+[`75ecfcf`](https://github.com/GioiaZheng/go-chat-system/commit/75ecfcf)), and
+SQLite hardening
+([`e61c6a6`](https://github.com/GioiaZheng/go-chat-system/commit/e61c6a6)).
 
 ## Dependency maintenance
 
