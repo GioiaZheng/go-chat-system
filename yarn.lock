@@ -150,6 +150,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@scarf/scarf@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "@scarf/scarf@npm:1.4.0"
+  checksum: def62aa403f7e63165ccb219efd2c420fc0b7357b0ba43397f635e4aa813ace1cdf3855a93fc559b4619bcc0469ae4767b8cb72af30ea5c0522bf4a2ecb18198
+  languageName: node
+  linkType: hard
+
 "@stoplight/better-ajv-errors@npm:1.0.3":
   version: 1.0.3
   resolution: "@stoplight/better-ajv-errors@npm:1.0.3"
@@ -218,10 +225,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stoplight/spectral-cli@npm:^6.16.0":
-  version: 6.16.0
-  resolution: "@stoplight/spectral-cli@npm:6.16.0"
+"@stoplight/spectral-cli@npm:^6.16.3":
+  version: 6.16.3
+  resolution: "@stoplight/spectral-cli@npm:6.16.3"
   dependencies:
+    "@scarf/scarf": ^1.4.0
     "@stoplight/json": ~3.21.0
     "@stoplight/path": 1.3.2
     "@stoplight/spectral-core": ^1.19.5
@@ -243,7 +251,7 @@ __metadata:
     yargs: ~17.7.2
   bin:
     spectral: dist/index.js
-  checksum: c758e6ef1d33a51d8e17f95eae711213042ddc01a7456f6d2fd4ffea5f860dd48f323c60b5776c4211cb451eb5995b4bfdddf0561bd279e295883a52e84fb172
+  checksum: 28c4493bcfc8dd6ef50ee3a18ac832eb1d3e4caf827f5761eaae1bc17990758cc4ae225db9b15fd79f55cc56f6b8c51b22ca341e073948fe709e589f067ba930
   languageName: node
   linkType: hard
 
@@ -2519,7 +2527,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@stoplight/spectral-cli": ^6.16.0
+    "@stoplight/spectral-cli": ^6.16.3
   languageName: unknown
   linkType: soft
 
