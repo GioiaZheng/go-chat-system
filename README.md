@@ -113,7 +113,8 @@ Automated repository checks include:
 - Go tests and build validation;
 - `govulncheck` for known Go dependency vulnerabilities;
 - secret scanning;
-- frontend build checks in CI.
+- frontend build checks in CI;
+- Docker Compose image builds.
 
 These checks improve the development baseline but do not constitute a
 production security audit.
