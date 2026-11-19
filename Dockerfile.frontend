@@ -1,5 +1,5 @@
 # Build stage: compile the Vue app with pinned Yarn tooling.
-FROM node:18-alpine AS build
+FROM node:24-alpine3.24 AS build
 
 # Enable Corepack and activate Yarn 3.6.4 for reproducible installs.
 RUN corepack enable && corepack prepare yarn@3.6.4 --activate
@@ -16,7 +16,7 @@ COPY webui/ .
 RUN yarn build
 
 # Runtime stage: serve the built single-page app via NGINX.
-FROM nginx:1.25-alpine
+FROM nginx:1.30.7-alpine3.24
 
 # Use the project-provided NGINX config to handle SPA routing.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
