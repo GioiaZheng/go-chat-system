@@ -496,10 +496,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bootstrap-icons@npm:^1.11.0":
-  version: 1.13.1
-  resolution: "bootstrap-icons@npm:1.13.1"
-  checksum: 7ca8735db00a2e78349fdac786982a4cd6b4a7346f6c7eaf3d06314d5d9d7f5e6728dc594a80e5502aa0d2d164ad91df44084ea9d5879775a0338443b3e68476
+"bootstrap-icons@npm:^1.13.2":
+  version: 1.13.2
+  resolution: "bootstrap-icons@npm:1.13.2"
+  checksum: c4a50a7242fdfba0e260d6f1275dabba55ca38c47d82417131c82d4aadb02c14bd0756ce6403b58f7f8b742118efb417b2e872f5d7a3a6e70525054592e40020
   languageName: node
   linkType: hard
 
@@ -1637,7 +1637,7 @@ __metadata:
     "@vitejs/plugin-vue": 6.0.7
     axios: 1.21.1
     bootstrap: ^5.3.0
-    bootstrap-icons: ^1.11.0
+    bootstrap-icons: ^1.13.2
     vite: 8.2.4
     vue: 3.5.45
     vue-router: ^4.1.3
