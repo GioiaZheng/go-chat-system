@@ -1383,14 +1383,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"picomatch@npm:^4.0.5":
+"picomatch@npm:^4.0.7":
   version: 4.0.7
   resolution: "picomatch@npm:4.0.7"
   checksum: a97edd7659fc7f39769734bcacd8e9c2f8711d0c30f0caf143577c4d59b3338e17e884ead92805701c71d54040067909e8d3dd45ed814fc8af154ca747fb06a4
   languageName: node
   linkType: hard
 
-"postcss@npm:^8.5.26, postcss@npm:^8.5.32":
+"postcss@npm:^8.5.32":
   version: 8.5.33
   resolution: "postcss@npm:8.5.33"
   dependencies:
@@ -1432,7 +1432,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rolldown@npm:~1.2.4":
+"rolldown@npm:~1.2.18":
   version: 1.2.19
   resolution: "rolldown@npm:1.2.19"
   dependencies:
@@ -1638,7 +1638,7 @@ __metadata:
     axios: 1.21.1
     bootstrap: ^5.3.0
     bootstrap-icons: ^1.11.0
-    vite: 8.2.4
+    vite: 8.3.8
     vue: 3.5.45
     vue-router: ^4.1.3
   languageName: unknown
@@ -1689,19 +1689,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:8.2.4":
-  version: 8.2.4
-  resolution: "vite@npm:8.2.4"
+"vite@npm:8.3.8":
+  version: 8.3.8
+  resolution: "vite@npm:8.3.8"
   dependencies:
     fsevents: ~2.3.3
     lightningcss: ^1.33.0
-    picomatch: ^4.0.5
-    postcss: ^8.5.26
-    rolldown: ~1.2.4
+    picomatch: ^4.0.7
+    postcss: ^8.5.32
+    rolldown: ~1.2.18
     tinyglobby: ^0.2.17
   peerDependencies:
     "@types/node": ^20.19.0 || >=22.12.0
-    "@vitejs/devtools": ^0.4.0 || ^0.5.0
+    "@vitejs/devtools": ^0.7.1 || ^0.8.0
     esbuild: ^0.27.0 || ^0.28.0
     jiti: ">=1.21.0"
     less: ^4.0.0
@@ -1742,7 +1742,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 8415f9d3fb0b626146dbf156ab0da35354fca0725e451571ca1b7daba6276a8516eb62f7b99cf9edc89a7516cd2a0bfb3deddafaa8a641c0a5c1071fbeba6b17
+  checksum: 6ab003a13a9118bb935a2cd1898d442544bdefc55a498e944b5fc99e862ed54965dfc9df950c9c7f966a7c5db20b07afbcc306fd1be439f7c1f3bdd21b0c9cbc
   languageName: node
   linkType: hard
 
