@@ -285,15 +285,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitejs/plugin-vue@npm:6.0.7":
-  version: 6.0.7
-  resolution: "@vitejs/plugin-vue@npm:6.0.7"
+"@vitejs/plugin-vue@npm:6.0.11":
+  version: 6.0.11
+  resolution: "@vitejs/plugin-vue@npm:6.0.11"
   dependencies:
     "@rolldown/pluginutils": ^1.0.1
   peerDependencies:
     vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
-    vue: ^3.2.25
-  checksum: 8f69e44d824bfda4b6736867141fd224a3c883bec4581d36ab26d00dbca00f5153c74884768b2b98605b91bf1d1665a57e4e8a752e437d850c09cbaa7aad9b1b
+    vue: ^3.2.25 || ^3.6.0-rc.15
+  checksum: 3c5e0837493cd2f5a5a93b82c8cbdb665f57b5093b664967e8ec7412701ddc225686d55783aa459291d6a5e58026d5aa3fcacc0d3ec1d7edd55b5bb100ae1bb4
   languageName: node
   linkType: hard
 
@@ -1634,7 +1634,7 @@ __metadata:
   resolution: "teapot@workspace:."
   dependencies:
     "@popperjs/core": ^2
-    "@vitejs/plugin-vue": 6.0.7
+    "@vitejs/plugin-vue": 6.0.11
     axios: 1.21.1
     bootstrap: ^5.3.0
     bootstrap-icons: ^1.11.0
